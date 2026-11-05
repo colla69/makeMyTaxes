@@ -68,7 +68,8 @@ it has no work.
 
 The owner can run `scripts/install-agent-timer.sh` to start a round every minute on this machine.
 To see the logs, run `journalctl --user -u makemytaxes-agent`. To stop the timer, run
-`systemctl --user disable --now makemytaxes-agent.timer`.
+`systemctl --user disable --now makemytaxes-agent.timer`. The timer reads the token for unattended
+runs from `~/.config/makemytaxes/agent.env`, which must never enter the repository.
 
 A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
 not switch to a cheaper model.

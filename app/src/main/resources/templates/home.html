@@ -17,16 +17,16 @@
              th:text="'Return ' + ${taxReturn.taxYear.value}">Return</a>
         </li>
       </ul>
-      <form method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
-        <label>Tax year <input name="taxYear" type="number" min="2000" max="2100" required></label>
+      <form class="fields" method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
+        <div th:replace="~{fields :: field(name='taxYear', label='Tax year', type='number', min='2000', max='2100', required=true)}"></div>
         <button>Add return</button>
       </form>
     </section>
 
     <section>
       <h2>Add a person</h2>
-      <form method="post" th:action="@{/persons}">
-        <label>Name <input name="name" required></label>
+      <form class="fields" method="post" th:action="@{/persons}">
+        <div th:replace="~{fields :: field(name='name', label='Name', required=true)}"></div>
         <button>Add person</button>
       </form>
     </section>

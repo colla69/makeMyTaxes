@@ -111,6 +111,7 @@ class ExpenseBrowserTest {
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
     assertThat(page.getByLabel("Topic")).hasValue("WORK_TRAINING");
     assertThat(page.getByLabel("Description")).hasValue("Next made-up course");
+    assertThat(page.getByLabel("Amount (EUR)")).hasValue("");
   }
 
   private void openANewReturnFor2022(Page page) {
@@ -136,5 +137,8 @@ class ExpenseBrowserTest {
         () ->
             page.locator(".error").count() > 0
                 || page.getByLabel("Description").inputValue().isEmpty());
+    // htmx moves the focus to this field just after the swap. A fill in that moment types into the
+    // wrong field, because Playwright focuses a field first and then inserts the text.
+    assertThat(page.getByLabel("Amount (EUR)")).isFocused();
   }
 }

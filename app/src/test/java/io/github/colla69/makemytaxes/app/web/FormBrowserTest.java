@@ -1,12 +1,15 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.BoundingBox;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +39,9 @@ class FormBrowserTest {
           "specialPayment",
           "certificateS",
           "officeRequest");
+
+  /** The browser rounds column widths, so two equal columns can differ by a part of a pixel. */
+  private static final double LAYOUT_ROUNDING = 0.1;
 
   @TempDir static Path databaseFolder;
 
@@ -241,6 +247,182 @@ class FormBrowserTest {
     assertThat(page.getByLabel("Date")).isVisible();
     assertThat(link(page, "Review")).hasCount(0);
     assertThat(link(page, "Anlage N")).hasCount(0);
+  }
+
+  @Test
+  void everyFieldOnEveryPageHasTheSameLook() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    BoundingBox reference = page.locator(".field input").first().boundingBox();
+    List<Double> columns = leftEdges(page);
+
+    assertAllFieldsLookLike(reference, columns, page);
+    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertAllFieldsLookLike(reference, columns, page);
+    }
+    link(page, "Back").click();
+    assertThat(page.getByLabel("Name")).isVisible();
+    assertAllFieldsLookLike(reference, columns, page);
+  }
+
+  @Test
+  void thePageUsesEightyPercentOfTheVisibleWidth() {
+    Page page = browser.newPage();
+    page.navigate("http://127.0.0.1:" + port + "/");
+    assertBodyIsEightyPercentOfTheWindow(page);
+
+    openANewReturn(page, "2022");
+    assertBodyIsEightyPercentOfTheWindow(page);
+
+    link(page, "Main form").click();
+    assertBodyIsEightyPercentOfTheWindow(page);
+
+    link(page, "Review").click();
+    assertBodyIsEightyPercentOfTheWindow(page);
+  }
+
+  @Test
+  void theFieldsStandInThreeColumns() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
+
+    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
+    }
+  }
+
+  @Test
+  void theControlsOfOneRowStandAtTheSameHeight() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    // The labels of the filing check differ in length, so they wrap to a different number of lines.
+    link(page, "Filing check").click();
+    assertThat(page.locator("#answers")).isVisible();
+    List<Locator> controls = page.locator("#answers select").all();
+    for (int i = 0; i < controls.size(); i++) {
+      double rowTop = controls.get(i - i % 3).boundingBox().y;
+      assertEquals(rowTop, controls.get(i).boundingBox().y, LAYOUT_ROUNDING, "question " + i);
+    }
+  }
+
+  @Test
+  void theFieldsOfOneSectionStayTogether() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    link(page, "Main form").click();
+    assertThat(page.locator("#answers .field-group h2"))
+        .hasText(
+            new String[] {
+              "Allgemeine Angaben",
+              "Bankverbindung",
+              "Einkommensersatzleistungen",
+              "Ergänzende Angaben zur Steuererklärung"
+            });
+    assertEquals(List.of("iban"), namesInGroup(page, "Bankverbindung"));
+    assertGroupsDoNotOverlap(page);
+
+    link(page, "Anlage N").click();
+    assertThat(page.locator("#answers .field-group h2"))
+        .hasText(new String[] {"Angaben zum Arbeitslohn", "Werbungskosten"});
+    assertEquals(
+        List.of(
+            "workplace",
+            "commuteDays",
+            "commuteKm",
+            "commuteTransport",
+            "employerCommute",
+            "homeOfficeDays"),
+        namesInGroup(page, "Werbungskosten"));
+    assertGroupsDoNotOverlap(page);
+  }
+
+  @Test
+  void theFieldComponentKeepsTheSettingsOfEachField() {
+    Page page = browser.newPage();
+    page.navigate("http://127.0.0.1:" + port + "/");
+    assertThat(page.getByLabel("Name")).hasAttribute("required", "required");
+
+    openANewReturn(page, "2022");
+    assertThat(page.getByLabel("Date")).hasAttribute("placeholder", "dd.mm.yyyy");
+    assertThat(page.getByLabel("Date")).hasAttribute("required", "required");
+    assertThat(page.getByLabel("Receipt")).not().hasAttribute("required", "required");
+    assertThat(page.getByLabel("Topic")).hasValue("WORK_EQUIPMENT");
+
+    link(page, "Filing check").click();
+    assertThat(field(page, "otherIncome").locator("option").first()).hasText("Choose");
+    assertThat(page.locator("#answers .field .line").first()).not().isEmpty();
+
+    link(page, "Main form").click();
+    assertThat(page.locator("#answers .field .help").first()).not().isEmpty();
+
+    link(page, "Back").click();
+    Locator taxYear = page.getByLabel("Tax year").first();
+    assertThat(taxYear).hasAttribute("type", "number");
+    assertThat(taxYear).hasAttribute("min", "2000");
+    assertThat(taxYear).hasAttribute("max", "2100");
+  }
+
+  @Test
+  void aLongOptionDoesNotMakeAFieldWiderThanTheOthers() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    // A large text stands for a wide font: the width of an option depends on the fonts of the machine.
+    page.addStyleTag(new Page.AddStyleTagOptions().setContent(".field select { font-size: 2rem; }"));
+
+    assertEquals(
+        page.getByLabel("Date").boundingBox().width,
+        page.getByLabel("Topic").boundingBox().width,
+        LAYOUT_ROUNDING);
+  }
+
+  private static void assertAllFieldsLookLike(BoundingBox reference, List<Double> columns, Page page) {
+    assertEquals(
+        page.locator("form input, form select").count(),
+        page.locator(".field input, .field select").count(),
+        "A control is outside the field component on " + page.url());
+    for (Locator control : page.locator(".field input, .field select").all()) {
+      BoundingBox box = control.boundingBox();
+      assertTrue(
+          columns.stream().anyMatch(column -> Math.abs(column - box.x) < LAYOUT_ROUNDING),
+          "left edge " + box.x + " on " + page.url());
+      assertEquals(reference.width, box.width, LAYOUT_ROUNDING, "width on " + page.url());
+      assertEquals(reference.height, box.height, "height on " + page.url());
+    }
+  }
+
+  private static void assertBodyIsEightyPercentOfTheWindow(Page page) {
+    int visibleWidth = (int) page.evaluate("document.documentElement.clientWidth");
+    assertEquals(visibleWidth * 0.8, page.locator("body").boundingBox().width, 1, "width on " + page.url());
+  }
+
+  private static void assertGroupsDoNotOverlap(Page page) {
+    double previousBottom = 0;
+    for (Locator group : page.locator("#answers .field-group").all()) {
+      BoundingBox box = group.boundingBox();
+      assertTrue(box.y >= previousBottom, "A section overlaps the section above it on " + page.url());
+      previousBottom = box.y + box.height;
+    }
+  }
+
+  private static List<Double> leftEdges(Page page) {
+    return page.locator(".field input, .field select").all().stream()
+        .map(control -> control.boundingBox().x)
+        .distinct()
+        .toList();
+  }
+
+  private static Object namesInGroup(Page page, String title) {
+    return page.locator(".field-group")
+        .filter(new Locator.FilterOptions().setHasText(title))
+        .locator("input, select")
+        .evaluateAll("controls => controls.map(control => control.name)");
   }
 
   private void openANewReturn(Page page, String year) {

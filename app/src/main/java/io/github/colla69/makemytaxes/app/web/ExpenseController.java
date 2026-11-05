@@ -8,6 +8,7 @@ import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
+import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.expense.Payment;
 import io.github.colla69.makemytaxes.core.expense.Purpose;
 import io.github.colla69.makemytaxes.core.form.Forms;
@@ -119,10 +120,16 @@ class ExpenseController {
     model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);
-    model.addAttribute("topics", ExpenseTopic.values());
+    model.addAttribute("topics", topicOptions());
     model.addAttribute("rows", stored.stream().map(ExpenseRow::of).toList());
     model.addAttribute("totals", totalsOf(summary));
     model.addAttribute("withoutReceipt", summary.expensesWithoutEvidence());
+  }
+
+  private static List<Kind.Option> topicOptions() {
+    return List.of(ExpenseTopic.values()).stream()
+        .map(topic -> new Kind.Option(topic.name(), topic.label()))
+        .toList();
   }
 
   private static List<TopicTotal> totalsOf(ExpenseSummary summary) {

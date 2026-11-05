@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!--
+      The one look of a field. Put it in an element with the class "fields".
+
+      Call it with named values. Only "name" and "label" are necessary:
+        name, label, value, line, help, fieldError, placeholder, required, autofocus, type, min, max
+        options: a list of Kind.Option. This makes the field a select, and "value" selects the option.
+        blankOption: true adds an empty first option to the select.
+
+      A value that the call does not give comes from the model of the page, if the model has that
+      name. So a new value here must not have the name of a model attribute, such as "error".
+    -->
+    <div class="field" th:fragment="field">
+      <label>
+        <span class="field-label">
+          <span class="line" th:if="${line}" th:text="${line}">1</span>
+          <span th:text="${label}">Label</span>
+        </span>
+        <select th:unless="${#lists.isEmpty(options)}" th:name="${name}">
+          <option th:if="${blankOption}" value="">Choose</option>
+          <option th:each="option : ${options}"
+                  th:value="${option.value}"
+                  th:text="${option.label}"
+                  th:selected="${option.value == value}">Option</option>
+        </select>
+        <input th:if="${#lists.isEmpty(options)}"
+               th:name="${name}"
+               th:value="${value}"
+               th:type="${type}"
+               th:min="${min}"
+               th:max="${max}"
+               th:placeholder="${placeholder}"
+               th:required="${required}"
+               th:autofocus="${autofocus}">
+      </label>
+      <p class="help" th:unless="${#strings.isEmpty(help)}" th:text="${help}">Help</p>
+      <p class="error" th:if="${fieldError}" th:text="${fieldError}">Error</p>
+    </div>
+  </body>
+</html>

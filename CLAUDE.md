@@ -26,25 +26,58 @@ owner's machine.
 
 | Task | Command |
 |---|---|
-| Build and check everything | `./mvnw -q -B verify` |
+| Build and check everything, in CI only | `./mvnw -q -B verify` |
 | Test one class | `./mvnw -q -B test -Dtest=TaxYearTest -Dsurefire.failIfNoSpecifiedTests=false` |
-| Build the app without tests | `./mvnw -q -B -DskipTests package` |
-| Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-0.1.0-SNAPSHOT.jar` |
+| Build the app without tests | `./mvnw -q -B -DskipTests clean package` |
+| Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar` |
 | Turn on the commit checks, once per clone | `git config core.hooksPath .githooks` |
 | Scan every commit for personal data | `scripts/privacy-scan.sh --history` |
 | Test the scanner | `scripts/privacy-scan-test.sh` |
 | Build the law library, once per clone | `java scripts/FetchLaws.java` |
 | Check the law library | `scripts/law-check.sh` |
 | Read a provision for a tax year | `scripts/law.sh 2022 estg "§ 35a"` |
+| Run one round of the working loop | `scripts/agent-loop.sh` |
+| Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
+| Test the deploy script | `scripts/deploy-live-test.sh` |
 
-A long check runs through the `marketplace-base:test-runner` agent, which runs it on Haiku
-and reports only what failed, so the output stays out of the session.
+Write the output of a long check to a file and read only the failures, so that the output stays
+out of the session.
 
 CI runs the build, the browser tests and the law library check on each pull request. The Java
 version of CI is `java.version` in `pom.xml`.
 
-The branch `dev` is the testing ground, and it runs on port 9091. The branch `main` is what PROD
-runs, on port 9090. Pull requests go into `dev`.
+## Working loop
+
+The owner is the product owner: the owner writes issues, tries `dev` and calls the promotion.
+
+1. The owner opens an issue and adds the label `agent-ready`. Issues are public, so an issue must
+   not hold personal facts.
+2. `scripts/work-next-issue.sh` gives the oldest waiting issue to the `work-issue` skill, in its own
+   worktree. The worker opens a pull request into `dev`, with the label `needs-review`.
+3. `scripts/review-next-pr.sh` starts the `review-pr` skill in a new session, from `dev`. It posts its
+   findings and gives a verdict. On an approval of the exact commit, the script merges into `dev`.
+4. On requested changes, `scripts/fix-next-pr.sh` starts the `fix-pr` skill, and the review runs again.
+5. The label `needs-owner` stops the loop for a pull request. A person must decide. This happens
+   after 3 rounds, for a scan finding, and for changes to the guards or to code that could send data
+   off the machine: `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings,
+   the request filter and the database setup.
+6. `scripts/label-merged-issues.sh` adds the label `on-dev` to the issues of each merged pull request.
+   The owner tries these issues on `dev`, on port 9091. PROD runs `main` in a Docker container on
+   port 9090, with its data in `deploy/data`.
+7. `/promote` sets the version from the incoming commits, opens the pull request into `main` and
+   tags the release. Only the owner merges into `main`. The merge closes the issues.
+   `scripts/deploy-live.sh` updates the live container from the tag.
+
+`scripts/agent-loop.sh` runs one round of steps 2 to 4 and the labelling in step 6. Each step stops before any call to Claude if
+it has no work.
+
+The owner can run `scripts/install-agent-timer.sh` to start a round every minute on this machine.
+To see the logs, run `journalctl --user -u makemytaxes-agent`. To stop the timer, run
+`systemctl --user disable --now makemytaxes-agent.timer`. The timer reads the token for unattended
+runs from `~/.config/makemytaxes/agent.env`, which must never enter the repository.
+
+A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
+not switch to a cheaper model.
 
 ## Map
 
@@ -70,6 +103,9 @@ runs, on port 9090. Pull requests go into `dev`.
 
 ## Boundaries
 
+- Do not run the full test suite on this machine, and do not run two builds at one time, because
+  this can crash the machine. Run only the test classes that a change needs. CI runs the full suite
+  on each pull request.
 - Real data must not enter the repository: not in code, tests, fixtures, docs or commit
   messages. Tests use made-up data only. The commit hook scans for this and stops the commit, because a scan after a
   push is too late. Do not skip the hook with `--no-verify`.
@@ -91,7 +127,8 @@ runs, on port 9090. Pull requests go into `dev`.
   4. Cite the provision and the date of the version.
 - The law library does not hold BMF letters, the EStR guidelines or court rulings. A rule that
   depends on them needs its own source.
-- The owner reviews every change that could send data off the machine.
+- The owner reviews every change that could send data off the machine. The automatic review does
+  not merge such a change.
 - The UI and the adapters depend on the core. The core does not depend on them. The Maven
   Enforcer Plugin stops Spring, the database driver and Flyway from entering `core`.
 - Do not add `org.xerial:sqlite-jdbc`. It has no encryption, and the build bans it.

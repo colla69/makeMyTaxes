@@ -14,28 +14,18 @@
       <h1 th:text="'Return ' + ${taxYear}">Return</h1>
 
       <form id="expense-form"
+            class="fields"
             method="post"
             th:action="@{/returns/{id}/expenses(id=${returnId})}"
             th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"
             hx-target="#panel"
             hx-swap="outerHTML">
         <p class="error" th:if="${error}" th:text="${error}">Error</p>
-        <label>Date
-          <input name="paidOn" placeholder="dd.mm.yyyy" required th:value="${form.paidOn}">
-        </label>
-        <label>Amount (EUR)
-          <input name="amount" placeholder="1.234,56" required autofocus th:value="${form.amount}">
-        </label>
-        <label>Topic
-          <select name="topic">
-            <option th:each="topic : ${topics}"
-                    th:value="${topic.name}"
-                    th:text="${topic.label}"
-                    th:selected="${topic == form.topic}">Topic</option>
-          </select>
-        </label>
-        <label>Description <input name="description" required th:value="${form.description}"></label>
-        <label>Receipt <input name="receipt" placeholder="File name or folder" th:value="${form.receipt}"></label>
+        <div th:replace="~{fields :: field(name='paidOn', label='Date', value=${form.paidOn}, placeholder='dd.mm.yyyy', required=true)}"></div>
+        <div th:replace="~{fields :: field(name='amount', label='Amount (EUR)', value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true)}"></div>
+        <div th:replace="~{fields :: field(name='topic', label='Topic', value=${form.topic?.name}, options=${topics})}"></div>
+        <div th:replace="~{fields :: field(name='description', label='Description', value=${form.description}, required=true)}"></div>
+        <div th:replace="~{fields :: field(name='receipt', label='Receipt', value=${form.receipt}, placeholder='File name or folder')}"></div>
         <button>Add expense</button>
       </form>
 

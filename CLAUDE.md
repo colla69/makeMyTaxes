@@ -66,6 +66,10 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
 `scripts/agent-loop.sh` runs one round of steps 2 to 4. Each step stops before any call to Claude if
 it has no work.
 
+The owner can run `scripts/install-agent-timer.sh` to start a round every 5 minutes on this machine.
+To see the logs, run `journalctl --user -u makemytaxes-agent`. To stop the timer, run
+`systemctl --user disable --now makemytaxes-agent.timer`.
+
 A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
 not switch to a cheaper model.
 

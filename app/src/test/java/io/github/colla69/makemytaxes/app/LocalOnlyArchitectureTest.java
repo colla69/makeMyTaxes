@@ -8,8 +8,8 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Checks the project's own classes only, so a library can still open a connection. See
- * docs/adr/0008: the owner reviews each change that could send data off the machine.
+ * Checks the project's own classes only, so a library can still open a connection. So the
+ * owner reviews each change that could send data off the machine.
  */
 @AnalyzeClasses(
     packages = "io.github.colla69.makemytaxes",

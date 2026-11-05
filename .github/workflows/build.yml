@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      # The project has no Node build. This step only installs the system packages of the browser.
+      - name: Install the system packages for the browser tests
+        run: npx --yes playwright@1.64.0 install-deps chromium
+      - name: Build and run all tests, with the browser tests
+        run: ./mvnw -B verify
+      - name: Keep the test reports of a failed build
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: "*/target/surefire-reports/"
+          retention-days: 7
+
+  scanner-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test the privacy scanner
+        run: scripts/privacy-scan-test.sh
+
+  law-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Build the law library from the pinned sources
+        run: java scripts/FetchLaws.java
+      - name: Check wording that differs between versions
+        run: scripts/law-check.sh

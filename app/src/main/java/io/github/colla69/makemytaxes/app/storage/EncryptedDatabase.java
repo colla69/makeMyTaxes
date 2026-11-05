@@ -10,6 +10,7 @@ public final class EncryptedDatabase {
 
   public static SQLiteDataSource dataSource(Path file, String passphrase) {
     var config = SQLiteMCSqlCipherConfig.getV4Defaults().withKey(passphrase).build();
+    config.enforceForeignKeys(true);
     var dataSource = new SQLiteDataSource(config);
     dataSource.setUrl("jdbc:sqlite:" + file);
     return dataSource;

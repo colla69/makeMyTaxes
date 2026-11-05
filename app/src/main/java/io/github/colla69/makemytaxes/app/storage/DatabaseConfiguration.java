@@ -26,6 +26,7 @@ class DatabaseConfiguration {
 
     var pool = new HikariDataSource();
     pool.setDataSource(EncryptedDatabase.dataSource(file, passphrase));
+    pool.setConnectionTimeout(5_000);
     // SQLite allows one writer at a time, and the app has at most two users.
     pool.setMaximumPoolSize(1);
     return pool;

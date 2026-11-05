@@ -1,0 +1,11 @@
+# Identifiers on gesetze-im-internet.de. To add a law, add a line and run the script with --pin.
+estg
+estdv_1955
+lstdv
+solzg_1995
+ao_1977
+aoeg_1977
+beeg
+bkgg_1996
+altzertg
+svev

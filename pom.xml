@@ -25,6 +25,8 @@
     <java.version>25</java.version>
     <sqlite-jdbc-crypt.version>3.53.4.0</sqlite-jdbc-crypt.version>
     <archunit.version>1.5.1</archunit.version>
+    <htmx.version>2.0.11</htmx.version>
+    <playwright.version>1.64.0</playwright.version>
   </properties>
 
   <build>
@@ -46,7 +48,7 @@
                 <bannedDependencies>
                   <excludes>
                     <!-- The plain driver has no encryption and uses the same classes as the
-                         encrypted driver. See docs/adr/0004. -->
+                         encrypted driver. -->
                     <exclude>org.xerial:sqlite-jdbc</exclude>
                   </excludes>
                 </bannedDependencies>

@@ -6,5 +6,6 @@ set -uo pipefail
 
 scripts=$(dirname "$0")
 "$scripts/review-next-pr.sh"
+"$scripts/label-merged-issues.sh"
 "$scripts/fix-next-pr.sh"
 "$scripts/work-next-issue.sh"

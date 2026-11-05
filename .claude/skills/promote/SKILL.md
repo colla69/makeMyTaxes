@@ -25,7 +25,10 @@ If the version on `main` has no `-SNAPSHOT` and the tag `v<version>` does not ex
 
 1. Run `git tag -a v<version> origin/main -m "Release <version>"`.
 2. Run `git push origin v<version>`.
-3. Tell the owner that this release is ready to deploy. Then continue with the next step.
+3. Remove the label from the issues that this release closed. For each number in
+   `gh issue list --state closed --label on-dev --json number --jq '.[].number'`, run
+   `gh issue edit <number> --remove-label on-dev`.
+4. Tell the owner that this release is ready to deploy. Then continue with the next step.
 
 ## 2. Nothing to promote
 
@@ -56,10 +59,11 @@ Then:
 
 ## 4. Open the pull request into main
 
-If the version on `dev` is higher than the version on `main`, run
-`gh pr create --base main --head dev`. The title is `release: <version>`. The body lists the incoming
+If the version on `dev` is higher than the version on `main`, run `scripts/label-merged-issues.sh`.
+Then run `gh pr create --base main --head dev`. The title is `release: <version>`. The body lists the incoming
 commits under `Features`, `Fixes` and `Other`. GitHub closes an issue only when its change reaches
-`main`, so add `Closes #<issue>` for each issue that the incoming pull requests name. Add a section for any database migration in the
+`main`, so add `Closes #<issue>` for each number in
+`gh issue list --state open --label on-dev --json number --jq '.[].number'`. Add a section for any database migration in the
 incoming commits, because PROD runs it at the next start.
 
 Tell the owner to review and merge it, then run `/promote` again to tag it. Stop.

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>makeMyTaxes</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
+  </head>
+  <body>
+    <p><a th:href="@{/}">Back</a></p>
+
+    <div id="panel" th:fragment="panel">
+      <h1 th:text="'Return ' + ${taxYear}">Return</h1>
+
+      <form id="expense-form"
+            method="post"
+            th:action="@{/returns/{id}/expenses(id=${returnId})}"
+            th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"
+            hx-target="#panel"
+            hx-swap="outerHTML">
+        <p class="error" th:if="${error}" th:text="${error}">Error</p>
+        <label>Date
+          <input name="paidOn" placeholder="dd.mm.yyyy" required th:value="${form.paidOn}">
+        </label>
+        <label>Amount (EUR)
+          <input name="amount" placeholder="1.234,56" required autofocus th:value="${form.amount}">
+        </label>
+        <label>Topic
+          <select name="topic">
+            <option th:each="topic : ${topics}"
+                    th:value="${topic.name}"
+                    th:text="${topic.label}"
+                    th:selected="${topic == form.topic}">Topic</option>
+          </select>
+        </label>
+        <label>Description <input name="description" required th:value="${form.description}"></label>
+        <label>Receipt <input name="receipt" placeholder="File name or folder" th:value="${form.receipt}"></label>
+        <button>Add expense</button>
+      </form>
+
+      <h2>Totals</h2>
+      <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' without a receipt'">0</p>
+      <table>
+        <tr th:each="total : ${totals}">
+          <td th:text="${total.topic}">Topic</td>
+          <td class="amount" th:text="${total.total}">0,00</td>
+        </tr>
+      </table>
+
+      <h2>Expenses</h2>
+      <table id="expenses">
+        <thead>
+          <tr><th>Date</th><th>Amount</th><th>Topic</th><th>Description</th><th>Receipt</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${rows}">
+            <td th:text="${row.paidOn}">01.01.2022</td>
+            <td class="amount" th:text="${row.amount}">0,00</td>
+            <td th:text="${row.topic}">Topic</td>
+            <td th:text="${row.description}">Description</td>
+            <td th:text="${row.receipt}">Receipt</td>
+            <td>
+              <form method="post"
+                    th:action="@{/returns/{r}/expenses/{e}/delete(r=${returnId},e=${row.id})}"
+                    th:attr="hx-post=@{/returns/{r}/expenses/{e}/delete(r=${returnId},e=${row.id})}"
+                    hx-target="#panel"
+                    hx-swap="outerHTML">
+                <button>Delete</button>
+              </form>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

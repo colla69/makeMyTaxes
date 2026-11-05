@@ -29,22 +29,34 @@ owner's machine.
 | Build and check everything | `./mvnw -q -B verify` |
 | Test one class | `./mvnw -q -B test -Dtest=TaxYearTest -Dsurefire.failIfNoSpecifiedTests=false` |
 | Build the app without tests | `./mvnw -q -B -DskipTests package` |
-| Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-0.1.0-SNAPSHOT.jar` |
+| Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar` |
 | Turn on the commit checks, once per clone | `git config core.hooksPath .githooks` |
 | Scan every commit for personal data | `scripts/privacy-scan.sh --history` |
 | Test the scanner | `scripts/privacy-scan-test.sh` |
 | Build the law library, once per clone | `java scripts/FetchLaws.java` |
 | Check the law library | `scripts/law-check.sh` |
 | Read a provision for a tax year | `scripts/law.sh 2022 estg "§ 35a"` |
+| Work on the next waiting issue | `scripts/work-next-issue.sh` |
 
-A long check runs through the `marketplace-base:test-runner` agent, which runs it on Haiku
-and reports only what failed, so the output stays out of the session.
+Write the output of a long check to a file and read only the failures, so that the output stays
+out of the session.
 
 CI runs the build, the browser tests and the law library check on each pull request. The Java
 version of CI is `java.version` in `pom.xml`.
 
-The branch `dev` is the testing ground, and it runs on port 9091. The branch `main` is what PROD
-runs, on port 9090. Pull requests go into `dev`.
+## Working loop
+
+1. The owner opens an issue and adds the label `agent-ready`. Issues are public, so an issue must
+   not hold personal facts.
+2. `scripts/work-next-issue.sh` gives the oldest waiting issue to the `work-issue` skill, in its own
+   worktree. Without a waiting issue, it stops before any call to Claude.
+3. The worker opens a pull request into `dev`, and stops. The owner reviews and merges.
+4. The owner tries `dev` on port 9091. PROD runs `main` on port 9090.
+5. `/promote` sets the version from the incoming commits, opens the pull request into `main` and
+   tags the release.
+
+A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
+not switch to a cheaper model.
 
 ## Map
 

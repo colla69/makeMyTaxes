@@ -26,7 +26,7 @@ an official ELSTER program, and it sends no data to the tax office.
 
 ```
 ./mvnw -q -B -DskipTests package
-MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-0.1.0-SNAPSHOT.jar
+MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar
 ```
 
 `CLAUDE.md` holds the other commands and the rules of the project.

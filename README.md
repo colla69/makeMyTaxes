@@ -7,6 +7,8 @@ showcase for full agentic development, end to end.
 people to file with, it covers only part of the tax law, and it gives no tax advice. It is not
 an official ELSTER program, and it sends no data to the tax office.
 
+**Status: alpha test.** Versions start at 0.0.1. Features and stored data can change between versions.
+
 ## What it does
 
 - Collects expenses with their dates, amounts and receipts

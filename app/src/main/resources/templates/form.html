@@ -13,24 +13,11 @@
     <p class="error" th:each="message : ${formErrors}" th:text="${message}">Error</p>
     <p class="error" th:unless="${#maps.isEmpty(errors)}">Nothing is saved. Correct the marked fields.</p>
 
-    <form id="answers" class="stacked" method="post"
+    <form id="answers" class="fields" method="post"
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
-      <div class="field" th:each="field : ${form.fields}">
-        <label>
-          <span class="line" th:text="${field.line}">1</span>
-          <span th:text="${field.label}">Label</span>
-          <select th:if="${field.kind.choice}" th:name="${field.id}">
-            <option value="">Choose</option>
-            <option th:each="option : ${field.kind.options()}"
-                    th:value="${option.value}"
-                    th:text="${option.label}"
-                    th:selected="${option.value == values[field.id]}">Option</option>
-          </select>
-          <input th:unless="${field.kind.choice}" th:name="${field.id}" th:value="${values[field.id]}">
-        </label>
-        <p class="help" th:unless="${field.help.isEmpty()}" th:text="${field.help}">Help</p>
-        <p class="error" th:if="${errors[field.id]}" th:text="${errors[field.id]}">Error</p>
-      </div>
+      <th:block th:each="field : ${form.fields}">
+        <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
+      </th:block>
       <button>Save</button>
     </form>
 

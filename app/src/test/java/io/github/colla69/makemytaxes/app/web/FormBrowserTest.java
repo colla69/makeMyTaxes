@@ -1,12 +1,14 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.BoundingBox;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -241,6 +243,74 @@ class FormBrowserTest {
     assertThat(page.getByLabel("Date")).isVisible();
     assertThat(link(page, "Review")).hasCount(0);
     assertThat(link(page, "Anlage N")).hasCount(0);
+  }
+
+  @Test
+  void everyFieldOnEveryPageHasTheSameLook() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    BoundingBox reference = page.locator(".field input").first().boundingBox();
+
+    assertAllFieldsLookLike(reference, page);
+    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertAllFieldsLookLike(reference, page);
+    }
+    link(page, "Back").click();
+    assertThat(page.getByLabel("Name")).isVisible();
+    assertAllFieldsLookLike(reference, page);
+  }
+
+  @Test
+  void theFieldComponentKeepsTheSettingsOfEachField() {
+    Page page = browser.newPage();
+    page.navigate("http://127.0.0.1:" + port + "/");
+    assertThat(page.getByLabel("Name")).hasAttribute("required", "required");
+
+    openANewReturn(page, "2022");
+    assertThat(page.getByLabel("Date")).hasAttribute("placeholder", "dd.mm.yyyy");
+    assertThat(page.getByLabel("Date")).hasAttribute("required", "required");
+    assertThat(page.getByLabel("Receipt")).not().hasAttribute("required", "required");
+    assertThat(page.getByLabel("Topic")).hasValue("WORK_EQUIPMENT");
+
+    link(page, "Filing check").click();
+    assertThat(field(page, "otherIncome").locator("option").first()).hasText("Choose");
+    assertThat(page.locator("#answers .field .line").first()).not().isEmpty();
+
+    link(page, "Main form").click();
+    assertThat(page.locator("#answers .field .help").first()).not().isEmpty();
+
+    link(page, "Back").click();
+    Locator taxYear = page.getByLabel("Tax year").first();
+    assertThat(taxYear).hasAttribute("type", "number");
+    assertThat(taxYear).hasAttribute("min", "2000");
+    assertThat(taxYear).hasAttribute("max", "2100");
+  }
+
+  @Test
+  void aLongOptionDoesNotMakeAFieldWiderThanItsForm() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    // A large text stands for a wide font: the width of an option depends on the fonts of the machine.
+    page.addStyleTag(new Page.AddStyleTagOptions().setContent(".field select { font-size: 2rem; }"));
+
+    assertEquals(
+        page.locator("#expense-form").boundingBox().width,
+        page.getByLabel("Topic").boundingBox().width);
+  }
+
+  private static void assertAllFieldsLookLike(BoundingBox reference, Page page) {
+    assertEquals(
+        page.locator("form input, form select").count(),
+        page.locator(".field input, .field select").count(),
+        "A control is outside the field component on " + page.url());
+    for (Locator control : page.locator(".field input, .field select").all()) {
+      BoundingBox box = control.boundingBox();
+      assertEquals(reference.x, box.x, "left edge on " + page.url());
+      assertEquals(reference.width, box.width, "width on " + page.url());
+      assertEquals(reference.height, box.height, "height on " + page.url());
+    }
   }
 
   private void openANewReturn(Page page, String year) {

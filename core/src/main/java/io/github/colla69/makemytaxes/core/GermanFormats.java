@@ -16,6 +16,9 @@ public final class GermanFormats {
   private static final Pattern AMOUNT =
       Pattern.compile("(\\d{1,3}(\\.\\d{3})+|\\d+)(,\\d{1,2})?");
 
+  /** Up to 999.999.999,99 euros, so sums of amounts cannot overflow. */
+  private static final int MAX_EURO_DIGITS = 9;
+
   private GermanFormats() {}
 
   public static Money parseMoney(String input) {
@@ -25,6 +28,9 @@ public final class GermanFormats {
           "Write the amount as 1.234,56, but got: \"" + input + "\".");
     }
     String[] parts = text.replace(".", "").split(",");
+    if (parts[0].replaceFirst("^0+", "").length() > MAX_EURO_DIGITS) {
+      throw new IllegalArgumentException("This amount is too large: \"" + input + "\".");
+    }
     long euros = Long.parseLong(parts[0]);
     long cents = parts.length == 1 ? 0 : Long.parseLong((parts[1] + "0").substring(0, 2));
     return Money.ofCents(euros * 100 + cents);

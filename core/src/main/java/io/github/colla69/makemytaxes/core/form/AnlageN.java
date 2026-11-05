@@ -71,13 +71,18 @@ public final class AnlageN implements FormModule {
   /** A day cannot be both, because the home office amount excludes days at the workplace. */
   @Override
   public List<String> check(Answers answers) {
+    List<String> messages = new ArrayList<>();
     long days = answers.wholeNumber("commuteDays") + answers.wholeNumber("homeOfficeDays");
     if (days > pack.daysInYear()) {
-      return List.of(
+      messages.add(
           "Commuting days and home office days total %d, but %d has only %d days."
               .formatted(days, pack.taxYear().value(), pack.daysInYear()));
     }
-    return List.of();
+    // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
+    if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
+      messages.add("Choose how you travelled, because the commuting limit depends on it.");
+    }
+    return messages;
   }
 
   @Override
@@ -118,8 +123,8 @@ public final class AnlageN implements FormModule {
 
   private static String evidenceOf(Expense expense) {
     String paid = "Paid on " + GermanFormats.format(expense.payment().paidOn());
-    return expense.receiptReference().isEmpty()
-        ? paid + ", no receipt"
-        : paid + ", receipt: " + expense.receiptReference();
+    return expense.hasEvidence()
+        ? paid + ", receipt: " + expense.receiptReference()
+        : paid + ", no receipt";
   }
 }

@@ -69,7 +69,14 @@ public enum Kind {
     }
   }
 
+  /** Shows a valid value in the one format of the app, whatever form the user typed. */
   public String display(String value) {
+    if (this == MONEY) {
+      return GermanFormats.format(GermanFormats.parseMoney(value));
+    }
+    if (this == DATE) {
+      return GermanFormats.format(GermanFormats.parseDate(value));
+    }
     return options().stream()
         .filter(option -> option.value().equals(value))
         .map(Option::label)

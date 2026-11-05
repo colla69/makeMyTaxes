@@ -202,6 +202,38 @@ class FormBrowserTest {
   }
 
   @Test
+  void aCostWithoutAFormStaysVisibleOnTheReview() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    page.getByLabel("Date").fill("03.02.2022");
+    page.getByLabel("Amount (EUR)").fill("500,00");
+    page.getByLabel("Topic").selectOption("HOUSEHOLD_SERVICES");
+    page.getByLabel("Description").fill("Made-up cleaner");
+    page.getByLabel("Description").press("Enter");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+
+    link(page, "Review").click();
+
+    assertThat(page.locator("#without-form")).containsText("Made-up cleaner");
+    assertThat(page.locator("#without-form")).containsText("500,00");
+  }
+
+  @Test
+  void reviewShowsATypedAmountInTheFormatOfTheApp() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+    fill(page, "grossWage", "1234,5");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Review").click();
+
+    assertThat(page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N")))
+        .containsText("1.234,50");
+  }
+
+  @Test
   void aReturnWithoutAYearPackHasNoFormsYet() {
     Page page = browser.newPage();
     openANewReturn(page, "2021");

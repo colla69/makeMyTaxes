@@ -85,6 +85,7 @@ public class FetchLaws {
         HttpResponse<byte[]> response = get(rawUrl(commit, law, file));
         if (response.statusCode() == 404) {
           file = xmlFile(commit, law);
+          files.put(law, file);
           response = get(rawUrl(commit, law, file));
         }
         rows.add(

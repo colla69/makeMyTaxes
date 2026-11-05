@@ -65,6 +65,8 @@ class FormController {
     }
   }
 
+  record WithoutFormView(String topic, String description, String amount) {}
+
   record SectionView(String title, List<ReviewLine> lines) {}
 
   record FormReview(String title, List<SectionView> sections, List<Field> missing) {}
@@ -146,7 +148,21 @@ class FormController {
         "estimate",
         EstimateView.of(WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored)));
     model.addAttribute("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
+    model.addAttribute("withoutForm", withoutForm(stored));
     return "review";
+  }
+
+  /** A cost that no form shows yet must stay visible, or its deduction is lost in silence. */
+  private static List<WithoutFormView> withoutForm(List<Expense> stored) {
+    return stored.stream()
+        .filter(expense -> !expense.purpose().topic().isWorkExpense())
+        .map(
+            expense ->
+                new WithoutFormView(
+                    expense.purpose().topic().label(),
+                    expense.purpose().description(),
+                    GermanFormats.format(expense.payment().amount())))
+        .toList();
   }
 
   private void fillForm(

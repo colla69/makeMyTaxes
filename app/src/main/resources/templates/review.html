@@ -24,10 +24,22 @@
       </table>
       <p th:if="${estimate.aboveLumpSum}">Your work expenses are above the lump sum, so they count in full.</p>
       <p th:unless="${estimate.aboveLumpSum}">Your work expenses are not above the lump sum, so the tax office applies the lump sum.</p>
-      <p class="help">This is an estimate. The tax office calculates the amounts, and the estimate does not deduct employer payments for commuting.</p>
+      <p class="help">This is an estimate. The tax office calculates the amounts.</p>
     </section>
 
     <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' without a receipt'">0</p>
+
+    <section id="without-form" class="warning" th:unless="${#lists.isEmpty(withoutForm)}">
+      <h2>Not on a form yet</h2>
+      <p>The app has no form for these costs yet. Enter them by hand in Mein ELSTER.</p>
+      <table>
+        <tr th:each="cost : ${withoutForm}">
+          <td th:text="${cost.topic}">Topic</td>
+          <td th:text="${cost.description}">Description</td>
+          <td class="amount" th:text="${cost.amount}">0,00</td>
+        </tr>
+      </table>
+    </section>
 
     <section class="review-form" th:each="review : ${reviews}">
       <h2 th:text="${review.title}">Form</h2>

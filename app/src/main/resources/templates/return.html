@@ -61,9 +61,12 @@
             <td th:text="${row.description}">Description</td>
             <td th:text="${row.receipt}">Receipt</td>
             <td>
+              <!-- novalidate: htmx would stop the delete if the entry in progress is incomplete. -->
               <form method="post"
+                    novalidate
                     th:action="@{/returns/{r}/expenses/{e}/delete(r=${returnId},e=${row.id})}"
                     th:attr="hx-post=@{/returns/{r}/expenses/{e}/delete(r=${returnId},e=${row.id})}"
+                    hx-include="#expense-form"
                     hx-target="#panel"
                     hx-swap="outerHTML">
                 <button>Delete</button>

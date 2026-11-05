@@ -15,6 +15,11 @@ public record Money(long cents) {
     return new Money(Math.multiplyExact(cents, factor));
   }
 
+  /** Never below zero, because a reduction cannot turn a cost into income. */
+  public Money minusDownToZero(Money other) {
+    return new Money(Math.max(0, Math.subtractExact(cents, other.cents)));
+  }
+
   public Money atMost(Money limit) {
     return cents > limit.cents ? limit : this;
   }

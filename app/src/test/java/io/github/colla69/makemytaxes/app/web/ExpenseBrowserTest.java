@@ -96,6 +96,23 @@ class ExpenseBrowserTest {
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
   }
 
+  @Test
+  void deletingAnExpenseKeepsTheEntryInProgress() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    page.getByLabel("Date").fill("03.02.2022");
+    page.getByLabel("Topic").selectOption("WORK_TRAINING");
+    addExpense(page, "10,00", "Made-up course");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+
+    page.getByLabel("Description").fill("Next made-up course");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete")).click();
+
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+    assertThat(page.getByLabel("Topic")).hasValue("WORK_TRAINING");
+    assertThat(page.getByLabel("Description")).hasValue("Next made-up course");
+  }
+
   private void openANewReturnFor2022(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/");
     // Tests share one database, so each test needs its own person and its own return.

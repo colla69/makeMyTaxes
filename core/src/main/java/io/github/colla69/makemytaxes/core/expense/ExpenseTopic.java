@@ -18,6 +18,10 @@ public enum ExpenseTopic {
     this.label = label;
   }
 
+  public boolean isWorkExpense() {
+    return name().startsWith("WORK_");
+  }
+
   public String label() {
     return label;
   }

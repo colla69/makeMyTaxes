@@ -15,9 +15,10 @@ set -euo pipefail
 BLOCKED_FILES='\.(db|sqlite|sqlite3|db-journal|db-wal|db-shm|pdf|jpe?g|png|heic|tiff?|docx?|xlsx?|ods|odt|csv|p12|pfx)$'
 FIXTURES='(^|/)src/test/resources/fixtures/'
 TAX_NUMBER='(^|[^0-9/])[0-9]{2,3}/[0-9]{3,4}/[0-9]{4,5}([^0-9/]|$)'
-IBAN='(^|[^A-Za-z0-9])DE[0-9]{2}( ?[0-9]{4}){4} ?[0-9]{2}([^0-9]|$)'
+IBAN_CANDIDATE='(?<![A-Za-z0-9])[A-Za-z]{2}[0-9]{2}( ?[A-Za-z0-9]{4}){2,7}( ?[A-Za-z0-9]{1,3})?(?![A-Za-z0-9])'
 # A digit run inside a word, such as a hash, is not a tax ID.
-TAX_ID_CANDIDATE='(?<![0-9A-Za-z.,/-])[1-9][0-9]( ?[0-9]{3}){3}(?![0-9A-Za-z.,/-])'
+# A dot or comma after the number ends a sentence, unless a digit follows it.
+TAX_ID_CANDIDATE='(?<![0-9A-Za-z.,/-])[1-9][0-9]( ?[0-9]{3}){3}(?![0-9A-Za-z/-]|[.,][0-9])'
 ALLOW_MARKER='privacy-scan:allow'
 
 root=$(git rev-parse --show-toplevel)
@@ -55,6 +56,37 @@ is_valid_tax_id() { # 11 digits, ISO 7064 MOD 11,10, as the Steuer-ID uses
   [[ $check -eq ${digits:10:1} ]]
 }
 
+is_valid_iban() { # the check of ISO 13616: country code moved to the end, modulo 97
+  local iban=${1^^} i c rest=0
+  iban=${iban:4}${iban:0:4}
+  for ((i = 0; i < ${#iban}; i++)); do
+    c=${iban:i:1}
+    if [[ $c == [A-Z] ]]; then
+      c=$(($(printf '%d' "'$c") - 55))
+      rest=$(((rest * 100 + c) % 97))
+    else
+      rest=$(((rest * 10 + c) % 97))
+    fi
+  done
+  ((rest == 1))
+}
+
+check_ibans() { # location, file
+  local number line candidate
+  while IFS=: read -r number line; do
+    while read -r candidate; do
+      candidate=${candidate// /}
+      if is_valid_iban "$candidate"; then
+        report "$1:$number" "looks like an IBAN"
+      fi
+    done < <(grep -aoP "$IBAN_CANDIDATE" <<<"$line" || true)
+  done < <(grep -naP "$IBAN_CANDIDATE" "$2" | grep -av "$ALLOW_MARKER" || true)
+}
+
+is_binary() { # a NUL byte marks a binary file. Other bytes can be a text file in Latin-1.
+  LC_ALL=C grep -qP '\x00' "$1"
+}
+
 check_tax_ids() { # location, file
   local number line digits
   while IFS=: read -r number line; do
@@ -63,15 +95,15 @@ check_tax_ids() { # location, file
       if [[ ${#digits} -eq 11 ]] && is_valid_tax_id "$digits"; then
         report "$1:$number" "looks like a tax ID (Steuer-ID)"
       fi
-    done < <(grep -oP "$TAX_ID_CANDIDATE" <<<"$line" || true)
-  done < <(grep -nIP "$TAX_ID_CANDIDATE" "$2" | grep -v "$ALLOW_MARKER" || true)
+    done < <(grep -aoP "$TAX_ID_CANDIDATE" <<<"$line" || true)
+  done < <(grep -naP "$TAX_ID_CANDIDATE" "$2" | grep -av "$ALLOW_MARKER" || true)
 }
 
 check_pattern() { # location, file, pattern, rule
   local number
   while IFS=: read -r number _; do
     report "$1:$number" "$4"
-  done < <(grep -nIE "$3" "$2" | grep -v "$ALLOW_MARKER" || true)
+  done < <(grep -naE "$3" "$2" | grep -av "$ALLOW_MARKER" || true)
 }
 
 check_private_terms() { # location, file
@@ -79,13 +111,15 @@ check_private_terms() { # location, file
   local number
   while IFS=: read -r number _; do
     report "$1:$number" "matches a private term"
-  done < <(grep -nIiF -f "$work/terms.clean" "$2" || true)
+  done < <(grep -naiF -f "$work/terms.clean" "$2" || true)
 }
 
 check_content() { # location, file
-  check_pattern "$1" "$2" "$IBAN" "looks like an IBAN"
+  # A Latin-1 file is invalid UTF-8, and -P refuses it, so the pattern checks read bytes.
+  is_binary "$2" && return 0
+  LC_ALL=C check_ibans "$1" "$2"
   check_pattern "$1" "$2" "$TAX_NUMBER" "looks like a tax number (Steuernummer)"
-  check_tax_ids "$1" "$2"
+  LC_ALL=C check_tax_ids "$1" "$2"
   check_private_terms "$1" "$2"
 }
 

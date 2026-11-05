@@ -60,6 +60,14 @@ public class HouseholdStore {
         .list();
   }
 
+  public boolean hasPerson(long personId) {
+    return jdbc.sql("select count(*) from person where id = ?")
+            .param(personId)
+            .query(Integer.class)
+            .single()
+        > 0;
+  }
+
   /** Adding a year twice keeps the existing return and its expenses. */
   public void addReturn(long personId, TaxYear taxYear) {
     jdbc.sql("insert or ignore into tax_return(person_id, tax_year) values (?, ?)")

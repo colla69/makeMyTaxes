@@ -1,5 +1,6 @@
 package io.github.colla69.makemytaxes.core.form;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
@@ -34,6 +35,13 @@ class KindTest {
     String typo = MADE_UP_IBAN.substring(0, 21) + (MADE_UP_IBAN.endsWith("9") ? "0" : "9");
 
     assertThatIllegalArgumentException().isThrownBy(() -> Kind.IBAN.validate(typo));
+  }
+
+  @Test
+  void showsMoneyAndDatesInTheFormatOfTheApp() {
+    assertThat(Kind.MONEY.display("1234,5")).isEqualTo("1.234,50");
+    assertThat(Kind.DATE.display("3.2.1990")).isEqualTo("03.02.1990");
+    assertThat(Kind.YES_NO_UNSURE.display("UNSURE")).isEqualTo("Not sure");
   }
 
   @ParameterizedTest

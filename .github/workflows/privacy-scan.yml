@@ -17,6 +17,11 @@ jobs:
           fetch-depth: 0
       - name: Test the scanner
         run: scripts/privacy-scan-test.sh
+      - name: Warn if the private terms are missing
+        if: env.PRIVATE_TERMS == ''
+        run: echo "::warning::The secret PRIVATE_TERMS is empty, so CI does not check names and addresses."
+        env:
+          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
       - name: Scan every commit for personal data
         run: scripts/privacy-scan.sh --history
         env:

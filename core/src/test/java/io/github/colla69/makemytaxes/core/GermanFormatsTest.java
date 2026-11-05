@@ -29,6 +29,13 @@ class GermanFormatsTest {
   }
 
   @Test
+  void rejectsAnAmountThatCouldOverflow() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> GermanFormats.parseMoney("184.467.440.737.095.517"));
+    assertThat(GermanFormats.parseMoney("999.999.999,99")).isEqualTo(Money.ofCents(99_999_999_999L));
+  }
+
+  @Test
   void writesAGermanAmount() {
     assertThat(GermanFormats.format(Money.ofCents(123_456))).isEqualTo("1.234,56");
     assertThat(GermanFormats.format(Money.ofCents(99))).isEqualTo("0,99");

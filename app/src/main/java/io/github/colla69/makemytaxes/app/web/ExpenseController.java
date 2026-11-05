@@ -92,9 +92,14 @@ class ExpenseController {
   }
 
   @PostMapping("/returns/{returnId}/expenses/{expenseId}/delete")
-  String delete(@PathVariable long returnId, @PathVariable long expenseId, Model model) {
+  String delete(
+      @PathVariable long returnId,
+      @PathVariable long expenseId,
+      @ModelAttribute ExpenseForm form,
+      Model model) {
     expenses.delete(returnId, expenseId);
-    fillPanel(returnId, ExpenseForm.empty(), model);
+    // The delete request brings the entry in progress, so a delete does not lose it.
+    fillPanel(returnId, form.topic() == null ? ExpenseForm.empty() : form, model);
     return "return :: panel";
   }
 

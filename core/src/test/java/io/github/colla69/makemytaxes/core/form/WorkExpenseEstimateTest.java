@@ -61,6 +61,30 @@ class WorkExpenseEstimateTest {
   }
 
   @Test
+  @DisplayName("§ 3 no. 15 sentence 3 and § 40(2) EStG: employer payments reduce the commuting amount")
+  void employerPaymentsReduceCommutingButNotBelowZero() {
+    var reduced =
+        new Answers(
+            Map.of(
+                "commuteDays", "100",
+                "commuteKm", "20",
+                "commuteTransport", "CAR",
+                "employerCommute", "100,00"));
+    var fullyPaid =
+        new Answers(
+            Map.of(
+                "commuteDays", "100",
+                "commuteKm", "20",
+                "commuteTransport", "CAR",
+                "employerCommute", "900,00"));
+
+    assertThat(WorkExpenseEstimate.of(pack, reduced, List.of()).commute())
+        .isEqualTo(Money.ofCents(500_00));
+    assertThat(WorkExpenseEstimate.of(pack, fullyPaid, List.of()).commute())
+        .isEqualTo(Money.ofCents(0));
+  }
+
+  @Test
   void onlyWorkTopicsCount() {
     Expense medical =
         new Expense(

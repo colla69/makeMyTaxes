@@ -60,12 +60,26 @@ class AnlageNTest {
 
   @Test
   void commutingAndHomeOfficeDaysMustFitInTheYear() {
-    assertThat(form.check(new Answers(Map.of("commuteDays", "200", "homeOfficeDays", "165"))))
+    assertThat(
+            form.check(
+                new Answers(
+                    Map.of("commuteDays", "200", "homeOfficeDays", "165", "commuteTransport", "CAR"))))
         .isEmpty();
-    assertThat(form.check(new Answers(Map.of("commuteDays", "200", "homeOfficeDays", "166"))))
+    assertThat(
+            form.check(
+                new Answers(
+                    Map.of("commuteDays", "200", "homeOfficeDays", "166", "commuteTransport", "CAR"))))
         .singleElement()
         .asString()
         .contains("366", "365");
+  }
+
+  @Test
+  void commutingDaysNeedTheTransport() {
+    assertThat(form.check(new Answers(Map.of("commuteDays", "10"))))
+        .singleElement()
+        .asString()
+        .contains("how you travelled");
   }
 
   @Test

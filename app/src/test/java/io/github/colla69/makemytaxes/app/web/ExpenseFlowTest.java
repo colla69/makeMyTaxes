@@ -39,6 +39,13 @@ class ExpenseFlowTest {
     registry.add("makemytaxes.database.passphrase", () -> "made-up-test-passphrase");
   }
 
+  @Test
+  void aReturnForAnUnknownPersonIsNotFound() throws Exception {
+    mockMvc
+        .perform(post("/persons/999999/returns").param("taxYear", "2022"))
+        .andExpect(status().isNotFound());
+  }
+
   @BeforeEach
   void createAPersonWithAReturn() throws Exception {
     String name = "Made-up " + UUID.randomUUID();

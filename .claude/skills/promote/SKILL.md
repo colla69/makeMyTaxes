@@ -55,7 +55,8 @@ Then:
 
 If the version on `dev` is higher than the version on `main`, run
 `gh pr create --base main --head dev`. The title is `release: <version>`. The body lists the incoming
-commits under `Features`, `Fixes` and `Other`. Add a section for any database migration in the
+commits under `Features`, `Fixes` and `Other`. GitHub closes an issue only when its change reaches
+`main`, so add `Closes #<issue>` for each issue that the incoming pull requests name. Add a section for any database migration in the
 incoming commits, because PROD runs it at the next start.
 
 Tell the owner to review and merge it, then run `/promote` again to tag it. Stop.

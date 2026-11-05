@@ -44,12 +44,13 @@ status=0
     --max-budget-usd "$BUDGET" \
     --permission-mode acceptEdits \
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Agent" "Skill" \
-    "Bash(./mvnw:*)" "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
+    "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
+    "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git push -u origin HEAD)" \
     "Bash(gh issue view:*)" "Bash(gh issue comment:*)" "Bash(gh pr create:*)" "Bash(gh pr view:*)" \
-    "Bash(rm target-verify.log)" \
+    "Bash(rm target-test.log)" \
     --disallowedTools "Bash(*--no-verify*)"
 ) || status=$?
 

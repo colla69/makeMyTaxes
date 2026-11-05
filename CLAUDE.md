@@ -26,7 +26,7 @@ owner's machine.
 
 | Task | Command |
 |---|---|
-| Build and check everything | `./mvnw -q -B verify` |
+| Build and check everything, in CI only | `./mvnw -q -B verify` |
 | Test one class | `./mvnw -q -B test -Dtest=TaxYearTest -Dsurefire.failIfNoSpecifiedTests=false` |
 | Build the app without tests | `./mvnw -q -B -DskipTests clean package` |
 | Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar` |
@@ -99,6 +99,9 @@ not switch to a cheaper model.
 
 ## Boundaries
 
+- Do not run the full test suite on this machine, and do not run two builds at one time, because
+  this can crash the machine. Run only the test classes that a change needs. CI runs the full suite
+  on each pull request.
 - Real data must not enter the repository: not in code, tests, fixtures, docs or commit
   messages. Tests use made-up data only. The commit hook scans for this and stops the commit, because a scan after a
   push is too late. Do not skip the hook with `--no-verify`.

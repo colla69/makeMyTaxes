@@ -11,7 +11,7 @@ source "$(dirname "$0")/agent-lib.sh"
 take_lock
 
 number=$(gh pr list --repo "$REPO" --state open --base dev --label changes-requested --author "$OWNER" \
-  --json number,isCrossRepository \
+  --search "-label:needs-owner" --json number,isCrossRepository \
   --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[0].number // empty')
 if [[ -z "$number" ]]; then
   echo "No pull request waits for corrections."

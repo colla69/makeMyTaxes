@@ -4,19 +4,12 @@
 # Usage: scripts/work-next-issue.sh [issue number]
 set -euo pipefail
 
-REPO=colla69/makeMyTaxes
-OWNER=colla69
 LABEL=agent-ready
 EFFORT=${WORKER_EFFORT:-medium}
 BUDGET=${WORKER_BUDGET_USD:-10}
 
-root=$(cd "$(dirname "$0")/.." && pwd)
-base=${XDG_CACHE_HOME:-$HOME/.cache}/makemytaxes-worker
-mkdir -p "$base"
-
-# One run at a time, so two runs cannot take the same issue or pass the budget.
-exec 9>"$base/lock"
-flock -n 9 || { echo "Another worker run is active."; exit 0; }
+source "$(dirname "$0")/agent-lib.sh"
+take_lock
 
 issue=${1:-$(gh issue list --repo "$REPO" --state open --label "$LABEL" --author "$OWNER" \
   --search "-label:in-progress -label:needs-input" --json number \
@@ -34,32 +27,11 @@ if [[ "$labelled" != "true" ]]; then
   exit 1
 fi
 
-# The hook checks private terms and uses gitleaks, and a worktree does not have these ignored files.
-if [[ ! -s "$root/.privacy/terms.txt" ]]; then
-  echo "The private terms are missing, so the commit hook cannot check them." >&2
-  exit 1
-fi
-
-export GIT_CONFIG_COUNT=2
-export GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=
-export GIT_CONFIG_KEY_1=credential.helper GIT_CONFIG_VALUE_1='!gh auth git-credential'
-
 branch=issue-$issue
 worktree=$base/$branch
 git -C "$root" fetch -q origin
-git -C "$root" worktree remove --force "$worktree" 2>/dev/null || true
-git -C "$root" worktree add -q -B "$branch" "$worktree" origin/dev
-cp -r "$root/.privacy" "$worktree/.privacy"
-if [[ -d "$root/law/text" ]]; then
-  mkdir -p "$worktree/law"
-  cp -r "$root/law/text" "$worktree/law/text"
-else
-  (cd "$worktree" && java scripts/FetchLaws.java)
-fi
-if [[ "$(git -C "$worktree" config core.hooksPath)" != ".githooks" ]]; then
-  echo "The commit hook is not active." >&2
-  exit 1
-fi
+prepare_worktree "$worktree" origin/dev
+git -C "$worktree" switch -q -C "$branch"
 
 gh issue edit "$issue" --repo "$REPO" --add-label in-progress >/dev/null
 
@@ -84,8 +56,9 @@ status=0
 gh issue edit "$issue" --repo "$REPO" --remove-label in-progress --remove-label "$LABEL" >/dev/null
 pull_request=$(gh pr list --repo "$REPO" --head "$branch" --state open --json url --jq '.[0].url // empty')
 if [[ -n "$pull_request" ]]; then
+  gh pr edit "$pull_request" --repo "$REPO" --add-label needs-review >/dev/null
   echo "Issue $issue: $pull_request"
-  git -C "$root" worktree remove --force "$worktree"
+  remove_worktree "$worktree"
 else
   gh issue edit "$issue" --repo "$REPO" --add-label needs-input >/dev/null
   gh issue comment "$issue" --repo "$REPO" \

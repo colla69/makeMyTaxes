@@ -17,6 +17,8 @@ Type=oneshot
 WorkingDirectory=$root
 # A timer has no login shell, so the unit keeps the tools from the shell that installed it.
 Environment=PATH=$PATH
+# This private file holds CLAUDE_CODE_OAUTH_TOKEN for unattended runs. It stays outside the repository.
+EnvironmentFile=-%h/.config/makemytaxes/agent.env
 ExecStart=$root/scripts/agent-loop.sh
 UNIT
 

@@ -33,6 +33,9 @@ If there are no incoming commits, tell the owner that `dev` has nothing new, and
 
 ## 3. Open the version pull request into dev
 
+If the version on `main` has `-SNAPSHOT`, `main` has no release yet. A version on `dev` without
+`-SNAPSHOT` is then higher, whatever its number, so go to step 4.
+
 If the version on `dev` is not higher than the version on `main`, work out the new version:
 
 - If the version on `dev` has `-SNAPSHOT`, this is the first release. Use the version without

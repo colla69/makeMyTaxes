@@ -28,7 +28,7 @@ owner's machine.
 |---|---|
 | Build and check everything | `./mvnw -q -B verify` |
 | Test one class | `./mvnw -q -B test -Dtest=TaxYearTest -Dsurefire.failIfNoSpecifiedTests=false` |
-| Build the app without tests | `./mvnw -q -B -DskipTests package` |
+| Build the app without tests | `./mvnw -q -B -DskipTests clean package` |
 | Run the built app | `MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar` |
 | Turn on the commit checks, once per clone | `git config core.hooksPath .githooks` |
 | Scan every commit for personal data | `scripts/privacy-scan.sh --history` |

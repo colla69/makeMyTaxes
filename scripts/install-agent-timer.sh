@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the working loop every 5 minutes with a systemd user timer on this machine.
+# Starts the working loop every minute with a systemd user timer on this machine.
 # A round with no work makes no call to Claude. The timer runs while the user is logged in.
 # To stop it: systemctl --user disable --now makemytaxes-agent.timer
 set -euo pipefail
@@ -22,11 +22,12 @@ UNIT
 
 cat >"$units/makemytaxes-agent.timer" <<UNIT
 [Unit]
-Description=makeMyTaxes: start the working loop every 5 minutes
+Description=makeMyTaxes: start the working loop every minute
 
 [Timer]
-OnBootSec=2min
-OnUnitInactiveSec=5min
+OnBootSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=5s
 
 [Install]
 WantedBy=timers.target
@@ -34,4 +35,4 @@ UNIT
 
 systemctl --user daemon-reload
 systemctl --user enable --now makemytaxes-agent.timer
-echo "The working loop now starts every 5 minutes. Logs: journalctl --user -u makemytaxes-agent"
+echo "The working loop now starts every minute. Logs: journalctl --user -u makemytaxes-agent"

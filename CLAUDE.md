@@ -59,11 +59,12 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
    after 3 rounds, for a scan finding, and for changes to the guards or to code that could send data
    off the machine: `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings,
    the request filter and the database setup.
-6. The owner tries `dev` on port 9091. PROD runs `main` on port 9090.
+6. `scripts/label-merged-issues.sh` adds the label `on-dev` to the issues of each merged pull request.
+   The owner tries these issues on `dev`, on port 9091. PROD runs `main` on port 9090.
 7. `/promote` sets the version from the incoming commits, opens the pull request into `main` and
-   tags the release. Only the owner merges into `main`.
+   tags the release. Only the owner merges into `main`. The merge closes the issues.
 
-`scripts/agent-loop.sh` runs one round of steps 2 to 4. Each step stops before any call to Claude if
+`scripts/agent-loop.sh` runs one round of steps 2 to 4 and the labelling in step 6. Each step stops before any call to Claude if
 it has no work.
 
 The owner can run `scripts/install-agent-timer.sh` to start a round every minute on this machine.

@@ -4,7 +4,7 @@ target/
 CLAUDE.local.md
 .privacy/
 
-# Real tax data must never enter the repository. See docs/adr/0007.
+# Real tax data must never enter the repository.
 *.db
 *.db-journal
 *.db-wal
@@ -15,3 +15,6 @@ law/text/
 
 # IDE settings
 .idea/
+
+# Decision records stay on the owner's machine
+docs/adr/

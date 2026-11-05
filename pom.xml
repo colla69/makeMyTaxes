@@ -48,7 +48,7 @@
                 <bannedDependencies>
                   <excludes>
                     <!-- The plain driver has no encryption and uses the same classes as the
-                         encrypted driver. See docs/adr/0004. -->
+                         encrypted driver. -->
                     <exclude>org.xerial:sqlite-jdbc</exclude>
                   </excludes>
                 </bannedDependencies>

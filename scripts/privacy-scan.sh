@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keeps personal data out of the repository. See docs/adr/0007-real-data-and-claude.md.
+# Keeps personal data out of the repository.
 #
 #   privacy-scan.sh --staged          what the next commit adds (the pre-commit hook)
 #   privacy-scan.sh --message <file>  a commit message (the commit-msg hook)

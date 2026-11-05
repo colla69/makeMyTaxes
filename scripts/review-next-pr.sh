@@ -16,8 +16,9 @@ OWNER_ONLY='^(\.github/|\.githooks/|\.claude/|scripts/|pom\.xml$|.*/pom\.xml$|ap
 source "$(dirname "$0")/agent-lib.sh"
 take_lock
 
+# The worker script adds needs-review to each new pull request, so needs-owner must also stop the review.
 number=$(gh pr list --repo "$REPO" --state open --base dev --label needs-review --author "$OWNER" \
-  --json number,isCrossRepository \
+  --search "-label:needs-owner" --json number,isCrossRepository \
   --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[0].number // empty')
 if [[ -z "$number" ]]; then
   echo "No pull request waits for a review."

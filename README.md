@@ -27,7 +27,7 @@ an official ELSTER program, and it sends no data to the tax office.
 ## Run it
 
 ```
-./mvnw -q -B -DskipTests package
+./mvnw -q -B -DskipTests clean package
 MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar
 ```
 

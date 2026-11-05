@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <section id="filing-result" th:fragment="result">
+      <h2>Filing check result</h2>
+      <div th:if="${filing.status == 'MANDATORY'}">
+        <p class="warning"><strong>You must file this return.</strong></p>
+        <ul>
+          <li th:each="reason : ${filing.yes}" th:text="${reason.question} + ' (' + ${reason.source} + ')'">Reason</li>
+        </ul>
+        <p>
+          The legal deadline <span th:text="${filing.mandatoryDeadlinePassed} ? 'was' : 'is'">is</span>
+          <strong th:text="${filing.mandatoryDeadline}">01.01.2000</strong>
+          (§ 149(2) AO, Art. 97 § 36(3) EGAO, § 108(3) AO).
+          <span th:if="${filing.mandatoryDeadlinePassed}">File as soon as you can. A late filing
+          surcharge is possible, but § 152(3) AO excludes the fixed surcharge rule if the return
+          leads to no extra payment. Check this with your tax office.</span>
+        </p>
+      </div>
+      <div th:if="${filing.status == 'VOLUNTARY'}">
+        <p><strong>This return is voluntary</strong> (§ 46(2) no. 8 EStG).</p>
+        <p>The tax office must receive it by <strong th:text="${filing.voluntaryDeadline}">01.01.2000</strong>
+          (§ 169(2) no. 2 and § 170(1) AO).</p>
+      </div>
+      <div th:if="${filing.status == 'OPEN'}">
+        <p class="warning"><strong>The result is open.</strong> These questions have no clear answer yet:</p>
+        <ul>
+          <li th:each="reason : ${filing.open}" th:text="${reason.question} + ' (' + ${reason.source} + ')'">Question</li>
+        </ul>
+        <p>If this return is voluntary, the tax office must receive it by
+          <strong th:text="${filing.voluntaryDeadline}">01.01.2000</strong>. If it is mandatory, the
+          deadline is <strong th:text="${filing.mandatoryDeadline}">01.01.2000</strong>.</p>
+      </div>
+      <p class="help">This check does not cover married or divorced persons, non-residents, or
+        parents who share an allowance (§ 46(2) no. 3a, 4a, 6, 7 and 9 EStG).</p>
+    </section>
+  </body>
+</html>

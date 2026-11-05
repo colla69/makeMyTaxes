@@ -3,12 +3,14 @@ package io.github.colla69.makemytaxes.app.web;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore.StoredExpense;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.expense.Payment;
 import io.github.colla69.makemytaxes.core.expense.Purpose;
+import io.github.colla69.makemytaxes.core.form.Forms;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -27,7 +29,7 @@ class ExpenseController {
       String paidOn, String amount, ExpenseTopic topic, String description, String receipt) {
 
     static ExpenseForm empty() {
-      return new ExpenseForm("", "", ExpenseTopic.WORK, "", "");
+      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "");
     }
 
     /** The next entry often shares a date and topic with this entry, so those two stay. */
@@ -109,6 +111,7 @@ class ExpenseController {
     List<StoredExpense> stored = expenses.expensesOf(returnId);
     var summary = ExpenseSummary.of(stored.stream().map(StoredExpense::expense).toList());
     model.addAttribute("returnId", returnId);
+    model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);
     model.addAttribute("topics", ExpenseTopic.values());

@@ -45,3 +45,37 @@ td {
 .warning {
   color: #8a5a00;
 }
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stacked .field {
+  margin-bottom: 0.75rem;
+}
+
+.stacked label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.line {
+  color: #555;
+  font-size: 0.85rem;
+  min-width: 2rem;
+}
+
+.help {
+  color: #555;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+.saved {
+  color: #1b6e2c;
+}

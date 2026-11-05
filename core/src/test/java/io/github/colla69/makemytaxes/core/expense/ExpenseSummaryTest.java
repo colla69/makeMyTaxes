@@ -18,11 +18,11 @@ class ExpenseSummaryTest {
     var summary =
         ExpenseSummary.of(
             List.of(
-                expense(ExpenseTopic.WORK, 1_000, "a.pdf"),
-                expense(ExpenseTopic.WORK, 250, "b.pdf"),
+                expense(ExpenseTopic.WORK_OTHER, 1_000, "a.pdf"),
+                expense(ExpenseTopic.WORK_OTHER, 250, "b.pdf"),
                 expense(ExpenseTopic.DONATIONS_AND_PENSIONS, 500, "c.pdf")));
 
-    assertThat(summary.totalFor(ExpenseTopic.WORK)).isEqualTo(Money.ofCents(1_250));
+    assertThat(summary.totalFor(ExpenseTopic.WORK_OTHER)).isEqualTo(Money.ofCents(1_250));
     assertThat(summary.totalFor(ExpenseTopic.DONATIONS_AND_PENSIONS))
         .isEqualTo(Money.ofCents(500));
   }
@@ -39,8 +39,8 @@ class ExpenseSummaryTest {
     var summary =
         ExpenseSummary.of(
             List.of(
-                expense(ExpenseTopic.WORK, 100, "a.pdf"),
-                expense(ExpenseTopic.WORK, 100, ""),
+                expense(ExpenseTopic.WORK_OTHER, 100, "a.pdf"),
+                expense(ExpenseTopic.WORK_OTHER, 100, ""),
                 expense(ExpenseTopic.MEDICAL, 100, "")));
 
     assertThat(summary.expensesWithoutEvidence()).isEqualTo(2);

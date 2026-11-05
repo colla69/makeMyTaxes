@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <nav th:fragment="nav">
+      <a th:href="@{/}">Back</a>
+      <a th:href="@{/returns/{id}(id=${returnId})}">Expenses</a>
+      <a th:each="item : ${forms}"
+         th:href="@{/returns/{r}/forms/{f}(r=${returnId},f=${item.id})}"
+         th:text="${item.title}">Form</a>
+      <a th:unless="${#lists.isEmpty(forms)}" th:href="@{/returns/{id}/review(id=${returnId})}">Review</a>
+    </nav>
+  </body>
+</html>

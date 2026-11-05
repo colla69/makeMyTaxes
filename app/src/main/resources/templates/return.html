@@ -8,7 +8,7 @@
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
-    <p><a th:href="@{/}">Back</a></p>
+    <nav th:replace="~{nav :: nav}"></nav>
 
     <div id="panel" th:fragment="panel">
       <h1 th:text="'Return ' + ${taxYear}">Return</h1>

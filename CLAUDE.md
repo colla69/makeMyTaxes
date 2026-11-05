@@ -40,6 +40,9 @@ owner's machine.
 A long check runs through the `marketplace-base:test-runner` agent, which runs it on Haiku
 and reports only what failed, so the output stays out of the session.
 
+CI runs the build, the browser tests, the law library check and the privacy scan on each pull
+request. The Java version of CI is `java.version` in `pom.xml`.
+
 ## Map
 
 | Component | Responsibility | Start here |
@@ -70,6 +73,8 @@ and reports only what failed, so the output stays out of the session.
   values anywhere else.
 - The app binds to `127.0.0.1` and does not call cloud services. `LocalOnlyArchitectureTest`
   checks the project's own classes, but not the libraries.
+- Every feature that a user can see ships with a Playwright test in the same commit. The test
+  must fail if the feature breaks.
 - A tax rule needs a test case that cites an official source. A reviewer's approval is not
   proof of a tax rule.
 - Before you answer a tax question or write a tax rule, read the law in `law/text/` with

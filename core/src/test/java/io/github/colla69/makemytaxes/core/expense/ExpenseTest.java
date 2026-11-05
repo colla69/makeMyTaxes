@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class ExpenseTest {
 
-  private static final Purpose WORK_LAPTOP = new Purpose(ExpenseTopic.WORK, "Made-up laptop");
+  private static final Purpose WORK_LAPTOP = new Purpose(ExpenseTopic.WORK_OTHER, "Made-up laptop");
 
   @Test
   void rejectsAPaymentOfZero() {
@@ -21,7 +21,7 @@ class ExpenseTest {
   @Test
   void rejectsAnEmptyDescription() {
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> new Purpose(ExpenseTopic.WORK, "  "))
+        .isThrownBy(() -> new Purpose(ExpenseTopic.WORK_OTHER, "  "))
         .withMessageContaining("description");
   }
 

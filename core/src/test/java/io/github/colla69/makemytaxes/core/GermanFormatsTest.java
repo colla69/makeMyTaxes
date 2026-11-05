@@ -1,4 +1,4 @@
-package io.github.colla69.makemytaxes.app.web;
+package io.github.colla69.makemytaxes.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;

@@ -11,6 +11,18 @@ public record Money(long cents) {
     return new Money(Math.addExact(cents, other.cents));
   }
 
+  public Money times(long factor) {
+    return new Money(Math.multiplyExact(cents, factor));
+  }
+
+  public Money atMost(Money limit) {
+    return cents > limit.cents ? limit : this;
+  }
+
+  public boolean isGreaterThan(Money other) {
+    return cents > other.cents;
+  }
+
   public boolean isPositive() {
     return cents > 0;
   }

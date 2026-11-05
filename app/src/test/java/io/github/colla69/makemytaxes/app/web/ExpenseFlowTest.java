@@ -66,7 +66,7 @@ class ExpenseFlowTest {
         post("/returns/" + returnId + "/expenses")
             .param("paidOn", paidOn)
             .param("amount", amount)
-            .param("topic", "WORK")
+            .param("topic", "WORK_OTHER")
             .param("description", "Made-up laptop")
             .param("receipt", receipt));
   }

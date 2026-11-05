@@ -1,7 +1,20 @@
 target/
 
-# Real tax data must never enter the repository. See docs/adr/0007.
+# Personal facts for Claude, the private scan terms and the local scan tool.
+CLAUDE.local.md
+.privacy/
+
+# Real tax data must never enter the repository.
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# The law library is rebuilt from law/sources.tsv
+law/text/
+
+# IDE settings
+.idea/
+
+# Decision records stay on the owner's machine
+docs/adr/

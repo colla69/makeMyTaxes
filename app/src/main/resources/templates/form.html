@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${form.title} + ' ' + ${taxYear}">Form</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+  </head>
+  <body>
+    <nav th:replace="~{nav :: nav}"></nav>
+    <h1 th:text="${form.title} + ' ' + ${taxYear}">Form</h1>
+    <p class="saved" th:if="${saved}">Saved.</p>
+    <p class="error" th:each="message : ${formErrors}" th:text="${message}">Error</p>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nothing is saved. Correct the marked fields.</p>
+
+    <form id="answers" class="stacked" method="post"
+          th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
+      <div class="field" th:each="field : ${form.fields}">
+        <label>
+          <span class="line" th:text="${field.line}">1</span>
+          <span th:text="${field.label}">Label</span>
+          <select th:if="${field.kind.choice}" th:name="${field.id}">
+            <option value="">Choose</option>
+            <option th:each="option : ${field.kind.options()}"
+                    th:value="${option.value}"
+                    th:text="${option.label}"
+                    th:selected="${option.value == values[field.id]}">Option</option>
+          </select>
+          <input th:unless="${field.kind.choice}" th:name="${field.id}" th:value="${values[field.id]}">
+        </label>
+        <p class="help" th:unless="${field.help.isEmpty()}" th:text="${field.help}">Help</p>
+        <p class="error" th:if="${errors[field.id]}" th:text="${errors[field.id]}">Error</p>
+      </div>
+      <button>Save</button>
+    </form>
+
+    <th:block th:if="${filing}">
+      <section th:replace="~{filing-result :: result}"></section>
+    </th:block>
+  </body>
+</html>

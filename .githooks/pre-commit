@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+"$root/scripts/privacy-scan.sh" --staged
+"$("$root/scripts/ensure-gitleaks.sh")" git --pre-commit --staged --redact --no-banner --log-level warn "$root"

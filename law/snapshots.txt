@@ -1,0 +1,12 @@
+# Dates of the law versions. Each tax year has a mid-year and a year-end version, because the
+# year-end text can already hold wording that applies only from the next year.
+2022-06-30
+2022-12-31
+2023-06-30
+2023-12-31
+2024-06-30
+2024-12-31
+2025-06-30
+2025-12-31
+2026-06-30
+2026-11-05

@@ -288,6 +288,18 @@ class FormBrowserTest {
     assertThat(taxYear).hasAttribute("max", "2100");
   }
 
+  @Test
+  void aLongOptionDoesNotMakeAFieldWiderThanItsForm() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    // A large text stands for a wide font: the width of an option depends on the fonts of the machine.
+    page.addStyleTag(new Page.AddStyleTagOptions().setContent(".field select { font-size: 2rem; }"));
+
+    assertEquals(
+        page.locator("#expense-form").boundingBox().width,
+        page.getByLabel("Topic").boundingBox().width);
+  }
+
   private static void assertAllFieldsLookLike(BoundingBox reference, Page page) {
     assertEquals(
         page.locator("form input, form select").count(),

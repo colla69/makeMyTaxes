@@ -10,6 +10,11 @@ CLAUDE.local.md
 *.db-wal
 *.db-shm
 
+# The data and the passphrase of the live container.
+deploy/data/*
+!deploy/data/.gitkeep
+deploy/.env
+
 # The law library is rebuilt from law/sources.tsv
 law/text/
 

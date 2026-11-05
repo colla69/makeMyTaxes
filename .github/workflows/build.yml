@@ -39,6 +39,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test the privacy scanner
         run: scripts/privacy-scan-test.sh
+      - name: Test the deploy script
+        run: scripts/deploy-live-test.sh
+
+  live-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the image from tracked files only
+        run: git archive --format=tar HEAD | docker build -t makemytaxes:live -f deploy/Dockerfile -
+      - name: Start the container and wait for the app
+        env:
+          MAKEMYTAXES_DATABASE_PASSPHRASE: made-up-for-the-build
+        run: |
+          MAKEMYTAXES_UID=$(id -u) MAKEMYTAXES_GID=$(id -g) docker compose -f deploy/compose.yaml up -d
+          curl -fsS -o /dev/null --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:9090/
 
   law-library:
     runs-on: ubuntu-latest

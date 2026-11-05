@@ -31,4 +31,15 @@ an official ELSTER program, and it sends no data to the tax office.
 MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar
 ```
 
+To run a release in Docker, with its data in `deploy/data`:
+
+```
+cp deploy/.env.example deploy/.env   # then set the passphrase
+chmod 600 deploy/.env
+scripts/deploy-live.sh v<version>
+```
+
+The container does not read the default database path. To keep an existing database, copy it to
+`deploy/data/makemytaxes.db` before the first start, and use the same passphrase.
+
 `CLAUDE.md` holds the other commands and the rules of the project.

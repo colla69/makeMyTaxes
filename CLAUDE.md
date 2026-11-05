@@ -37,6 +37,8 @@ owner's machine.
 | Check the law library | `scripts/law-check.sh` |
 | Read a provision for a tax year | `scripts/law.sh 2022 estg "§ 35a"` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
+| Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
+| Test the deploy script | `scripts/deploy-live-test.sh` |
 
 Write the output of a long check to a file and read only the failures, so that the output stays
 out of the session.
@@ -60,9 +62,11 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
    off the machine: `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings,
    the request filter and the database setup.
 6. `scripts/label-merged-issues.sh` adds the label `on-dev` to the issues of each merged pull request.
-   The owner tries these issues on `dev`, on port 9091. PROD runs `main` on port 9090.
+   The owner tries these issues on `dev`, on port 9091. PROD runs `main` in a Docker container on
+   port 9090, with its data in `deploy/data`.
 7. `/promote` sets the version from the incoming commits, opens the pull request into `main` and
    tags the release. Only the owner merges into `main`. The merge closes the issues.
+   `scripts/deploy-live.sh` updates the live container from the tag.
 
 `scripts/agent-loop.sh` runs one round of steps 2 to 4 and the labelling in step 6. Each step stops before any call to Claude if
 it has no work.

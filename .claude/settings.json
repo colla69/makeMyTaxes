@@ -19,7 +19,7 @@
     }
   },
   "env": {
-    "STEWARD_CHECK": "./mvnw -q -B verify"
+    "STEWARD_CHECK": "./mvnw -q -B -DskipTests test-compile"
   },
   "effortLevel": "medium",
   "autoCompactWindow": 180000

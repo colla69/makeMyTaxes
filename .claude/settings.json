@@ -1,0 +1,26 @@
+{
+  "model": "opus",
+  "enabledPlugins": {
+    "marketplace-base@personal-claude-plugin-marketplace": true,
+    "language-simple-english@personal-claude-plugin-marketplace": true,
+    "universal-work-discipline@personal-claude-plugin-marketplace": true,
+    "craft-shipping@personal-claude-plugin-marketplace": true,
+    "universal-clean-code@personal-claude-plugin-marketplace": true,
+    "craft-development@personal-claude-plugin-marketplace": true,
+    "craft-code-review@personal-claude-plugin-marketplace": true,
+    "language-conventional-commits@personal-claude-plugin-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "personal-claude-plugin-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "colla69/personal-claude-plugin-marketplace"
+      }
+    }
+  },
+  "env": {
+    "STEWARD_CHECK": "./mvnw -q -B verify"
+  },
+  "effortLevel": "medium",
+  "autoCompactWindow": 180000
+}

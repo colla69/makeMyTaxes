@@ -1,0 +1,7 @@
+target/
+
+# Real tax data must never enter the repository. See docs/adr/0007.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

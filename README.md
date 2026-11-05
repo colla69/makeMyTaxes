@@ -20,7 +20,7 @@ an official ELSTER program, and it sends no data to the tax office.
 - The tax logic is in a `core` module with no framework
 - The app binds to `127.0.0.1`, and it rejects requests from other sites
 - Every feature that a user can see has a Playwright test
-- Commit hooks and CI scan for personal data and secrets
+- A commit hook stops personal data and secrets before they enter the history
 
 ## Run it
 

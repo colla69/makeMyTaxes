@@ -40,8 +40,11 @@ owner's machine.
 A long check runs through the `marketplace-base:test-runner` agent, which runs it on Haiku
 and reports only what failed, so the output stays out of the session.
 
-CI runs the build, the browser tests, the law library check and the privacy scan on each pull
-request. The Java version of CI is `java.version` in `pom.xml`.
+CI runs the build, the browser tests and the law library check on each pull request. The Java
+version of CI is `java.version` in `pom.xml`.
+
+The branch `dev` is the testing ground, and it runs on port 9091. The branch `main` is what PROD
+runs, on port 9090. Pull requests go into `dev`.
 
 ## Map
 
@@ -68,7 +71,8 @@ request. The Java version of CI is `java.version` in `pom.xml`.
 ## Boundaries
 
 - Real data must not enter the repository: not in code, tests, fixtures, docs or commit
-  messages. Tests use made-up data only. The commit hooks and CI scan for this.
+  messages. Tests use made-up data only. The commit hook scans for this and stops the commit, because a scan after a
+  push is too late. Do not skip the hook with `--no-verify`.
 - Claude can read real data that the owner gives to a session, to analyse it. Do not copy the
   values anywhere else.
 - The app binds to `127.0.0.1` and does not call cloud services. `LocalOnlyArchitectureTest`

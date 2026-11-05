@@ -6,7 +6,7 @@
 #   privacy-scan.sh --tracked         every tracked file as it is now
 #   privacy-scan.sh --history         every file and message in every commit (CI)
 #
-# Private terms come from .privacy/terms.txt, or from PRIVATE_TERMS in CI. They are the things
+# Private terms come from .privacy/terms.txt, or from the variable PRIVATE_TERMS. They are the things
 # a pattern cannot know, such as real names and addresses.
 #
 # A finding names the file, the line and the rule, and never the value. CI logs can be public.

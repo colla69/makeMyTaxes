@@ -13,12 +13,17 @@
     <p class="error" th:each="message : ${formErrors}" th:text="${message}">Error</p>
     <p class="error" th:unless="${#maps.isEmpty(errors)}">Nothing is saved. Correct the marked fields.</p>
 
-    <form id="answers" class="fields" method="post"
+    <form id="answers" method="post"
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
-      <th:block th:each="field : ${form.fields}">
-        <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
-      </th:block>
-      <button>Save</button>
+      <section class="field-group" th:each="group : ${fieldGroups}">
+        <h2 th:text="${group.title}">Section</h2>
+        <div class="fields">
+          <th:block th:each="field : ${group.fields}">
+            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
+          </th:block>
+        </div>
+      </section>
+      <p><button>Save</button></p>
     </form>
 
     <th:block th:if="${filing}">

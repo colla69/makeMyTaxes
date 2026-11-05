@@ -71,6 +71,8 @@ class FormController {
 
   record FormReview(String title, List<SectionView> sections, List<Field> missing) {}
 
+  record FieldGroup(String title, List<Field> fields) {}
+
   private final HouseholdStore household;
   private final ExpenseStore expenses;
   private final FormStore forms;
@@ -177,6 +179,7 @@ class FormController {
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
+    model.addAttribute("fieldGroups", fieldGroups(form.fields()));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
     model.addAttribute("formErrors", formErrors);
@@ -196,6 +199,16 @@ class FormController {
     }
     return bySection.entrySet().stream()
         .map(entry -> new SectionView(entry.getKey(), entry.getValue()))
+        .toList();
+  }
+
+  private static List<FieldGroup> fieldGroups(List<Field> fields) {
+    Map<String, List<Field>> bySection = new LinkedHashMap<>();
+    for (Field field : fields) {
+      bySection.computeIfAbsent(field.section(), section -> new ArrayList<>()).add(field);
+    }
+    return bySection.entrySet().stream()
+        .map(entry -> new FieldGroup(entry.getKey(), entry.getValue()))
         .toList();
   }
 

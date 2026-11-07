@@ -8,7 +8,7 @@ public record Payment(LocalDate paidOn, Money amount) {
   public Payment {
     if (!amount.isPositive()) {
       throw new IllegalArgumentException(
-          "A payment must be more than zero, but got " + amount.cents() + " cents.");
+          "Eine Zahlung muss größer als null sein. Eingabe: " + amount.cents() + " Cent.");
     }
   }
 

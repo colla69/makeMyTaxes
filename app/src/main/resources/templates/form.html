@@ -1,29 +1,29 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${form.title} + ' ' + ${taxYear}">Form</title>
+    <title th:text="${form.title} + ' ' + ${taxYear}">Vordruck</title>
     <link rel="stylesheet" th:href="@{/app.css}">
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
-    <h1 th:text="${form.title} + ' ' + ${taxYear}">Form</h1>
-    <p class="saved" th:if="${saved}">Saved.</p>
-    <p class="error" th:each="message : ${formErrors}" th:text="${message}">Error</p>
-    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nothing is saved. Correct the marked fields.</p>
+    <h1 th:text="${form.title} + ' ' + ${taxYear}">Vordruck</h1>
+    <p class="saved" th:if="${saved}">Gespeichert.</p>
+    <p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
 
     <form id="answers" method="post"
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
-        <h2 th:text="${group.title}">Section</h2>
+        <h2 th:text="${group.title}">Abschnitt</h2>
         <div class="fields">
           <th:block th:each="field : ${group.fields}">
             <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.id)}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
           </th:block>
         </div>
       </section>
-      <p><button>Save</button></p>
+      <p><button>Speichern</button></p>
     </form>
 
     <th:block th:if="${filing}">

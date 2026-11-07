@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,20 +14,20 @@
       <ul>
         <li th:each="taxReturn : ${person.returns}">
           <a th:href="@{/returns/{id}(id=${taxReturn.id})}"
-             th:text="'Return ' + ${taxReturn.taxYear.value}">Return</a>
+             th:text="'Steuererklärung ' + ${taxReturn.taxYear.value}">Steuererklärung</a>
         </li>
       </ul>
       <form class="fields" method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
-        <div th:replace="~{fields :: field(name='taxYear', label='Tax year', hint=#{hint.home.taxYear},type='number', min='2000', max='2100', required=true)}"></div>
-        <button>Add return</button>
+        <div th:replace="~{fields :: field(name='taxYear', label='Steuerjahr', hint=#{hint.home.taxYear},type='number', min='2000', max='2100', required=true)}"></div>
+        <button>Erklärung anlegen</button>
       </form>
     </section>
 
     <section>
-      <h2>Add a person</h2>
+      <h2>Person anlegen</h2>
       <form class="fields" method="post" th:action="@{/persons}">
         <div th:replace="~{fields :: field(name='name', label='Name', hint=#{hint.home.name},required=true)}"></div>
-        <button>Add person</button>
+        <button>Person anlegen</button>
       </form>
     </section>
   </body>

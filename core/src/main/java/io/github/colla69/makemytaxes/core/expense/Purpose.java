@@ -4,7 +4,7 @@ public record Purpose(ExpenseTopic topic, String description) {
 
   public Purpose {
     if (description == null || description.isBlank()) {
-      throw new IllegalArgumentException("An expense needs a description.");
+      throw new IllegalArgumentException("Eine Ausgabe braucht eine Beschreibung.");
     }
   }
 }

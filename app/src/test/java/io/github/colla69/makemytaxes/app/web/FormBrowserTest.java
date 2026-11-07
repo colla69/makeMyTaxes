@@ -74,41 +74,41 @@ class FormBrowserTest {
   void filingCheckIsOpenThenVoluntaryThenMandatory() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
-    link(page, "Filing check").click();
+    link(page, "Abgabepflicht").click();
 
-    assertThat(page.locator("#filing-result")).containsText("The result is open");
+    assertThat(page.locator("#filing-result")).containsText("Das Ergebnis ist offen");
 
     for (String question : QUESTIONS) {
       field(page, question).selectOption("NO");
     }
     save(page);
     assertThat(page.locator(".saved")).isVisible();
-    assertThat(page.locator("#filing-result")).containsText("This return is voluntary");
+    assertThat(page.locator("#filing-result")).containsText("Diese Erklärung ist freiwillig");
     assertThat(page.locator("#filing-result")).containsText("31.12.2026");
 
     field(page, "severalEmployers").selectOption("YES");
     save(page);
-    assertThat(page.locator("#filing-result")).containsText("You must file this return");
-    assertThat(page.locator("#filing-result")).containsText("§ 46(2) no. 2 EStG");
-    assertThat(page.locator("#filing-result")).containsText("was 02.10.2023");
+    assertThat(page.locator("#filing-result")).containsText("Sie müssen diese Erklärung abgeben");
+    assertThat(page.locator("#filing-result")).containsText("§ 46 Abs. 2 Nr. 2 EStG");
+    assertThat(page.locator("#filing-result")).containsText("endete am 02.10.2023");
   }
 
   @Test
   void aWrongValueShowsAnErrorKeepsTheInputAndSavesNothing() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
 
     field(page, "lastName").fill("Made-up");
     field(page, "taxId").fill("12345678901");
     save(page);
 
-    assertThat(page.locator(".field .error")).containsText("11 digits");
+    assertThat(page.locator(".field .error")).containsText("11 Ziffern");
     assertThat(field(page, "taxId")).hasValue("12345678901");
     assertThat(field(page, "lastName")).hasValue("Made-up");
 
     page.reload();
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
     assertThat(field(page, "lastName")).hasValue("");
   }
 
@@ -140,7 +140,7 @@ class FormBrowserTest {
     field(page, "homeOfficeDays").fill("100");
     save(page);
 
-    assertThat(page.locator(".error").first()).containsText("total 400");
+    assertThat(page.locator(".error").first()).containsText("zusammen 400");
     assertThat(field(page, "commuteDays")).hasValue("300");
   }
 
@@ -149,15 +149,15 @@ class FormBrowserTest {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
 
-    page.getByLabel("Date").fill("03.02.2022");
-    page.getByLabel("Amount (EUR)").fill("1.500,00");
-    page.getByLabel("Topic").selectOption("WORK_EQUIPMENT");
-    page.getByLabel("Description").fill("Made-up laptop");
-    page.getByLabel("Receipt").fill("made-up-laptop.pdf");
-    page.getByLabel("Receipt").press("Enter");
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("1.500,00");
+    page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    page.getByLabel("Beschreibung").fill("Made-up laptop");
+    page.getByLabel("Beleg").fill("made-up-laptop.pdf");
+    page.getByLabel("Beleg").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
     fill(page, "taxOffice", "Made-up Finanzamt");
     fill(page, "taxId", MADE_UP_TAX_ID);
     fill(page, "birthDate", "01.01.1990");
@@ -182,21 +182,21 @@ class FormBrowserTest {
     save(page);
     assertThat(page.locator(".saved")).isVisible();
 
-    link(page, "Review").click();
+    link(page, "Übersicht").click();
 
-    Locator main = page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Main form"));
+    Locator main = page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Hauptvordruck"));
     Locator anlageN = page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
-    assertThat(main).not().containsText("Missing");
+    assertThat(main).not().containsText("Es fehlt");
     assertThat(main).containsText("Made-up Finanzamt");
-    assertThat(anlageN).containsText("Missing");
+    assertThat(anlageN).containsText("Es fehlt");
     assertThat(anlageN.locator(".warning")).containsText("Lohnsteuer");
     assertThat(anlageN).containsText("40.000,00");
-    assertThat(anlageN).containsText("Own car");
+    assertThat(anlageN).containsText("Eigener oder zur Nutzung überlassener Pkw");
 
     Locator laptop = anlageN.locator("tr").filter(new Locator.FilterOptions().setHasText("Made-up laptop"));
     assertThat(laptop.locator("td").nth(0)).hasText("42");
     assertThat(laptop).containsText("1.500,00");
-    assertThat(laptop).containsText("Paid on 03.02.2022, receipt: made-up-laptop.pdf");
+    assertThat(laptop).containsText("Bezahlt am 03.02.2022, Beleg: made-up-laptop.pdf");
     assertThat(anlageN.locator("tbody tr td:first-child"))
         .hasText(new String[] {"5", "6", "35", "35", "35", "42", "42", "45"});
 
@@ -206,21 +206,21 @@ class FormBrowserTest {
     assertThat(estimate).containsText("100,00");
     assertThat(estimate).containsText("1.698,00");
     assertThat(estimate).containsText("1.200,00");
-    assertThat(estimate).containsText("above the lump sum, so they count in full");
+    assertThat(estimate).containsText("Sie zählen daher in voller Höhe");
   }
 
   @Test
   void aCostWithoutAFormStaysVisibleOnTheReview() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
-    page.getByLabel("Date").fill("03.02.2022");
-    page.getByLabel("Amount (EUR)").fill("500,00");
-    page.getByLabel("Topic").selectOption("HOUSEHOLD_SERVICES");
-    page.getByLabel("Description").fill("Made-up cleaner");
-    page.getByLabel("Description").press("Enter");
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("500,00");
+    page.getByLabel("Kategorie").selectOption("HOUSEHOLD_SERVICES");
+    page.getByLabel("Beschreibung").fill("Made-up cleaner");
+    page.getByLabel("Beschreibung").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
-    link(page, "Review").click();
+    link(page, "Übersicht").click();
 
     assertThat(page.locator("#without-form")).containsText("Made-up cleaner");
     assertThat(page.locator("#without-form")).containsText("500,00");
@@ -235,7 +235,7 @@ class FormBrowserTest {
     save(page);
     assertThat(page.locator(".saved")).isVisible();
 
-    link(page, "Review").click();
+    link(page, "Übersicht").click();
 
     assertThat(page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N")))
         .containsText("1.234,50");
@@ -246,8 +246,8 @@ class FormBrowserTest {
     Page page = browser.newPage();
     openANewReturn(page, "2021");
 
-    assertThat(page.getByLabel("Date")).isVisible();
-    assertThat(link(page, "Review")).hasCount(0);
+    assertThat(page.getByLabel("Datum")).isVisible();
+    assertThat(link(page, "Übersicht")).hasCount(0);
     assertThat(link(page, "Anlage N")).hasCount(0);
   }
 
@@ -259,12 +259,12 @@ class FormBrowserTest {
     List<Double> columns = leftEdges(page);
 
     assertAllFieldsLookLike(reference, columns, page);
-    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertAllFieldsLookLike(reference, columns, page);
     }
-    link(page, "Back").click();
+    link(page, "Zurück").click();
     assertThat(page.getByLabel("Name")).isVisible();
     assertAllFieldsLookLike(reference, columns, page);
   }
@@ -273,9 +273,9 @@ class FormBrowserTest {
   void thePagesOfAReturnAreTabsAndTheOpenPageIsMarked() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
-    assertOnlyOpenTab(page, "Expenses");
+    assertOnlyOpenTab(page, "Ausgaben");
 
-    for (String tab : List.of("Main form", "Anlage N", "Filing check", "Review")) {
+    for (String tab : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht", "Übersicht")) {
       link(page, tab).click();
       assertOnlyOpenTab(page, tab);
     }
@@ -290,10 +290,10 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertBodyIsEightyPercentOfTheWindow(page);
 
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
     assertBodyIsEightyPercentOfTheWindow(page);
 
-    link(page, "Review").click();
+    link(page, "Übersicht").click();
     assertBodyIsEightyPercentOfTheWindow(page);
   }
 
@@ -303,7 +303,7 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
 
-    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
@@ -316,7 +316,7 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
 
     // The labels of the filing check differ in length, so they wrap to a different number of lines.
-    link(page, "Filing check").click();
+    link(page, "Abgabepflicht").click();
     assertThat(page.locator("#answers")).isVisible();
     List<Locator> controls = page.locator("#answers select").all();
     for (int i = 0; i < controls.size(); i++) {
@@ -330,7 +330,7 @@ class FormBrowserTest {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
 
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
     assertThat(page.locator("#answers .field-group h2"))
         .hasText(
             new String[] {
@@ -364,20 +364,20 @@ class FormBrowserTest {
     assertThat(page.getByLabel("Name")).hasAttribute("required", "required");
 
     openANewReturn(page, "2022");
-    assertThat(page.getByLabel("Date")).hasAttribute("placeholder", "dd.mm.yyyy");
-    assertThat(page.getByLabel("Date")).hasAttribute("required", "required");
-    assertThat(page.getByLabel("Receipt")).not().hasAttribute("required", "required");
-    assertThat(page.getByLabel("Topic")).hasValue("WORK_EQUIPMENT");
+    assertThat(page.getByLabel("Datum")).hasAttribute("placeholder", "TT.MM.JJJJ");
+    assertThat(page.getByLabel("Datum")).hasAttribute("required", "required");
+    assertThat(page.getByLabel("Beleg")).not().hasAttribute("required", "required");
+    assertThat(page.getByLabel("Kategorie")).hasValue("WORK_EQUIPMENT");
 
-    link(page, "Filing check").click();
-    assertThat(field(page, "otherIncome").locator("option").first()).hasText("Choose");
+    link(page, "Abgabepflicht").click();
+    assertThat(field(page, "otherIncome").locator("option").first()).hasText("Bitte wählen");
     assertThat(page.locator("#answers .field .line").first()).not().isEmpty();
 
-    link(page, "Main form").click();
+    link(page, "Hauptvordruck").click();
     assertThat(page.locator("#answers .field .help").first()).not().isEmpty();
 
-    link(page, "Back").click();
-    Locator taxYear = page.getByLabel("Tax year").first();
+    link(page, "Zurück").click();
+    Locator taxYear = page.getByLabel("Steuerjahr").first();
     assertThat(taxYear).hasAttribute("type", "number");
     assertThat(taxYear).hasAttribute("min", "2000");
     assertThat(taxYear).hasAttribute("max", "2100");
@@ -391,7 +391,7 @@ class FormBrowserTest {
 
     openANewReturn(page, "2022");
     assertEveryFieldHasAHint(page);
-    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEveryFieldHasAHint(page);
@@ -426,8 +426,8 @@ class FormBrowserTest {
     page.addStyleTag(new Page.AddStyleTagOptions().setContent(".field select { font-size: 2rem; }"));
 
     assertEquals(
-        page.getByLabel("Date").boundingBox().width,
-        page.getByLabel("Topic").boundingBox().width,
+        page.getByLabel("Datum").boundingBox().width,
+        page.getByLabel("Kategorie").boundingBox().width,
         LAYOUT_ROUNDING);
   }
 
@@ -503,12 +503,12 @@ class FormBrowserTest {
     page.getByLabel("Name").fill(name);
     page.getByLabel("Name").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
-    section.getByLabel("Tax year").fill(year);
-    section.getByLabel("Tax year").press("Enter");
+    section.getByLabel("Steuerjahr").fill(year);
+    section.getByLabel("Steuerjahr").press("Enter");
     section
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Return " + year))
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung " + year))
         .click();
-    assertThat(page.getByLabel("Date")).isVisible();
+    assertThat(page.getByLabel("Datum")).isVisible();
   }
 
   private static Locator link(Page page, String name) {
@@ -524,6 +524,6 @@ class FormBrowserTest {
   }
 
   private static void save(Page page) {
-    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Save")).click();
+    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
   }
 }

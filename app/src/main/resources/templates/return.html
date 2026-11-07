@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
     <nav th:replace="~{nav :: nav}"></nav>
 
     <div id="panel" th:fragment="panel">
-      <h1 th:text="'Return ' + ${taxYear}">Return</h1>
+      <h1 th:text="'Steuererklärung ' + ${taxYear}">Steuererklärung</h1>
 
       <form id="expense-form"
             class="fields"
@@ -20,36 +20,36 @@
             th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"
             hx-target="#panel"
             hx-swap="outerHTML">
-        <p class="error" th:if="${error}" th:text="${error}">Error</p>
-        <div th:replace="~{fields :: field(name='paidOn', label='Date', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='dd.mm.yyyy', required=true)}"></div>
-        <div th:replace="~{fields :: field(name='amount', label='Amount (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true)}"></div>
-        <div th:replace="~{fields :: field(name='topic', label='Topic', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
-        <div th:replace="~{fields :: field(name='description', label='Description', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
-        <div th:replace="~{fields :: field(name='receipt', label='Receipt', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='File name or folder')}"></div>
-        <button>Add expense</button>
+        <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
+        <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true)}"></div>
+        <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true)}"></div>
+        <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
+        <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
+        <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
+        <button>Ausgabe hinzufügen</button>
       </form>
 
-      <h2>Totals</h2>
-      <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' without a receipt'">0</p>
+      <h2>Summen</h2>
+      <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' ohne Beleg'">0</p>
       <table>
         <tr th:each="total : ${totals}">
-          <td th:text="${total.topic}">Topic</td>
+          <td th:text="${total.topic}">Kategorie</td>
           <td class="amount" th:text="${total.total}">0,00</td>
         </tr>
       </table>
 
-      <h2>Expenses</h2>
+      <h2>Ausgaben</h2>
       <table id="expenses">
         <thead>
-          <tr><th>Date</th><th>Amount</th><th>Topic</th><th>Description</th><th>Receipt</th><th></th></tr>
+          <tr><th>Datum</th><th>Betrag</th><th>Kategorie</th><th>Beschreibung</th><th>Beleg</th><th></th></tr>
         </thead>
         <tbody>
           <tr th:each="row : ${rows}">
             <td th:text="${row.paidOn}">01.01.2022</td>
             <td class="amount" th:text="${row.amount}">0,00</td>
-            <td th:text="${row.topic}">Topic</td>
-            <td th:text="${row.description}">Description</td>
-            <td th:text="${row.receipt}">Receipt</td>
+            <td th:text="${row.topic}">Kategorie</td>
+            <td th:text="${row.description}">Beschreibung</td>
+            <td th:text="${row.receipt}">Beleg</td>
             <td>
               <!-- novalidate: htmx would stop the delete if the entry in progress is incomplete. -->
               <form method="post"
@@ -59,7 +59,7 @@
                     hx-include="#expense-form"
                     hx-target="#panel"
                     hx-swap="outerHTML">
-                <button>Delete</button>
+                <button>Löschen</button>
               </form>
             </td>
           </tr>

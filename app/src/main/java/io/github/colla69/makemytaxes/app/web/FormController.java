@@ -142,6 +142,7 @@ class FormController {
       }
     }
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", "review");
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("filing", filingOf(returnId, pack));
@@ -176,6 +177,7 @@ class FormController {
       Model model) {
     TaxYear taxYear = taxYearOf(returnId);
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", form.id());
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);

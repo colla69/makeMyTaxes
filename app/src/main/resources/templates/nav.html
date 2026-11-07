@@ -1,13 +1,20 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
   <body>
+    <!-- The pages of one return show as tabs. The tab of the open page has aria-current="page". -->
     <nav th:fragment="nav">
       <a th:href="@{/}">Back</a>
-      <a th:href="@{/returns/{id}(id=${returnId})}">Expenses</a>
-      <a th:each="item : ${forms}"
-         th:href="@{/returns/{r}/forms/{f}(r=${returnId},f=${item.id})}"
-         th:text="${item.title}">Form</a>
-      <a th:unless="${#lists.isEmpty(forms)}" th:href="@{/returns/{id}/review(id=${returnId})}">Review</a>
+      <div class="tabs">
+        <a th:href="@{/returns/{id}(id=${returnId})}"
+           th:attr="aria-current=${tab == 'expenses'} ? 'page' : null">Expenses</a>
+        <a th:each="item : ${forms}"
+           th:href="@{/returns/{r}/forms/{f}(r=${returnId},f=${item.id})}"
+           th:attr="aria-current=${tab == item.id} ? 'page' : null"
+           th:text="${item.title}">Form</a>
+        <a th:unless="${#lists.isEmpty(forms)}"
+           th:href="@{/returns/{id}/review(id=${returnId})}"
+           th:attr="aria-current=${tab == 'review'} ? 'page' : null">Review</a>
+      </div>
     </nav>
   </body>
 </html>

@@ -80,9 +80,39 @@ td {
 
 nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+/* The pages of one return look like tabs on a line. The tab of the open page joins the page. */
+.tabs {
+  border-bottom: 1px solid #999;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tabs a {
+  background: #f2f2f2;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  border-radius: 0.375rem 0.375rem 0 0;
+  color: #333;
+  padding: 0.4rem 0.9rem;
+  text-decoration: none;
+}
+
+.tabs a:hover {
+  background: #e6e6e6;
+}
+
+.tabs a[aria-current="page"] {
+  background: #fff;
+  border-color: #999;
+  font-weight: 600;
+  margin-bottom: -1px;
+  padding-bottom: calc(0.4rem + 1px);
 }
 
 .line {

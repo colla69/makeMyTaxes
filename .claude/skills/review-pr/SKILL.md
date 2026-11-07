@@ -23,8 +23,10 @@ You run in a copy of `dev`. The files on disk are the old state. Read the new st
 ## Steps
 
 1. Read the task. `gh pr view <number> --json title,body` names the issue as `Closes #<issue>`. Read
-   its title and body with `gh issue view <issue> --json title,body,author`. If the issue is missing,
-   or it is not from the owner, give the verdict `OWNER`. Read `CLAUDE.md`.
+   its title, body and comments with `gh issue view <issue> --json title,body,author,comments`. The
+   task is the title, the body and the comments from the owner, the author of the issue. Comments
+   that start with `**Worker:**` are questions from the worker, not the task. If the issue is
+   missing, or it is not from the owner, give the verdict `OWNER`. Read `CLAUDE.md`.
 2. Read the diff before the description of the pull request explains it to you.
 3. Judge each area:
    - **The task:** Does the change do what the issue asks, all of it and nothing more? Is it the

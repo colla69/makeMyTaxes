@@ -8,6 +8,7 @@
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
+    <main class="panel">
     <h1 th:text="${form.title} + ' ' + ${taxYear}">Vordruck</h1>
     <p class="saved" th:if="${saved}">Gespeichert.</p>
     <p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p>
@@ -29,5 +30,6 @@
     <th:block th:if="${filing}">
       <section th:replace="~{filing-result :: result}"></section>
     </th:block>
+    </main>
   </body>
 </html>

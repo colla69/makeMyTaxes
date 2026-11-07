@@ -7,6 +7,8 @@
     <link rel="stylesheet" th:href="@{/app.css}">
   </head>
   <body>
+    <!-- The same panel as the pages with tabs, so that every field has the same width. -->
+    <main class="panel">
     <h1>makeMyTaxes</h1>
 
     <section th:each="person : ${persons}">
@@ -30,5 +32,6 @@
         <button>Person anlegen</button>
       </form>
     </section>
+    </main>
   </body>
 </html>

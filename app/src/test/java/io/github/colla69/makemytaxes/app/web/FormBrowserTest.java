@@ -467,6 +467,22 @@ class FormBrowserTest {
     String openBackground = (String) open.evaluate("tab => getComputedStyle(tab).backgroundColor");
     String otherBackground = (String) other.evaluate("tab => getComputedStyle(tab).backgroundColor");
     assertNotEquals(otherBackground, openBackground,"The open tab looks like the others on " + page.url());
+
+    // A tab view: the page is a framed panel, and the open tab joins it.
+    Locator panel = page.locator("main.panel");
+    assertThat(panel).hasCount(1);
+    assertThat(panel).hasCSS("border-left-style", "solid");
+    assertThat(panel).hasCSS("border-bottom-style", "solid");
+    String panelBackground = (String) panel.evaluate("p => getComputedStyle(p).backgroundColor");
+    assertEquals(panelBackground, openBackground, "The open tab and the panel differ on " + page.url());
+    double tabBottom = open.boundingBox().y + open.boundingBox().height;
+    double panelTop = panel.boundingBox().y;
+    assertTrue(tabBottom > panelTop && tabBottom <= panelTop + 2,
+        "The open tab does not join the panel on " + page.url());
+
+    // A changed style sheet has a new URL, so a browser cannot show the old look from its cache.
+    String styleSheet = page.locator("link[rel=stylesheet]").getAttribute("href");
+    assertTrue(styleSheet.matches("/app-[0-9a-f]{32}\\.css"), "no content hash in " + styleSheet);
   }
 
   private static void assertBodyIsEightyPercentOfTheWindow(Page page) {

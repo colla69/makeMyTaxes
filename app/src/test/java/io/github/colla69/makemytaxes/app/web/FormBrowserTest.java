@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.microsoft.playwright.Browser;
@@ -269,6 +270,18 @@ class FormBrowserTest {
   }
 
   @Test
+  void thePagesOfAReturnAreTabsAndTheOpenPageIsMarked() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    assertOnlyOpenTab(page, "Expenses");
+
+    for (String tab : List.of("Main form", "Anlage N", "Filing check", "Review")) {
+      link(page, tab).click();
+      assertOnlyOpenTab(page, tab);
+    }
+  }
+
+  @Test
   void thePageUsesEightyPercentOfTheVisibleWidth() {
     Page page = browser.newPage();
     page.navigate("http://127.0.0.1:" + port + "/");
@@ -441,6 +454,19 @@ class FormBrowserTest {
     assertTrue(hints.stream().noneMatch(String::isBlank), "an empty hint on " + page.url());
     // Thymeleaf shows a missing message key as ??key??.
     assertTrue(hints.stream().noneMatch(hint -> hint.contains("??")), "a missing hint key on " + page.url());
+  }
+
+  /** The open tab is the only marked tab, it differs in look from the others, and no tab is underlined. */
+  private static void assertOnlyOpenTab(Page page, String name) {
+    Locator tabs = page.locator("nav .tabs a");
+    Locator open = page.locator("nav .tabs a[aria-current=page]");
+    assertThat(open).hasCount(1);
+    assertThat(open).containsText(name);
+    assertThat(tabs.first()).hasCSS("text-decoration-line", "none");
+    Locator other = tabs.filter(new Locator.FilterOptions().setHasNotText(name)).first();
+    String openBackground = (String) open.evaluate("tab => getComputedStyle(tab).backgroundColor");
+    String otherBackground = (String) other.evaluate("tab => getComputedStyle(tab).backgroundColor");
+    assertNotEquals(otherBackground, openBackground,"The open tab looks like the others on " + page.url());
   }
 
   private static void assertBodyIsEightyPercentOfTheWindow(Page page) {

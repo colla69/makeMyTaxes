@@ -117,6 +117,7 @@ class ExpenseController {
     List<StoredExpense> stored = expenses.expensesOf(returnId);
     var summary = ExpenseSummary.of(stored.stream().map(StoredExpense::expense).toList());
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", "expenses");
     model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);

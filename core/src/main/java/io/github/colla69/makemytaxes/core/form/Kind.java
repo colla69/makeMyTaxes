@@ -28,7 +28,7 @@ public enum Kind {
           List.of(new Option(YES, "Ja"), new Option(NO, "Nein"), new Option(UNSURE, "Weiß nicht"));
       case COMMUTE_TRANSPORT ->
           List.of(
-              new Option(CAR, "Eigener oder zur Nutzung überlassener Pkw"),
+              new Option(CAR, "Eigener oder zur Nutzung überlassener Kraftwagen"),
               new Option(OTHER_TRANSPORT, "Öffentliche Verkehrsmittel, Fahrrad, zu Fuß oder Carsharing"));
       default -> List.of();
     };

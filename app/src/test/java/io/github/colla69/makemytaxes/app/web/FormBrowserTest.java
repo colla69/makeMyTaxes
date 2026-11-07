@@ -191,7 +191,7 @@ class FormBrowserTest {
     assertThat(anlageN).containsText("Es fehlt");
     assertThat(anlageN.locator(".warning")).containsText("Lohnsteuer");
     assertThat(anlageN).containsText("40.000,00");
-    assertThat(anlageN).containsText("Eigener oder zur Nutzung überlassener Pkw");
+    assertThat(anlageN).containsText("Eigener oder zur Nutzung überlassener Kraftwagen");
 
     Locator laptop = anlageN.locator("tr").filter(new Locator.FilterOptions().setHasText("Made-up laptop"));
     assertThat(laptop.locator("td").nth(0)).hasText("42");

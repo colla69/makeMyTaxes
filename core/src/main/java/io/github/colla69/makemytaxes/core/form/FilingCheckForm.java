@@ -54,16 +54,17 @@ public final class FilingCheckForm implements FormModule {
             "§ 46 Abs. 2 Nr. 3 EStG",
             "Arbeitslohn über "
                 + wage
-                + " Euro, und die Vorsorgepauschale beim Lohnsteuerabzug war höher als Ihre"
-                + " abziehbaren Vorsorgeaufwendungen nach § 10 Abs. 1 Nr. 3 und 3a EStG?"),
+                + " Euro, und die Teilbeträge der Vorsorgepauschale für die Kranken- und"
+                + " Pflegeversicherung (§ 39b Abs. 2 Satz 5 Nr. 3 Buchst. b bis d EStG) beim"
+                + " Lohnsteuerabzug waren höher als Ihre abziehbaren Vorsorgeaufwendungen nach"
+                + " § 10 Abs. 1 Nr. 3 und 3a in Verbindung mit Abs. 4 EStG?"),
         question(
             "wageTaxAllowance",
             "§ 46 Abs. 2 Nr. 4 EStG",
             "Arbeitslohn über "
                 + wage
                 + " Euro, und ein Freibetrag nach § 39a Abs. 1 Satz 1 Nr. 1 bis 3, 5 oder 6 EStG in"
-                + " Ihren Lohnsteuerabzugsmerkmalen (nicht nur ein Pauschbetrag für Menschen mit"
-                + " Behinderungen)?"),
+                + " Ihren Lohnsteuerabzugsmerkmalen?"),
         question(
             "specialPayment",
             "§ 46 Abs. 2 Nr. 5 EStG",

@@ -21,11 +21,11 @@
             hx-target="#panel"
             hx-swap="outerHTML">
         <p class="error" th:if="${error}" th:text="${error}">Error</p>
-        <div th:replace="~{fields :: field(name='paidOn', label='Date', value=${form.paidOn}, placeholder='dd.mm.yyyy', required=true)}"></div>
-        <div th:replace="~{fields :: field(name='amount', label='Amount (EUR)', value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true)}"></div>
-        <div th:replace="~{fields :: field(name='topic', label='Topic', value=${form.topic?.name}, options=${topics})}"></div>
-        <div th:replace="~{fields :: field(name='description', label='Description', value=${form.description}, required=true)}"></div>
-        <div th:replace="~{fields :: field(name='receipt', label='Receipt', value=${form.receipt}, placeholder='File name or folder')}"></div>
+        <div th:replace="~{fields :: field(name='paidOn', label='Date', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='dd.mm.yyyy', required=true)}"></div>
+        <div th:replace="~{fields :: field(name='amount', label='Amount (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true)}"></div>
+        <div th:replace="~{fields :: field(name='topic', label='Topic', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
+        <div th:replace="~{fields :: field(name='description', label='Description', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
+        <div th:replace="~{fields :: field(name='receipt', label='Receipt', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='File name or folder')}"></div>
         <button>Add expense</button>
       </form>
 

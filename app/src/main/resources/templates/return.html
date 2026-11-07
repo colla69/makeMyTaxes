@@ -9,6 +9,7 @@
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
+    <main class="panel">
 
     <div id="panel" th:fragment="panel">
       <h1 th:text="'Steuererklärung ' + ${taxYear}">Steuererklärung</h1>
@@ -66,5 +67,6 @@
         </tbody>
       </table>
     </div>
+    </main>
   </body>
 </html>

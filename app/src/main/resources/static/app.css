@@ -97,6 +97,40 @@ nav {
   margin: 0.25rem 0 0;
 }
 
+/* A small "?" beside a label. Its Italian hint shows on hover. */
+.hint {
+  border: 1px solid #555;
+  border-radius: 50%;
+  color: #555;
+  cursor: help;
+  display: inline-block;
+  font-size: 0.75rem;
+  height: 1rem;
+  line-height: 1rem;
+  margin-left: 0.25rem;
+  position: relative;
+  text-align: center;
+  width: 1rem;
+}
+
+.hint-text {
+  background: #333;
+  border-radius: 0.25rem;
+  color: #fff;
+  display: none;
+  left: 0;
+  padding: 0.4rem 0.5rem;
+  position: absolute;
+  text-align: left;
+  top: 1.25rem;
+  width: 16rem;
+  z-index: 1;
+}
+
+.hint:hover .hint-text {
+  display: block;
+}
+
 .saved {
   color: #1b6e2c;
 }

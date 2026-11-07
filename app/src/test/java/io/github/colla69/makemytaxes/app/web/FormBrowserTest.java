@@ -13,6 +13,7 @@ import com.microsoft.playwright.options.BoundingBox;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -370,6 +371,41 @@ class FormBrowserTest {
   }
 
   @Test
+  void everyFieldOnEveryPageHasAHint() {
+    Page page = browser.newPage();
+    page.navigate("http://127.0.0.1:" + port + "/");
+    assertEveryFieldHasAHint(page);
+
+    openANewReturn(page, "2022");
+    assertEveryFieldHasAHint(page);
+    for (String form : List.of("Main form", "Anlage N", "Filing check")) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertEveryFieldHasAHint(page);
+    }
+  }
+
+  @Test
+  void theHintShowsItsItalianTextOnHover() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+    Locator hint =
+        page.locator(".field")
+            .filter(new Locator.FilterOptions().setHas(page.locator("[name=grossWage]")))
+            .locator(".hint");
+
+    assertThat(hint).hasText(Pattern.compile("^\\?"));
+    assertThat(hint.locator(".hint-text")).isHidden();
+
+    hint.hover();
+    assertThat(hint.locator(".hint-text")).isVisible();
+    assertThat(hint.locator(".hint-text")).containsText("salario lordo");
+    // The hint must not become a part of the name of the field.
+    assertThat(field(page, "grossWage")).not().hasAccessibleName(Pattern.compile("salario|\\?"));
+  }
+
+  @Test
   void aLongOptionDoesNotMakeAFieldWiderThanTheOthers() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
@@ -395,6 +431,16 @@ class FormBrowserTest {
       assertEquals(reference.width, box.width, LAYOUT_ROUNDING, "width on " + page.url());
       assertEquals(reference.height, box.height, "height on " + page.url());
     }
+  }
+
+  private static void assertEveryFieldHasAHint(Page page) {
+    int fields = page.locator(".field").count();
+    assertTrue(fields > 0, "no field on " + page.url());
+    List<String> hints = page.locator(".field .hint-text").allTextContents();
+    assertEquals(fields, hints.size(), "fields without a hint on " + page.url());
+    assertTrue(hints.stream().noneMatch(String::isBlank), "an empty hint on " + page.url());
+    // Thymeleaf shows a missing message key as ??key??.
+    assertTrue(hints.stream().noneMatch(hint -> hint.contains("??")), "a missing hint key on " + page.url());
   }
 
   private static void assertBodyIsEightyPercentOfTheWindow(Page page) {

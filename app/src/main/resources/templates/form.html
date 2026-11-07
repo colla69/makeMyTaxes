@@ -19,7 +19,7 @@
         <h2 th:text="${group.title}">Section</h2>
         <div class="fields">
           <th:block th:each="field : ${group.fields}">
-            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
+            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.id)}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
           </th:block>
         </div>
       </section>

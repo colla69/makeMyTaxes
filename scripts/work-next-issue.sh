@@ -48,10 +48,10 @@ status=0
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
-    "Bash(git push -u origin HEAD)" \
+    "Bash(git push:*)" \
     "Bash(gh issue view:*)" "Bash(gh issue comment:*)" "Bash(gh pr create:*)" "Bash(gh pr view:*)" \
     "Bash(rm target-test.log)" \
-    --disallowedTools "Bash(*--no-verify*)"
+    --disallowedTools "Bash(*--no-verify*)" "Bash(git push*--force*)" "Bash(git push*-f*)" "Bash(git push*+*)"
 ) || status=$?
 
 gh issue edit "$issue" --repo "$REPO" --remove-label in-progress --remove-label "$LABEL" >/dev/null
@@ -63,7 +63,7 @@ if [[ -n "$pull_request" ]]; then
 else
   gh issue edit "$issue" --repo "$REPO" --add-label needs-input >/dev/null
   gh issue comment "$issue" --repo "$REPO" \
-    --body "The worker stopped without a pull request (exit code $status). To run it again, remove \`needs-input\` and add \`$LABEL\`." >/dev/null
+    --body "**Worker:** I stopped without a pull request (exit code $status). Answer in a comment or in the issue body. Then remove \`needs-input\` and add \`$LABEL\`." >/dev/null
   echo "Issue $issue: no pull request. The worktree stays at $worktree." >&2
   exit 1
 fi

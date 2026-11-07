@@ -38,10 +38,10 @@ status=0
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git fetch origin dev)" "Bash(git merge origin/dev:*)" \
-    "Bash(git push origin HEAD)" \
+    "Bash(git push:*)" \
     "Bash(gh pr view:*)" "Bash(gh pr diff:*)" "Bash(gh pr checks:*)" "Bash(gh issue view:*)" \
     "Bash(rm target-test.log)" \
-    --disallowedTools "Bash(*--no-verify*)"
+    --disallowedTools "Bash(*--no-verify*)" "Bash(git push*--force*)" "Bash(git push*-f*)" "Bash(git push*+*)"
 ) || status=$?
 
 now=$(gh pr view "$number" --repo "$REPO" --json headRefOid --jq .headRefOid)

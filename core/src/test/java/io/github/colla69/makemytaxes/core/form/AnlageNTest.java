@@ -31,8 +31,8 @@ class AnlageNTest {
 
     assertThat(lines).extracting(ReviewLine::line).containsExactly("6", "42", "42", "45");
     assertThat(lines.get(1).value()).isEqualTo("123,45");
-    assertThat(lines.get(1).evidence()).isEqualTo("Paid on 03.02.2022, receipt: made-up.pdf");
-    assertThat(lines.get(2).label()).isEqualTo("Aufwendungen für Arbeitsmittel: total");
+    assertThat(lines.get(1).evidence()).isEqualTo("Bezahlt am 03.02.2022, Beleg: made-up.pdf");
+    assertThat(lines.get(2).label()).isEqualTo("Aufwendungen für Arbeitsmittel: Summe");
   }
 
   @Test
@@ -44,7 +44,7 @@ class AnlageNTest {
             "");
 
     assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
-        .isEqualTo("Paid on 03.02.2022, no receipt");
+        .isEqualTo("Bezahlt am 03.02.2022, ohne Beleg");
   }
 
   @Test
@@ -79,7 +79,7 @@ class AnlageNTest {
     assertThat(form.check(new Answers(Map.of("commuteDays", "10"))))
         .singleElement()
         .asString()
-        .contains("how you travelled");
+        .contains("womit Sie zur Arbeit");
   }
 
   @Test

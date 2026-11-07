@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <body>
     <!--
       The one look of a field. Put it in an element with the class "fields".
@@ -23,7 +23,7 @@
                 class="hint-text" th:text="${hint}">Hint</span></span>
         </span>
         <select th:unless="${#lists.isEmpty(options)}" th:name="${name}">
-          <option th:if="${blankOption}" value="">Choose</option>
+          <option th:if="${blankOption}" value="">Bitte wählen</option>
           <option th:each="option : ${options}"
                   th:value="${option.value}"
                   th:text="${option.label}"

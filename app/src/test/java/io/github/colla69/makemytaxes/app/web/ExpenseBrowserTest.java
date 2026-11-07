@@ -53,21 +53,21 @@ class ExpenseBrowserTest {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
 
-    page.getByLabel("Date").fill("03.02.2022");
+    page.getByLabel("Datum").fill("03.02.2022");
     addExpense(page, "1.234,56", "Made-up laptop");
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
-    assertThat(page.getByLabel("Date")).hasValue("03.02.2022");
-    assertThat(page.getByLabel("Amount (EUR)")).isFocused();
+    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
+    assertThat(page.getByLabel("Betrag (EUR)")).isFocused();
     // The link is outside the panel, so it stays only if htmx swapped the panel in place.
-    assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Back")))
+    assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Zurück")))
         .isVisible();
 
     addExpense(page, "10,00", "Made-up cable");
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(2);
     assertThat(page.locator("#panel")).containsText("1.244,56");
-    assertThat(page.locator("#panel")).containsText("2 without a receipt");
+    assertThat(page.locator("#panel")).containsText("2 ohne Beleg");
   }
 
   @Test
@@ -75,23 +75,23 @@ class ExpenseBrowserTest {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
 
-    page.getByLabel("Date").fill("03.02.2023");
+    page.getByLabel("Datum").fill("03.02.2023");
     addExpense(page, "10,00", "Made-up cable");
 
     assertThat(page.locator(".error")).containsText("03.02.2023");
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
-    assertThat(page.getByLabel("Description")).hasValue("Made-up cable");
+    assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up cable");
   }
 
   @Test
   void deletesAnExpense() {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
-    page.getByLabel("Date").fill("03.02.2022");
+    page.getByLabel("Datum").fill("03.02.2022");
     addExpense(page, "10,00", "Made-up cable");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Löschen")).click();
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
   }
@@ -100,18 +100,18 @@ class ExpenseBrowserTest {
   void deletingAnExpenseKeepsTheEntryInProgress() {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
-    page.getByLabel("Date").fill("03.02.2022");
-    page.getByLabel("Topic").selectOption("WORK_TRAINING");
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Kategorie").selectOption("WORK_TRAINING");
     addExpense(page, "10,00", "Made-up course");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
-    page.getByLabel("Description").fill("Next made-up course");
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete")).click();
+    page.getByLabel("Beschreibung").fill("Next made-up course");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Löschen")).click();
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
-    assertThat(page.getByLabel("Topic")).hasValue("WORK_TRAINING");
-    assertThat(page.getByLabel("Description")).hasValue("Next made-up course");
-    assertThat(page.getByLabel("Amount (EUR)")).hasValue("");
+    assertThat(page.getByLabel("Kategorie")).hasValue("WORK_TRAINING");
+    assertThat(page.getByLabel("Beschreibung")).hasValue("Next made-up course");
+    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
   }
 
   private void openANewReturnFor2022(Page page) {
@@ -121,24 +121,24 @@ class ExpenseBrowserTest {
     page.getByLabel("Name").fill(name);
     page.getByLabel("Name").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
-    section.getByLabel("Tax year").fill("2022");
-    section.getByLabel("Tax year").press("Enter");
+    section.getByLabel("Steuerjahr").fill("2022");
+    section.getByLabel("Steuerjahr").press("Enter");
     section
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Return 2022"))
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2022"))
         .click();
-    assertThat(page.getByLabel("Date")).isVisible();
+    assertThat(page.getByLabel("Datum")).isVisible();
   }
 
   private static void addExpense(Page page, String amount, String description) {
-    page.getByLabel("Amount (EUR)").fill(amount);
-    page.getByLabel("Description").fill(description);
-    page.getByLabel("Description").press("Enter");
+    page.getByLabel("Betrag (EUR)").fill(amount);
+    page.getByLabel("Beschreibung").fill(description);
+    page.getByLabel("Beschreibung").press("Enter");
     page.waitForCondition(
         () ->
             page.locator(".error").count() > 0
-                || page.getByLabel("Description").inputValue().isEmpty());
+                || page.getByLabel("Beschreibung").inputValue().isEmpty());
     // htmx moves the focus to this field just after the swap. A fill in that moment types into the
     // wrong field, because Playwright focuses a field first and then inserts the text.
-    assertThat(page.getByLabel("Amount (EUR)")).isFocused();
+    assertThat(page.getByLabel("Betrag (EUR)")).isFocused();
   }
 }

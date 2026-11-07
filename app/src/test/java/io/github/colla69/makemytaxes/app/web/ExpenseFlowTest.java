@@ -149,7 +149,7 @@ class ExpenseFlowTest {
   @Test
   void flagsAnExpenseWithoutAReceipt() throws Exception {
     addExpense("03.02.2022", "10,00", "")
-        .andExpect(content().string(containsString("1 without a receipt")));
+        .andExpect(content().string(containsString("1 ohne Beleg")));
   }
 
   @Test

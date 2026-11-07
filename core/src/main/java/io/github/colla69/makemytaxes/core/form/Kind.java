@@ -25,11 +25,11 @@ public enum Kind {
   public List<Option> options() {
     return switch (this) {
       case YES_NO_UNSURE ->
-          List.of(new Option(YES, "Yes"), new Option(NO, "No"), new Option(UNSURE, "Not sure"));
+          List.of(new Option(YES, "Ja"), new Option(NO, "Nein"), new Option(UNSURE, "Weiß nicht"));
       case COMMUTE_TRANSPORT ->
           List.of(
-              new Option(CAR, "Own car or a car for my use"),
-              new Option(OTHER_TRANSPORT, "Public transport, bicycle, on foot or car sharing"));
+              new Option(CAR, "Eigener oder zur Nutzung überlassener Kraftwagen"),
+              new Option(OTHER_TRANSPORT, "Öffentliche Verkehrsmittel, Fahrrad, zu Fuß oder Carsharing"));
       default -> List.of();
     };
   }
@@ -46,24 +46,25 @@ public enum Kind {
       case DATE -> GermanFormats.parseDate(value);
       case WHOLE_NUMBER -> {
         if (!value.matches("\\d{1,6}")) {
-          throw new IllegalArgumentException("Write a whole number, but got: \"" + value + "\".");
+          throw new IllegalArgumentException("Geben Sie eine ganze Zahl ein. Eingabe: \"" + value + "\".");
         }
       }
       case TAX_ID -> {
         if (!Identifiers.isTaxId(value)) {
           throw new IllegalArgumentException(
-              "A tax ID has 11 digits and a valid check digit. Check this number on your letter.");
+              "Eine Identifikationsnummer hat 11 Ziffern und eine gültige Prüfziffer. Prüfen Sie die"
+                  + " Nummer auf Ihrem Schreiben.");
         }
       }
       case IBAN -> {
         if (!Identifiers.isIban(value)) {
           throw new IllegalArgumentException(
-              "This IBAN is not valid. Check the letters, the digits and the check digits.");
+              "Diese IBAN ist ungültig. Prüfen Sie die Buchstaben, die Ziffern und die Prüfziffern.");
         }
       }
       case YES_NO_UNSURE, COMMUTE_TRANSPORT -> {
         if (options().stream().noneMatch(option -> option.value().equals(value))) {
-          throw new IllegalArgumentException("Choose one of the options.");
+          throw new IllegalArgumentException("Wählen Sie eine der Möglichkeiten.");
         }
       }
     }

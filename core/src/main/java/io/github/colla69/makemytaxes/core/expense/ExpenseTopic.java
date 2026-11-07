@@ -2,15 +2,15 @@ package io.github.colla69.makemytaxes.core.expense;
 
 /** Where an expense goes on the return. The label uses the name that the form uses. */
 public enum ExpenseTopic {
-  WORK_EQUIPMENT("Work equipment (Anlage N, Arbeitsmittel)"),
-  WORK_TRAINING("Training (Anlage N, Fortbildungskosten)"),
-  WORK_ASSOCIATIONS("Professional associations (Anlage N, Berufsverbände)"),
-  WORK_OTHER("Other work expenses (Anlage N, Weitere Werbungskosten)"),
-  INSURANCE("Insurance (Anlage Vorsorgeaufwand)"),
-  DONATIONS_AND_PENSIONS("Donations and pensions (Sonderausgaben)"),
-  HOUSEHOLD_SERVICES("Household services (Haushaltsnahe Aufwendungen)"),
-  MEDICAL("Medical costs (Außergewöhnliche Belastungen)"),
-  CHILDCARE("Childcare (Anlage Kind)");
+  WORK_EQUIPMENT("Arbeitsmittel (Anlage N)"),
+  WORK_TRAINING("Fortbildungskosten (Anlage N)"),
+  WORK_ASSOCIATIONS("Beiträge zu Berufsverbänden (Anlage N)"),
+  WORK_OTHER("Weitere Werbungskosten (Anlage N)"),
+  INSURANCE("Versicherungen (Anlage Vorsorgeaufwand)"),
+  DONATIONS_AND_PENSIONS("Spenden und Renten (Sonderausgaben)"),
+  HOUSEHOLD_SERVICES("Haushaltsnahe Aufwendungen"),
+  MEDICAL("Krankheitskosten (Außergewöhnliche Belastungen)"),
+  CHILDCARE("Kinderbetreuung (Anlage Kind)");
 
   private final String label;
 

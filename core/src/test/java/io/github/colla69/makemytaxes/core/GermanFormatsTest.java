@@ -25,7 +25,7 @@ class GermanFormatsTest {
   void rejectsAnAmountThatIsNotGerman(String input) {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> GermanFormats.parseMoney(input))
-        .withMessageContaining("amount");
+        .withMessageContaining("Betrag");
   }
 
   @Test
@@ -52,7 +52,7 @@ class GermanFormatsTest {
   void rejectsADateThatIsNotGermanOrDoesNotExist(String input) {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> GermanFormats.parseDate(input))
-        .withMessageContaining("dd.mm.yyyy");
+        .withMessageContaining("TT.MM.JJJJ");
   }
 
   @Test

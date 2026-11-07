@@ -50,22 +50,24 @@ public final class AnlageN implements FormModule {
     return List.of(
         required("taxClass", WAGE, "5", "Steuerklasse", Kind.WHOLE_NUMBER),
         required("grossWage", WAGE, "6", "Bruttoarbeitslohn (EUR)", Kind.MONEY)
-            .withHelp("No. 3 of the wage tax certificate (Lohnsteuerbescheinigung)."),
+            .withHelp("Nr. 3 der Lohnsteuerbescheinigung."),
         required("wageTax", WAGE, "7", "Lohnsteuer (EUR)", Kind.MONEY),
         optional("solidarity", WAGE, "8", "Solidaritätszuschlag (EUR)", Kind.MONEY),
         optional("churchTax", WAGE, "9", "Kirchensteuer des Arbeitnehmers (EUR)", Kind.MONEY),
         optional("shortTimeWork", WAGE, "28", "Kurzarbeitergeld (EUR)", Kind.MONEY)
-            .withHelp("No. 15 of the wage tax certificate."),
+            .withHelp("Nr. 15 der Lohnsteuerbescheinigung."),
         optional("workplace", WORK, "31", "Erste Tätigkeitsstätte", Kind.TEXT)
-            .withHelp("Postal code, city and street."),
-        optional("commuteDays", WORK, "35", "Commuting: aufgesucht an Tagen", Kind.WHOLE_NUMBER),
-        optional("commuteKm", WORK, "35", "Commuting: einfache Entfernung (km)", Kind.WHOLE_NUMBER)
-            .withHelp("Rounded down to full kilometres."),
-        optional("commuteTransport", WORK, "35", "Commuting: travelled by", Kind.COMMUTE_TRANSPORT),
+            .withHelp("Postleitzahl, Ort und Straße."),
+        optional("commuteDays", WORK, "35", "Wege zur Arbeit: aufgesucht an Tagen", Kind.WHOLE_NUMBER),
+        optional(
+                "commuteKm", WORK, "35", "Wege zur Arbeit: einfache Entfernung (km)", Kind.WHOLE_NUMBER)
+            .withHelp("Auf volle Kilometer abgerundet."),
+        optional(
+            "commuteTransport", WORK, "35", "Wege zur Arbeit: zurückgelegt mit", Kind.COMMUTE_TRANSPORT),
         optional("employerCommute", WORK, "39", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-            .withHelp("No. 17 and no. 18 of the wage tax certificate."),
+            .withHelp("Nr. 17 und Nr. 18 der Lohnsteuerbescheinigung."),
         optional("homeOfficeDays", WORK, "45", "Homeoffice: Kalendertage", Kind.WHOLE_NUMBER)
-            .withHelp("Days with work only at home. The tax office calculates the amount."));
+            .withHelp("Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den Betrag."));
   }
 
   /** A day cannot be both, because the home office amount excludes days at the workplace. */
@@ -75,12 +77,12 @@ public final class AnlageN implements FormModule {
     long days = answers.wholeNumber("commuteDays") + answers.wholeNumber("homeOfficeDays");
     if (days > pack.daysInYear()) {
       messages.add(
-          "Commuting days and home office days total %d, but %d has only %d days."
+          "Tage mit Wegen zur Arbeit und Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
               .formatted(days, pack.taxYear().value(), pack.daysInYear()));
     }
     // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
     if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
-      messages.add("Choose how you travelled, because the commuting limit depends on it.");
+      messages.add("Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
     }
     return messages;
   }
@@ -115,16 +117,16 @@ public final class AnlageN implements FormModule {
         new ReviewLine(
             WORK,
             line.line(),
-            line.label() + ": total",
+            line.label() + ": Summe",
             GermanFormats.format(ExpenseSummary.of(matching).totalFor(line.topic())),
             ""));
     return lines;
   }
 
   private static String evidenceOf(Expense expense) {
-    String paid = "Paid on " + GermanFormats.format(expense.payment().paidOn());
+    String paid = "Bezahlt am " + GermanFormats.format(expense.payment().paidOn());
     return expense.hasEvidence()
-        ? paid + ", receipt: " + expense.receiptReference()
-        : paid + ", no receipt";
+        ? paid + ", Beleg: " + expense.receiptReference()
+        : paid + ", ohne Beleg";
   }
 }

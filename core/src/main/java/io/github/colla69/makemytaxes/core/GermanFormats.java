@@ -25,11 +25,11 @@ public final class GermanFormats {
     String text = input.strip();
     if (!AMOUNT.matcher(text).matches()) {
       throw new IllegalArgumentException(
-          "Write the amount as 1.234,56, but got: \"" + input + "\".");
+          "Schreiben Sie den Betrag als 1.234,56. Eingabe: \"" + input + "\".");
     }
     String[] parts = text.replace(".", "").split(",");
     if (parts[0].replaceFirst("^0+", "").length() > MAX_EURO_DIGITS) {
-      throw new IllegalArgumentException("This amount is too large: \"" + input + "\".");
+      throw new IllegalArgumentException("Dieser Betrag ist zu groß: \"" + input + "\".");
     }
     long euros = Long.parseLong(parts[0]);
     long cents = parts.length == 1 ? 0 : Long.parseLong((parts[1] + "0").substring(0, 2));
@@ -48,7 +48,7 @@ public final class GermanFormats {
       return LocalDate.parse(input.strip(), DATE_INPUT);
     } catch (DateTimeParseException e) {
       throw new IllegalArgumentException(
-          "Write the date as dd.mm.yyyy, and use a real date. Got: \"" + input + "\".", e);
+          "Geben Sie ein gültiges Datum im Format TT.MM.JJJJ ein. Eingabe: \"" + input + "\".", e);
     }
   }
 

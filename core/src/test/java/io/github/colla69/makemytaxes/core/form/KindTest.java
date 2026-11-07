@@ -41,7 +41,7 @@ class KindTest {
   void showsMoneyAndDatesInTheFormatOfTheApp() {
     assertThat(Kind.MONEY.display("1234,5")).isEqualTo("1.234,50");
     assertThat(Kind.DATE.display("3.2.1990")).isEqualTo("03.02.1990");
-    assertThat(Kind.YES_NO_UNSURE.display("UNSURE")).isEqualTo("Not sure");
+    assertThat(Kind.YES_NO_UNSURE.display("UNSURE")).isEqualTo("Weiß nicht");
   }
 
   @ParameterizedTest

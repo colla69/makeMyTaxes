@@ -10,6 +10,13 @@ public final class MainForm implements FormModule {
 
   public static final String ID = "main";
 
+  /**
+   * The fields that belong to the person and not to one year. The person keeps them, and the main
+   * form of each year shows them until the user saves other values there.
+   */
+  public static final List<String> PERSONAL_FIELDS =
+      List.of("taxId", "birthDate", "street", "houseNumber", "postalCode", "city");
+
   private static final String GENERAL = "Allgemeine Angaben";
   private static final String BANK = "Bankverbindung";
   private static final String BENEFITS = "Einkommensersatzleistungen";
@@ -23,6 +30,11 @@ public final class MainForm implements FormModule {
   @Override
   public String title() {
     return "Hauptvordruck (ESt 1 A)";
+  }
+
+  /** The personal fields, in the order of the form. */
+  public List<Field> personalFields() {
+    return fields().stream().filter(field -> PERSONAL_FIELDS.contains(field.id())).toList();
   }
 
   @Override

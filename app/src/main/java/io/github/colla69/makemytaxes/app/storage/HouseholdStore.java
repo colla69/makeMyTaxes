@@ -1,7 +1,10 @@
 package io.github.colla69.makemytaxes.app.storage;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.form.Answers;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -22,7 +25,7 @@ public class HouseholdStore {
 
   /** The app holds one household, so the first person creates it. */
   @Transactional
-  public void addPerson(String name) {
+  public void addPerson(String name, Answers details) {
     long householdId =
         jdbc.sql("select id from household order by id limit 1")
             .query(Long.class)
@@ -31,6 +34,39 @@ public class HouseholdStore {
     jdbc.sql("insert into person(household_id, name) values (?, ?)")
         .params(householdId, name)
         .update();
+    long personId = jdbc.sql("select last_insert_rowid()").query(Long.class).single();
+    saveDetails(personId, details);
+  }
+
+  public Optional<String> nameOf(long personId) {
+    return jdbc.sql("select name from person where id = ?")
+        .param(personId)
+        .query(String.class)
+        .optional();
+  }
+
+  /** The personal details, such as the address. They hold for every year of the person. */
+  public Answers detailsOf(long personId) {
+    Map<String, String> values = new LinkedHashMap<>();
+    jdbc.sql("select field_id, value from person_detail where person_id = ?")
+        .param(personId)
+        .query(row -> {
+          values.put(row.getString("field_id"), row.getString("value"));
+        });
+    return new Answers(values);
+  }
+
+  /** Replaces all details, so a detail that the user cleared loses its old value. */
+  @Transactional
+  public void saveDetails(long personId, Answers details) {
+    jdbc.sql("delete from person_detail where person_id = ?").param(personId).update();
+    details
+        .values()
+        .forEach(
+            (fieldId, value) ->
+                jdbc.sql("insert into person_detail(person_id, field_id, value) values (?, ?, ?)")
+                    .params(personId, fieldId, value)
+                    .update());
   }
 
   private long createHousehold() {

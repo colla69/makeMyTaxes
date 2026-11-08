@@ -202,7 +202,20 @@
     });
   }
 
+  // A save on a page with data-clear-drafts changes values that the forms of other pages show,
+  // such as the personal details in the main form. Then all drafts are old.
+  function clearDraftsAfterASave() {
+    if (document.querySelector("main .saved") === null
+        || document.querySelector("[data-clear-drafts]") === null) {
+      return;
+    }
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith("draft:"))
+      .forEach((key) => sessionStorage.removeItem(key));
+  }
+
   // The script has "defer", so the document is parsed when it runs.
+  clearDraftsAfterASave();
   storeOrRestore();
 
   // htmx puts the answer of the server in place. That answer holds the current truth.

@@ -2,6 +2,12 @@ package io.github.colla69.makemytaxes.app;
 
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.Field;
+import io.github.colla69.makemytaxes.core.form.MainForm;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 class HomeController {
 
+  private static final List<Field> PERSONAL_FIELDS = new MainForm().personalFields();
+
   private final HouseholdStore household;
 
   HomeController(HouseholdStore household) {
@@ -22,16 +30,48 @@ class HomeController {
 
   @GetMapping("/")
   String home(Model model) {
-    model.addAttribute("persons", household.persons());
+    fillHome(model, Map.of(), Map.of());
     return "home";
   }
 
   @PostMapping("/persons")
-  String addPerson(@RequestParam String name) {
-    if (!name.isBlank()) {
-      household.addPerson(name.strip());
+  String addPerson(@RequestParam Map<String, String> submitted, Model model) {
+    String name = submitted.getOrDefault("name", "").strip();
+    Map<String, String> details = details(submitted);
+    Map<String, String> errors = errors(details);
+    if (!errors.isEmpty()) {
+      fillHome(model, details, errors);
+      model.addAttribute("newName", name);
+      return "home";
+    }
+    if (!name.isEmpty()) {
+      household.addPerson(name, new Answers(details));
     }
     return "redirect:/";
+  }
+
+  @GetMapping("/persons/{personId}")
+  String person(
+      @PathVariable long personId,
+      @RequestParam(defaultValue = "false") boolean saved,
+      Model model) {
+    fillPerson(personId, household.detailsOf(personId).values(), Map.of(), model);
+    model.addAttribute("saved", saved);
+    return "person";
+  }
+
+  @PostMapping("/persons/{personId}")
+  String savePerson(
+      @PathVariable long personId, @RequestParam Map<String, String> submitted, Model model) {
+    Map<String, String> details = details(submitted);
+    Map<String, String> errors = errors(details);
+    if (!errors.isEmpty()) {
+      fillPerson(personId, details, errors, model);
+      model.addAttribute("saved", false);
+      return "person";
+    }
+    household.saveDetails(personId, new Answers(details));
+    return "redirect:/persons/" + personId + "?saved=true";
   }
 
   @PostMapping("/persons/{personId}/returns")
@@ -45,5 +85,51 @@ class HomeController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
     }
     return "redirect:/";
+  }
+
+  private void fillHome(Model model, Map<String, String> values, Map<String, String> errors) {
+    model.addAttribute("persons", household.persons());
+    model.addAttribute("personalFields", PERSONAL_FIELDS);
+    model.addAttribute("values", values);
+    model.addAttribute("errors", errors);
+  }
+
+  private void fillPerson(
+      long personId, Map<String, String> values, Map<String, String> errors, Model model) {
+    String name =
+        household
+            .nameOf(personId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    model.addAttribute("personId", personId);
+    model.addAttribute("personName", name);
+    model.addAttribute("personalFields", PERSONAL_FIELDS);
+    model.addAttribute("values", values);
+    model.addAttribute("errors", errors);
+  }
+
+  /** The personal details that the user entered. A blank detail is not in the map. */
+  private static Map<String, String> details(Map<String, String> submitted) {
+    Map<String, String> details = new LinkedHashMap<>();
+    for (Field field : PERSONAL_FIELDS) {
+      String value = submitted.getOrDefault(field.id(), "").strip();
+      if (!value.isEmpty()) {
+        details.put(field.id(), value);
+      }
+    }
+    return details;
+  }
+
+  private static Map<String, String> errors(Map<String, String> details) {
+    Map<String, String> errors = new LinkedHashMap<>();
+    for (Field field : PERSONAL_FIELDS) {
+      if (details.containsKey(field.id())) {
+        try {
+          field.kind().validate(details.get(field.id()));
+        } catch (IllegalArgumentException e) {
+          errors.put(field.id(), e.getMessage());
+        }
+      }
+    }
+    return errors;
   }
 }

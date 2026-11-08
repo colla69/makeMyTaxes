@@ -37,13 +37,13 @@ body {
 }
 
 /* The label with its control, and the clear button beside the control. */
-.control {
+.field-row {
   align-items: end;
   display: flex;
   gap: 0.25rem;
 }
 
-.control label {
+.field-row label {
   flex: 1;
   min-width: 0;
 }
@@ -74,6 +74,42 @@ body {
   font: inherit;
   height: 2.25rem;
   padding: 0 0.5rem;
+}
+
+/* The control of a field fills its column. A calendar button sits inside the right end of a date field. */
+.field .control {
+  display: block;
+  position: relative;
+}
+
+.field .control input {
+  width: 100%;
+}
+
+.field .control:has(.calendar) input {
+  padding-right: 2.25rem;
+}
+
+.calendar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  height: 2.25rem;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.25rem;
+}
+
+/* The date input of the browser only opens its calendar. It stays invisible below the calendar button. */
+#calendar-picker {
+  border: 0;
+  height: 1px;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 1px;
 }
 
 table {

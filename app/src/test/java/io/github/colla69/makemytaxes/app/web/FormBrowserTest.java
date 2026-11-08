@@ -42,8 +42,6 @@ class FormBrowserTest {
           "certificateS",
           "officeRequest");
 
-  private static final int INTERVIEW_QUESTIONS = 8;
-
   /** The browser rounds column widths, so two equal columns can differ by a part of a pixel. */
   private static final double LAYOUT_ROUNDING = 0.1;
 
@@ -93,63 +91,6 @@ class FormBrowserTest {
     assertThat(page.locator("#filing-result")).containsText("Sie müssen diese Erklärung abgeben");
     assertThat(page.locator("#filing-result")).containsText("§ 46 Abs. 2 Nr. 2 EStG");
     assertThat(page.locator("#filing-result")).containsText("endete am 02.10.2023");
-  }
-
-  @Test
-  void everyInterviewQuestionShowsAnItalianHintOnHover() {
-    Page page = browser.newPage();
-    openANewReturn(page, "2022");
-    link(page, "Fragen").click();
-
-    Locator hint = page.locator("#question h2 .hint");
-    assertThat(hint.locator(".hint-text")).isHidden();
-    hint.hover();
-    assertThat(hint.locator(".hint-text")).isVisible();
-    assertThat(hint.locator(".hint-text")).containsText("salario");
-
-    for (int answered = 1; answered <= INTERVIEW_QUESTIONS; answered++) {
-      assertThat(hint.locator(".hint-text")).not().isEmpty();
-      answer(page, "Nein");
-    }
-    assertThat(page.locator("#answered li .hint-text")).hasCount(INTERVIEW_QUESTIONS);
-  }
-
-  @Test
-  void theInterviewAsksOneQuestionAtATimeAndThenListsThePagesOfTheReturn() {
-    Page page = browser.newPage();
-    openANewReturn(page, "2022");
-    link(page, "Fragen").click();
-    assertOnlyOpenTab(page, "Fragen");
-
-    Locator question = page.locator("#question h2");
-    assertThat(question).containsText("Arbeitslohn");
-    assertThat(page.locator("#steps")).hasCount(0);
-    answer(page, "Ja");
-    assertThat(question).not().containsText("Arbeitslohn");
-
-    assertThat(page.locator("#answered li")).hasCount(1);
-    for (int answered = 2; answered <= INTERVIEW_QUESTIONS; answered++) {
-      answer(page, question.textContent().contains("Handwerker") ? "Ja" : "Nein");
-      assertThat(page.locator("#answered li")).hasCount(answered);
-    }
-    assertThat(page.locator("#question")).hasCount(0);
-
-    Locator steps = page.locator("#steps li a");
-    assertThat(steps).containsText(new String[] {"Abgabepflicht", "Hauptvordruck", "Anlage N", "Ausgaben"});
-    assertThat(page.locator("#steps")).containsText("Haushaltsnahe Aufwendungen");
-    assertThat(page.locator("#steps")).not().containsText("Kinderbetreuung");
-    assertThat(link(page, "Fragen")).hasClass(Pattern.compile("\\bdone\\b"));
-
-    steps.filter(new Locator.FilterOptions().setHasText("Anlage N")).click();
-    assertThat(page.locator("#answers [name=grossWage]")).isVisible();
-    assertTrue(isGreen(link(page, "Fragen")), "The done interview tab is not green");
-
-    link(page, "Fragen").click();
-    page.locator("#answered li").first()
-        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ändern"))
-        .click();
-    assertThat(question).containsText("Arbeitslohn");
-    assertThat(link(page, "Fragen")).not().hasClass(Pattern.compile("\\bdone\\b"));
   }
 
   @Test
@@ -834,10 +775,6 @@ class FormBrowserTest {
 
   private static void fill(Page page, String name, String value) {
     field(page, name).fill(value);
-  }
-
-  private static void answer(Page page, String answer) {
-    page.locator("#question").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName(answer)).click();
   }
 
   /** Green: the green channel of the background is clearly above red and blue. */

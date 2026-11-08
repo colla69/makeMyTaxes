@@ -111,6 +111,13 @@ public class HouseholdStore {
         .update();
   }
 
+  public Optional<Long> personOf(long returnId) {
+    return jdbc.sql("select person_id from tax_return where id = ?")
+        .param(returnId)
+        .query(Long.class)
+        .optional();
+  }
+
   public Optional<TaxYear> taxYearOf(long returnId) {
     return jdbc.sql("select tax_year from tax_return where id = ?")
         .param(returnId)

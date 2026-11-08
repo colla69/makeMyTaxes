@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!-- The answers of one topic of the interview, each with a link to change it. -->
+    <ol class="answered" th:fragment="answers(topic)">
+      <li th:each="item : ${topic.answers}" th:attr="data-question=${item.id}">
+        <span th:text="${item.text}">Frage</span>
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + item.id)}"><span class="hint"
+              th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block>
+        <strong th:text="${item.answer}">Ja</strong>
+        <a th:href="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${item.id})}">Ändern</a>
+      </li>
+    </ol>
+  </body>
+</html>

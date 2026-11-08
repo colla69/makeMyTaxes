@@ -5,50 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="'Fragen ' + ${taxYear}">Fragen</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
     <main class="panel">
     <h1 th:text="'Fragen zu Ihrem Jahr ' + ${taxYear}">Fragen</h1>
-    <p>Beantworten Sie die Fragen mit Ja oder Nein. Danach zeigt die App, welche Seiten Ihre Erklärung braucht.</p>
+    <!-- data-clear-drafts: the answer changed a form, so fields.js drops the drafts of the forms. -->
+    <p class="saved" th:if="${saved}" data-clear-drafts>Gespeichert.</p>
+    <p id="progress-text">
+      <progress id="progress" th:max="${questionCount}" th:value="${answeredCount}"></progress>
+      <span th:text="${answeredCount} + ' von ' + ${questionCount} + ' Fragen beantwortet'">0 von 1</span>
+    </p>
 
-    <ol id="answered" th:unless="${#lists.isEmpty(answered)}">
-      <li th:each="item : ${answered}">
-        <span th:text="${item.text}">Frage</span>
-        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + item.id)}"><span class="hint"
-              th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block>
-        <strong th:text="${item.answer}">Ja</strong>
-        <form class="inline" method="post" th:action="@{/returns/{r}/interview(r=${returnId})}">
-          <input type="hidden" name="question" th:value="${item.id}">
-          <input type="hidden" name="answer" value="">
-          <button>Ändern</button>
-        </form>
-      </li>
-    </ol>
-
-    <section id="question" th:if="${next}">
-      <h2><span th:text="${next.text}">Frage</span>
-        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + next.id)}"><span class="hint"
+    <!-- One question per screen. -->
+    <section id="question" th:if="${question}">
+      <p class="topic" th:text="${topicLabel} + ', Frage ' + ${position} + ' von ' + ${positions}">Thema</p>
+      <h2><span th:text="${question.text}">Frage</span>
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + question.id)}"><span class="hint"
               th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
-      <form method="post" class="form-buttons" th:action="@{/returns/{r}/interview(r=${returnId})}">
-        <input type="hidden" name="question" th:value="${next.id}">
-        <button name="answer" value="YES">Ja</button>
-        <button name="answer" value="NO">Nein</button>
+
+      <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}">
+        <th:block th:if="${question.type.name() == 'YES_NO'}">
+          <p class="form-buttons">
+            <button name="answer" value="YES" th:attr="aria-pressed=${current == 'YES'}">Ja</button>
+            <button name="answer" value="NO" th:attr="aria-pressed=${current == 'NO'}">Nein</button>
+          </p>
+        </th:block>
+
+        <th:block th:if="${question.type.name() == 'FIELD'}">
+          <div class="fields">
+            <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.id)}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
+          </div>
+          <p class="form-buttons"><button>Weiter</button></p>
+        </th:block>
+
+        <th:block th:if="${question.type.name() == 'CONFIRM'}">
+          <dl id="details">
+            <th:block th:each="detail : ${details}">
+              <dt th:text="${detail.label}">Feld</dt>
+              <dd th:text="${#strings.isEmpty(detail.value)} ? '–' : ${detail.value}">Wert</dd>
+            </th:block>
+          </dl>
+          <p class="help">Diese Angaben gelten für jedes Jahr. Sie ändern sie bei der Person.</p>
+          <p class="form-buttons">
+            <button name="answer" value="DONE">Ja, die Angaben stimmen</button>
+            <a th:href="@{${personHref}}">Angaben ändern</a>
+          </p>
+        </th:block>
       </form>
+      <p><a th:if="${back}" th:href="@{${back}}" class="back">Zurück</a></p>
     </section>
 
-    <section id="steps" th:unless="${next}">
-      <h2>Diese Seiten braucht Ihre Erklärung</h2>
-      <ol>
-        <li th:each="step : ${steps}">
-          <a th:href="@{${step.href}}" th:text="${step.label}">Seite</a>
-          <span class="help" th:text="${step.hint}">Hinweis</span>
-        </li>
-      </ol>
-      <form method="post" th:action="@{/returns/{r}/interview/restart(r=${returnId})}">
-        <button>Fragen neu beginnen</button>
-      </form>
+    <!-- The summary after the last question of a topic. -->
+    <section id="summary" th:if="${summary}">
+      <h2 th:text="'Zusammenfassung: ' + ${summary.label}">Zusammenfassung</h2>
+      <ol th:replace="~{interview-answers :: answers(topic=${summary})}"></ol>
+      <p class="form-buttons">
+        <a th:href="@{${back}}" class="back">Zurück</a>
+        <a th:href="@{${forward}}" class="forward">Weiter</a>
+      </p>
     </section>
+
+    <!-- When each question has an answer: all topics and the pages that the return needs. -->
+    <th:block th:if="${topics}">
+      <section class="topic-summary" th:each="topic : ${topics}">
+        <h2 th:text="${topic.label}">Thema</h2>
+        <ol th:replace="~{interview-answers :: answers(topic=${topic})}"></ol>
+      </section>
+
+      <section id="steps">
+        <h2>Diese Seiten braucht Ihre Erklärung</h2>
+        <ol>
+          <li th:each="step : ${steps}">
+            <a th:href="@{${step.href}}" th:text="${step.label}">Seite</a>
+            <span class="help" th:text="${step.hint}">Hinweis</span>
+          </li>
+        </ol>
+        <form method="post" th:action="@{/returns/{r}/interview/restart(r=${returnId})}">
+          <button>Fragen neu beginnen</button>
+        </form>
+      </section>
+    </th:block>
     </main>
   </body>
 </html>

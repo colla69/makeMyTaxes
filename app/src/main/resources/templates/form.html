@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${form.title} + ' ' + ${taxYear}">Vordruck</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
@@ -20,7 +21,7 @@
         <h2 th:text="${group.title}">Abschnitt</h2>
         <div class="fields">
           <th:block th:each="field : ${group.fields}">
-            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.id)}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
+            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.id)}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()})}"></div>
           </th:block>
         </div>
       </section>

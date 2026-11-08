@@ -431,6 +431,76 @@ class FormBrowserTest {
         LAYOUT_ROUNDING);
   }
 
+  @Test
+  void aDateFieldTakesOnlyDigitsAndPutsTheDotsIn() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    Locator date = page.getByLabel("Datum");
+
+    date.pressSequentially("03a02b2022");
+    assertThat(date).hasValue("03.02.2022");
+
+    date.fill("");
+    date.pressSequentially("3.2.2022");
+    assertThat(date).hasValue("3.2.2022");
+  }
+
+  @Test
+  void anEditInTheMiddleOfADateDoesNotMoveItsDigits() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    Locator date = page.getByLabel("Datum");
+    date.pressSequentially("03022022");
+
+    date.press("Home");
+    for (int i = 0; i < 3; i++) {
+      date.press("ArrowRight");
+    }
+    date.pressSequentially("1");
+    assertThat(date).hasValue("03.102.2022");
+
+    date.press("Backspace");
+    date.press("Backspace");
+    assertThat(date).hasValue("0302.2022");
+  }
+
+  @Test
+  void anAmountFieldTakesDigitsAndOneCommaAndShowsTheFormatOfTheAppOnLeaving() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+    Locator amount = field(page, "grossWage");
+
+    amount.pressSequentially("1234,5x,6");
+    assertThat(amount).hasValue("1234,56");
+    amount.press("Tab");
+    assertThat(amount).hasValue("1.234,56");
+  }
+
+  @Test
+  void aDayCountTakesOnlyDigits() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+
+    field(page, "commuteDays").pressSequentially("1a2,");
+    assertThat(field(page, "commuteDays")).hasValue("12");
+  }
+
+  @Test
+  void theCalendarOfADateFieldWritesTheChosenDay() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    page.locator(".field:has([name=paidOn]) button.calendar").click();
+    page.locator("#calendar-picker").fill("2022-02-03");
+    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
+
+    link(page, "Hauptvordruck").click();
+    page.locator(".field:has([name=birthDate]) button.calendar").click();
+    page.locator("#calendar-picker").fill("1990-12-24");
+    assertThat(field(page, "birthDate")).hasValue("24.12.1990");
+  }
+
   private static void assertAllFieldsLookLike(BoundingBox reference, List<Double> columns, Page page) {
     assertEquals(
         page.locator("form input, form select").count(),

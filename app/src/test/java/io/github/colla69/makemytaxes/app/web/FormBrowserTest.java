@@ -226,6 +226,16 @@ class FormBrowserTest {
   }
 
   @Test
+  void tabGoesFromOneFieldToTheNextAndSkipsTheClearButton() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    page.getByLabel("Datum").focus();
+    page.getByLabel("Datum").press("Tab");
+    assertThat(page.getByLabel("Betrag (EUR)")).isFocused();
+  }
+
+  @Test
   void aSavedValueIsThereAfterAReloadAndAClearedValueIsGone() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");

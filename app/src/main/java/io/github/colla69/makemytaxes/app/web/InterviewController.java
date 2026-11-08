@@ -3,6 +3,7 @@ package io.github.colla69.makemytaxes.app.web;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
@@ -115,7 +116,8 @@ class InterviewController {
       Model model) {
     taxYearWithForms(returnId);
     Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
-    if (question.type() == Type.YES_NO && !List.of(Interview.YES, Interview.NO).contains(answer)) {
+    boolean hasButtons = !question.options().isEmpty();
+    if (hasButtons && !question.allows(answer)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
     if (question.type() == Type.FIELD) {
@@ -127,9 +129,16 @@ class InterviewController {
       }
     }
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
-    values.put(question.id(), question.type() == Type.YES_NO ? answer : Interview.DONE);
+    values.put(question.id(), hasButtons ? answer : Interview.DONE);
     Answers answers = new Answers(values);
     forms.save(returnId, Interview.ID, answers);
+    if (question.id().equals(Interview.HEALTH_INSURANCE)) {
+      Answers lines = forms.answers(returnId, AnlageVorsorgeaufwand.ID);
+      forms.save(
+          returnId,
+          AnlageVorsorgeaufwand.ID,
+          AnlageVorsorgeaufwand.forHealthInsurance(lines, Interview.PRIVATE.equals(answer)));
+    }
     // The next page tells fields.js that a form changed, so the drafts of the form tabs are old.
     String saved = question.type() == Type.FIELD ? "?saved=true" : "";
     // The new answer can add questions, such as those of another employer.
@@ -236,7 +245,7 @@ class InterviewController {
       return "Noch offen";
     }
     return switch (question.type()) {
-      case YES_NO -> Interview.YES.equals(answers.text(question.id())) ? "Ja" : "Nein";
+      case YES_NO, CHOICE -> question.labelOf(answers.text(question.id()));
       case CONFIRM -> "Bestätigt";
       case FIELD -> {
         String value = forms.answers(returnId, question.formId()).text(question.id());

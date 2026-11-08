@@ -18,6 +18,7 @@ public final class Forms {
                     new FilingCheckForm(pack),
                     new MainForm(),
                     new AnlageN(pack),
+                    new AnlageVorsorgeaufwand(),
                     new HouseholdServicesForm()))
         .orElse(List.of());
   }

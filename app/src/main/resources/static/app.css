@@ -148,9 +148,10 @@ nav {
  * A tab view: a row of tabs above a framed panel. The open tab has the colour of the panel and
  * covers the top line of the panel, so the tab and its page look like one card.
  */
+/* One row only: a second row of tabs would stand apart from the panel. A narrow tab wraps its text. */
 .tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.25rem;
   padding-left: 0.5rem;
 }

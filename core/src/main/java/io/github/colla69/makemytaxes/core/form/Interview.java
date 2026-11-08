@@ -111,11 +111,27 @@ public final class Interview {
               Topic.COMMUTE,
               "Wie weit ist Ihr Weg von der Wohnung zur ersten Tätigkeitsstätte, in einer"
                   + " Richtung?"),
+          // The transport comes before the days, because AnlageN.check needs it once days exist.
+          Question.field(
+              AnlageN.ID,
+              "commuteTransport",
+              Topic.COMMUTE,
+              "Womit sind Sie zur ersten Tätigkeitsstätte gefahren?"),
+          Question.field(
+              AnlageN.ID,
+              "commuteDays",
+              Topic.COMMUTE,
+              "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"),
+          Question.field(
+              AnlageN.ID,
+              "homeOfficeDays",
+              Topic.COMMUTE,
+              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"),
           Question.yesNo(
               "workEquipment",
               Topic.COMMUTE,
               "Haben Sie selbst etwas für Ihre Arbeit gekauft, zum Beispiel einen Computer oder"
-                  + " Fachbücher?",
+                  + " Fachbücher? Halten Sie die Belege bereit.",
               Step.expenses(ExpenseTopic.WORK_EQUIPMENT)),
           Question.yesNo(
               "workTraining",

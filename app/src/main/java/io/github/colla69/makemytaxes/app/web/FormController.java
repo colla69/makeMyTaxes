@@ -52,16 +52,32 @@ class FormController {
 
   record EstimateView(
       String commute, String homeOffice, String listed, String total, String lumpSum,
-      boolean aboveLumpSum) {
+      boolean aboveLumpSum, LimitsView limits) {
 
-    static EstimateView of(WorkExpenseEstimate estimate) {
+    static EstimateView of(WorkExpenseEstimate estimate, YearPack pack) {
       return new EstimateView(
           GermanFormats.format(estimate.commute()),
           GermanFormats.format(estimate.homeOffice()),
           GermanFormats.format(estimate.listed()),
           GermanFormats.format(estimate.total()),
           GermanFormats.format(estimate.lumpSum()),
-          estimate.isAboveLumpSum());
+          estimate.isAboveLumpSum(),
+          LimitsView.of(pack));
+    }
+  }
+
+  /** The rates and limits of the year pack that the estimate uses. The page names their source. */
+  record LimitsView(
+      String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
+      String homeOfficeLimit) {
+
+    static LimitsView of(YearPack pack) {
+      return new LimitsView(
+          GermanFormats.format(pack.commutePerKmFirst20()),
+          GermanFormats.format(pack.commutePerKmFrom21()),
+          GermanFormats.format(pack.commuteLimitWithoutCar()),
+          GermanFormats.format(pack.homeOfficePerDay()),
+          GermanFormats.format(pack.homeOfficeLimit()));
     }
   }
 
@@ -149,7 +165,8 @@ class FormController {
     model.addAttribute("reviews", reviews);
     model.addAttribute(
         "estimate",
-        EstimateView.of(WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored)));
+        EstimateView.of(
+            WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored), pack));
     model.addAttribute("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
     model.addAttribute("withoutForm", withoutForm(stored));
     return "review";

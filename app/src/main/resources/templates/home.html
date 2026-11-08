@@ -14,6 +14,7 @@
 
     <section th:each="person : ${persons}">
       <h2 th:text="${person.name}">Name</h2>
+      <p><a th:href="@{/persons/{id}(id=${person.id})}">Persönliche Angaben ändern</a></p>
       <ul>
         <li th:each="taxReturn : ${person.returns}">
           <a th:href="@{/returns/{id}(id=${taxReturn.id})}"
@@ -28,8 +29,10 @@
 
     <section>
       <h2>Person anlegen</h2>
-      <form class="fields" method="post" th:action="@{/persons}">
-        <div th:replace="~{fields :: field(name='name', label='Name', hint=#{hint.home.name},required=true)}"></div>
+      <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
+      <form id="new-person" class="fields" method="post" th:action="@{/persons}">
+        <div th:replace="~{fields :: field(name='name', label='Name', value=${newName}, hint=#{hint.home.name},required=true)}"></div>
+        <div th:replace="~{person-details :: details}"></div>
         <button>Person anlegen</button>
       </form>
     </section>

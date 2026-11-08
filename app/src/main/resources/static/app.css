@@ -248,8 +248,32 @@ form.inline {
   margin-left: 0.5rem;
 }
 
-#answered li {
+.answered li {
   margin-bottom: 0.4rem;
+}
+
+.answered li a {
+  margin-left: 0.5rem;
+}
+
+#progress {
+  width: 50%;
+  margin-right: 0.5rem;
+}
+
+#question .topic {
+  color: #555;
+  margin-bottom: 0;
+}
+
+#details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 1rem;
+}
+
+#details dd {
+  margin: 0;
 }
 
 .saved {

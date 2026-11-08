@@ -471,20 +471,40 @@ class FormBrowserTest {
     link(page, "Anlage N").click();
     Locator amount = field(page, "grossWage");
 
-    amount.pressSequentially("1234,5x,6");
+    amount.pressSequentially("1234,5x6");
     assertThat(amount).hasValue("1234,56");
     amount.press("Tab");
     assertThat(amount).hasValue("1.234,56");
   }
 
   @Test
-  void aDayCountTakesOnlyDigits() {
+  void anAmountMaskKeepsEverySeparatorAndDigit() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+    Locator amount = field(page, "grossWage");
+
+    amount.pressSequentially("12.50");
+    amount.press("Tab");
+    assertThat(amount).hasValue("12.50");
+
+    amount.fill("");
+    amount.pressSequentially("1234,567");
+    amount.press("Tab");
+    assertThat(amount).hasValue("1234,567");
+  }
+
+  @Test
+  void aDayCountRemovesLettersButKeepsSeparators() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
     link(page, "Anlage N").click();
 
-    field(page, "commuteDays").pressSequentially("1a2,");
+    field(page, "commuteDays").pressSequentially("1a2");
     assertThat(field(page, "commuteDays")).hasValue("12");
+
+    field(page, "commuteKm").pressSequentially("12,5");
+    assertThat(field(page, "commuteKm")).hasValue("12,5");
   }
 
   @Test

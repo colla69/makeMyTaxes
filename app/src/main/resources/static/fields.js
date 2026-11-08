@@ -14,9 +14,11 @@
     return [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)].filter(Boolean).join(".");
   }
 
-  function maskAmount(text) {
-    const [whole, ...rest] = text.replace(/[^\d,]/g, "").split(",");
-    return rest.length === 0 ? whole : whole + "," + rest.join("").slice(0, 2);
+  // A number mask removes only characters that cannot be part of a number. It keeps every digit and
+  // every separator, so a wrong value such as 12.50 or 12,5 reaches the server and fails its check,
+  // instead of turning into another valid number.
+  function maskNumber(text) {
+    return text.replace(/[^\d.,]/g, "");
   }
 
   // 1234,5 becomes 1.234,50.
@@ -31,8 +33,8 @@
 
   const MASKS = {
     DATE: maskDate,
-    MONEY: maskAmount,
-    WHOLE_NUMBER: (text) => text.replace(/\D/g, ""),
+    MONEY: maskNumber,
+    WHOLE_NUMBER: maskNumber,
   };
 
   // A mask acts only while the user types at the end. An edit in the middle or a deletion stays as

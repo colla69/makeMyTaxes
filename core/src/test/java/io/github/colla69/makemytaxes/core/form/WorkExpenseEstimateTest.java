@@ -85,6 +85,23 @@ class WorkExpenseEstimateTest {
   }
 
   @Test
+  @DisplayName(
+      "§ 3 no. 15 sentence 3 and § 40(2) sentence 2 no. 1 EStG, version 31.12.2022: the payments of each employer reduce it")
+  void thePaymentsOfEveryEmployerReduceCommuting() {
+    var twoEmployers =
+        new Answers(
+            Map.of(
+                "commuteDays", "100",
+                "commuteKm", "20",
+                "commuteTransport", "CAR",
+                "employerCommute", "100,00",
+                "employer2-employerCommute", "50,00"));
+
+    assertThat(WorkExpenseEstimate.of(pack, twoEmployers, List.of()).commute())
+        .isEqualTo(Money.ofCents(450_00));
+  }
+
+  @Test
   void onlyWorkTopicsCount() {
     Expense medical =
         new Expense(

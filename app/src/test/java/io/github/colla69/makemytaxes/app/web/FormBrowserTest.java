@@ -487,15 +487,9 @@ class FormBrowserTest {
 
     link(page, "Anlage N").click();
     assertThat(page.locator("#answers .field-group h2"))
-        .hasText(new String[] {"Angaben zum Arbeitslohn", "Werbungskosten"});
+        .hasText(new String[] {"Arbeitgeber 1", "Werbungskosten"});
     assertEquals(
-        List.of(
-            "workplace",
-            "commuteDays",
-            "commuteKm",
-            "commuteTransport",
-            "employerCommute",
-            "homeOfficeDays"),
+        List.of("workplace", "commuteDays", "commuteKm", "commuteTransport", "homeOfficeDays"),
         namesInGroup(page, "Werbungskosten"));
     assertGroupsDoNotOverlap(page);
   }

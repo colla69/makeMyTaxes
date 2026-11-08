@@ -104,7 +104,8 @@ class FormController {
     FormModule form = formOf(returnId, formId);
     Map<String, String> values = new LinkedHashMap<>();
     Map<String, String> errors = new LinkedHashMap<>();
-    for (Field field : form.fields()) {
+    // The submitted names tell which list entries, such as employers, the page had.
+    for (Field field : form.fields(new Answers(submitted))) {
       String value = submitted.getOrDefault(field.id(), "").strip();
       if (value.isEmpty()) {
         continue;
@@ -181,7 +182,7 @@ class FormController {
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
-    model.addAttribute("fieldGroups", fieldGroups(form.fields()));
+    model.addAttribute("fieldGroups", fieldGroups(form.fields(new Answers(values))));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
     model.addAttribute("formErrors", formErrors);

@@ -7,12 +7,16 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.form.Answers;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -28,6 +32,8 @@ class PersonBrowserTest {
   private static Browser browser;
 
   @LocalServerPort private int port;
+
+  @Autowired private HouseholdStore household;
 
   @DynamicPropertySource
   static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -56,6 +62,49 @@ class PersonBrowserTest {
     openMainForm(page, name, "2022");
     assertThat(mainField(page, "birthDate")).hasValue("01.02.1990");
     assertThat(mainField(page, "street")).hasValue("Musterweg");
+  }
+
+  @Test
+  void theNamesOfANewPersonFillTheMainForm() {
+    Page page = browser.newPage();
+    String name = addPerson(page, "01.02.1990", "Musterweg");
+    addReturn(page, name, "2022");
+
+    openMainForm(page, name, "2022");
+    assertThat(mainField(page, "firstName")).hasValue("Made-up");
+    assertThat(mainField(page, "lastName")).hasValue(name.substring("Made-up ".length()));
+  }
+
+  @Test
+  void aPersonWithOneNameKeepsItUntilTheUserSplitsIt() {
+    Page page = browser.newPage();
+    String oldName = "Made-up old " + UUID.randomUUID();
+    household.addPerson(oldName, new Answers(Map.of()));
+    page.navigate(home());
+    section(page, oldName)
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Persönliche Angaben ändern"))
+        .click();
+
+    page.locator("#details [name=street]").fill("Musterweg");
+    page.locator("#details [name=lastName]").fill("Only a surname");
+    page.locator("#details").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator(".saved")).isVisible();
+    page.navigate(home());
+    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(oldName))).hasCount(1);
+    section(page, oldName)
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Persönliche Angaben ändern"))
+        .click();
+
+    String lastName = "Surname " + UUID.randomUUID();
+    page.locator("#details [name=firstName]").fill("Made-up");
+    page.locator("#details [name=lastName]").fill(lastName);
+    page.locator("#details").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator(".saved")).isVisible();
+
+    page.navigate(home());
+    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(oldName))).hasCount(0);
+    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText("Made-up " + lastName)))
+        .hasCount(1);
   }
 
   @Test
@@ -110,26 +159,30 @@ class PersonBrowserTest {
   void aWrongBirthDateShowsAnErrorAndAddsNoPerson() {
     Page page = browser.newPage();
     page.navigate(home());
-    String name = "Made-up " + UUID.randomUUID();
+    String lastName = UUID.randomUUID().toString();
     Locator form = page.locator("#new-person");
-    form.getByLabel("Name").fill(name);
+    form.locator("[name=firstName]").fill("Made-up");
+    form.locator("[name=lastName]").fill(lastName);
     form.locator("[name=birthDate]").fill("31.02.1990");
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
 
     assertThat(form.locator(".field .error")).hasCount(1);
-    assertThat(form.locator("[name=name]")).hasValue(name);
-    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(name))).hasCount(0);
+    assertThat(form.locator("[name=lastName]")).hasValue(lastName);
+    assertThat(form.locator("[name=firstName]")).hasValue("Made-up");
+    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(lastName))).hasCount(0);
   }
 
   private String addPerson(Page page, String birthDate, String street) {
     page.navigate(home());
-    String name = "Made-up " + UUID.randomUUID();
+    String lastName = UUID.randomUUID().toString();
     Locator form = page.locator("#new-person");
-    form.getByLabel("Name").fill(name);
+    form.locator("[name=firstName]").fill("Made-up");
+    form.locator("[name=lastName]").fill(lastName);
     form.locator("[name=birthDate]").fill(birthDate);
     form.locator("[name=street]").fill(street);
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
-    assertThat(section(page, name)).isVisible();
+    String name = "Made-up " + lastName;
+    assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(name))).hasCount(1);
     return name;
   }
 

@@ -118,18 +118,18 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     link(page, "Hauptvordruck").click();
 
-    field(page, "lastName").fill("Made-up");
+    field(page, "occupation").fill("Made-up");
     field(page, "taxId").fill("12345678901");
     save(page);
 
     assertThat(page.locator(".field .error")).containsText("11 Ziffern");
     assertThat(field(page, "taxId")).hasValue("12345678901");
-    assertThat(field(page, "lastName")).hasValue("Made-up");
+    assertThat(field(page, "occupation")).hasValue("Made-up");
 
     // A new page has no input in its session, so it shows only what the server saved.
     Page other = browser.newPage();
     other.navigate(page.url());
-    assertThat(field(other, "lastName")).hasValue("");
+    assertThat(field(other, "occupation")).hasValue("");
   }
 
   @Test
@@ -408,7 +408,7 @@ class FormBrowserTest {
       assertAllFieldsLookLike(reference, columns, page);
     }
     link(page, "Zurück").click();
-    assertThat(page.getByLabel("Name")).isVisible();
+    assertThat(page.locator("#new-person [name=lastName]")).isVisible();
     assertAllFieldsLookLike(reference, columns, page);
   }
 
@@ -504,7 +504,8 @@ class FormBrowserTest {
   void theFieldComponentKeepsTheSettingsOfEachField() {
     Page page = browser.newPage();
     page.navigate("http://127.0.0.1:" + port + "/");
-    assertThat(page.getByLabel("Name")).hasAttribute("required", "required");
+    assertThat(page.locator("#new-person [name=lastName]")).hasAttribute("required", "required");
+    assertThat(page.locator("#new-person [name=firstName]")).hasAttribute("required", "required");
 
     openANewReturn(page, "2022");
     assertThat(page.getByLabel("Datum")).hasAttribute("placeholder", "TT.MM.JJJJ");
@@ -748,9 +749,11 @@ class FormBrowserTest {
 
   private void openANewReturn(Page page, String year) {
     page.navigate("http://127.0.0.1:" + port + "/");
-    String name = "Made-up " + UUID.randomUUID();
-    page.getByLabel("Name").fill(name);
-    page.getByLabel("Name").press("Enter");
+    String lastName = UUID.randomUUID().toString();
+    String name = "Made-up " + lastName;
+    page.locator("#new-person [name=firstName]").fill("Made-up");
+    page.locator("#new-person [name=lastName]").fill(lastName);
+    page.locator("#new-person [name=lastName]").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
     section.getByLabel("Steuerjahr").fill(year);
     section.getByLabel("Steuerjahr").press("Enter");

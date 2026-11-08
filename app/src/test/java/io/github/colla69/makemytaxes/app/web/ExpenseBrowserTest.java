@@ -117,9 +117,11 @@ class ExpenseBrowserTest {
   private void openANewReturnFor2022(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/");
     // Tests share one database, so each test needs its own person and its own return.
-    String name = "Made-up " + UUID.randomUUID();
-    page.getByLabel("Name").fill(name);
-    page.getByLabel("Name").press("Enter");
+    String lastName = UUID.randomUUID().toString();
+    String name = "Made-up " + lastName;
+    page.locator("#new-person [name=firstName]").fill("Made-up");
+    page.locator("#new-person [name=lastName]").fill(lastName);
+    page.locator("#new-person [name=lastName]").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
     section.getByLabel("Steuerjahr").fill("2022");
     section.getByLabel("Steuerjahr").press("Enter");

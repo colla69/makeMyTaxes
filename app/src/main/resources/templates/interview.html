@@ -15,6 +15,8 @@
     <ol id="answered" th:unless="${#lists.isEmpty(answered)}">
       <li th:each="item : ${answered}">
         <span th:text="${item.text}">Frage</span>
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + item.id)}"><span class="hint"
+              th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block>
         <strong th:text="${item.answer}">Ja</strong>
         <form class="inline" method="post" th:action="@{/returns/{r}/interview(r=${returnId})}">
           <input type="hidden" name="question" th:value="${item.id}">
@@ -25,7 +27,9 @@
     </ol>
 
     <section id="question" th:if="${next}">
-      <h2 th:text="${next.text}">Frage</h2>
+      <h2><span th:text="${next.text}">Frage</span>
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + next.id)}"><span class="hint"
+              th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
       <form method="post" class="form-buttons" th:action="@{/returns/{r}/interview(r=${returnId})}">
         <input type="hidden" name="question" th:value="${next.id}">
         <button name="answer" value="YES">Ja</button>

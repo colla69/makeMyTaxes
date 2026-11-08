@@ -11,8 +11,7 @@
     <nav th:replace="~{nav :: nav}"></nav>
     <main class="panel">
     <h1 th:text="'Fragen zu Ihrem Jahr ' + ${taxYear}">Fragen</h1>
-    <!-- data-clear-drafts: the answer changed a form, so fields.js drops the drafts of the forms. -->
-    <p class="saved" th:if="${saved}" data-clear-drafts>Gespeichert.</p>
+    <p class="saved" th:if="${saved}">Gespeichert.</p>
     <p id="progress-text">
       <progress id="progress" th:max="${questionCount}" th:value="${answeredCount}"></progress>
       <span th:text="${answeredCount} + ' von ' + ${questionCount} + ' Fragen beantwortet'">0 von 1</span>
@@ -25,7 +24,9 @@
         <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + question.hintId())}"><span class="hint"
               th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
 
-      <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}">
+      <!-- data-autosave: fields.js saves the field of a field question when the user leaves it. -->
+      <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}"
+            th:data-autosave="${question.type.name() == 'FIELD'} ? @{/returns/{r}/interview/questions/{q}/field(r=${returnId},q=${question.id})} : null">
         <th:block th:if="${question.type.name() == 'YES_NO'}">
           <p class="form-buttons">
             <button name="answer" value="YES" th:attr="aria-pressed=${current == 'YES'}">Ja</button>

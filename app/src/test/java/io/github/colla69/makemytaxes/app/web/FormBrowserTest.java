@@ -113,44 +113,55 @@ class FormBrowserTest {
   }
 
   @Test
-  void aWrongValueShowsAnErrorKeepsTheInputAndSavesNothing() {
+  void aWrongValueShowsItsErrorAtTheFieldAndTheValidFieldsStillSave() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
     link(page, "Hauptvordruck").click();
 
     field(page, "occupation").fill("Made-up");
     field(page, "taxId").fill("12345678901");
-    save(page);
+    field(page, "taxId").press("Tab");
 
-    assertThat(page.locator(".field .error")).containsText("11 Ziffern");
+    assertThat(page.locator(".field:has([name=taxId]) .error")).containsText("11 Ziffern");
     assertThat(field(page, "taxId")).hasValue("12345678901");
-    assertThat(field(page, "occupation")).hasValue("Made-up");
 
-    // A new page has no input in its session, so it shows only what the server saved.
+    // A new page shows only what the database holds.
     Page other = browser.newPage();
     other.navigate(page.url());
-    assertThat(field(other, "occupation")).hasValue("");
+    assertThat(field(other, "occupation")).hasValue("Made-up");
+    assertThat(field(other, "taxId")).hasValue("");
   }
 
   @Test
-  void inputThatIsNotSavedStaysWhenTheUserSwitchesTabs() {
+  void eachFieldSavesWhenTheUserLeavesItWithoutAClickOnSpeichern() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
 
-    page.getByLabel("Beschreibung").fill("Made-up chair");
     link(page, "Anlage N").click();
     fill(page, "grossWage", "2.345,67");
     field(page, "commuteTransport").selectOption("CAR");
     link(page, "Hauptvordruck").click();
     fill(page, "lastName", "Made-up");
-
     link(page, "Anlage N").click();
+    // The link waits for the open save, so the next page comes a moment later.
+    assertThat(field(page, "grossWage")).isVisible();
+
+    page.reload();
     assertThat(field(page, "grossWage")).hasValue("2.345,67");
     assertThat(field(page, "commuteTransport")).hasValue("CAR");
     link(page, "Hauptvordruck").click();
     assertThat(field(page, "lastName")).hasValue("Made-up");
+  }
+
+  @Test
+  void anUnsavedExpenseIsNotKeptInTheBrowser() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    page.getByLabel("Beschreibung").fill("Made-up chair");
+    link(page, "Anlage N").click();
     link(page, "Ausgaben").click();
-    assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up chair");
+    assertThat(page.getByLabel("Beschreibung")).hasValue("");
   }
 
   @Test
@@ -197,7 +208,6 @@ class FormBrowserTest {
     link(page, "Ausgaben").click();
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
     assertThat(page.getByLabel("Beschreibung")).hasValue("");
-    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
   }
 
   @Test

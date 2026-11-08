@@ -18,12 +18,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -130,7 +132,6 @@ class InterviewController {
     values.put(question.id(), question.type() == Type.YES_NO ? answer : Interview.DONE);
     Answers answers = new Answers(values);
     forms.save(returnId, Interview.ID, answers);
-    // The next page tells fields.js that a form changed, so the drafts of the form tabs are old.
     String saved = question.type() == Type.FIELD ? "?saved=true" : "";
     // The new answer can add questions, such as those of another employer.
     return "redirect:"
@@ -138,6 +139,25 @@ class InterviewController {
             .map(next -> questionHref(returnId, next))
             .orElse(topicHref(returnId, question.topic()))
         + saved;
+  }
+
+  /**
+   * Saves the value of a field question when the user leaves the field. The question stays open
+   * until the user goes on with "Weiter". The answer is empty, or it holds the error.
+   */
+  @PostMapping("/returns/{returnId}/interview/questions/{questionId}/field")
+  @ResponseBody
+  ResponseEntity<String> saveFieldAnswer(
+      @PathVariable long returnId,
+      @PathVariable String questionId,
+      @RequestParam(defaultValue = "") String value) {
+    taxYearWithForms(returnId);
+    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
+    if (question.type() != Type.FIELD) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+    }
+    String error = saveField(returnId, question, value.strip());
+    return error == null ? ResponseEntity.ok("") : ResponseEntity.status(422).body(error);
   }
 
   /** Clears the interview answers. The values in the forms stay. */

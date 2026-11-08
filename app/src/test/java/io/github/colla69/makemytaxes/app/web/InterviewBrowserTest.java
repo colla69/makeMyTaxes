@@ -7,6 +7,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import io.github.colla69.makemytaxes.core.form.Kind;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -24,10 +25,13 @@ import org.springframework.test.context.DynamicPropertySource;
 class InterviewBrowserTest {
 
   /** The questions without an employer. */
-  private static final int QUESTIONS = 11;
+  private static final int QUESTIONS = 14;
 
   /** The lines of one certificate and the question for another employer. */
   private static final int QUESTIONS_PER_EMPLOYER = 11;
+
+  /** The four values of one household invoice and the question for another invoice. */
+  private static final int QUESTIONS_PER_INVOICE = 5;
 
   @TempDir static Path databaseFolder;
 
@@ -90,23 +94,85 @@ class InterviewBrowserTest {
 
     assertTopic(page, "Haushalt");
     button(page, "Ja").click();
+    answerInvoice(page, "Made-up Reinigung, R-7, 31.01.2022", "300,00", "250,00");
+    button(page, "Nein").click();
+    for (int category = 0; category < 3; category++) {
+      button(page, "Nein").click();
+    }
     button(page, "Nein").click();
     button(page, "Nein").click();
     assertThat(page.locator("#summary")).containsText("Haushalt");
+    assertThat(page.locator("#summary")).containsText("Überweisung auf ein Konto");
     forward(page).click();
 
-    assertThat(progress).hasAttribute("value", String.valueOf(QUESTIONS + QUESTIONS_PER_EMPLOYER));
+    assertThat(progress)
+        .hasAttribute(
+            "value", String.valueOf(QUESTIONS + QUESTIONS_PER_EMPLOYER + QUESTIONS_PER_INVOICE));
     assertThat(page.locator(".topic-summary h2"))
         .hasText(new String[] {"Beruf", "Arbeitsweg und Arbeit", "Versicherungen", "Haushalt"});
     assertThat(page.locator("#steps li a"))
-        .containsText(new String[] {"Abgabepflicht", "Hauptvordruck", "Anlage N", "Ausgaben", "Ausgaben"});
-    assertThat(page.locator("#steps")).containsText("Haushaltsnahe Aufwendungen");
+        .containsText(
+            new String[] {
+              "Abgabepflicht", "Hauptvordruck", "Anlage N", "Ausgaben", "Haushaltsnahe Aufwendungen"
+            });
     assertThat(tab(page, "Fragen")).hasClass(Pattern.compile("\\bdone\\b"));
 
     tab(page, "Hauptvordruck").click();
     assertThat(page.locator("#answers [name=occupation]")).hasValue("Made-up job");
     tab(page, "Anlage N").click();
     assertThat(page.locator("#answers [name=commuteKm]")).hasValue("12");
+    tab(page, "Haushaltsnahe Aufwendungen").click();
+    assertThat(page.locator("#answers [name=cleaning1-invoice]"))
+        .hasValue("Made-up Reinigung, R-7, 31.01.2022");
+    assertThat(page.locator("#answers [name=cleaning1-paidAmount]")).hasValue("300,00");
+    assertThat(page.locator("#answers [name=cleaning1-labourCost]")).hasValue("250,00");
+    assertThat(page.locator("#answers [name=cleaning1-payment]")).hasValue("TRANSFER");
+  }
+
+  @Test
+  void aCashPaymentStopsTheInvoiceAndAnotherInvoiceGetsItsOwnBlock() {
+    Page page = browser.newPage();
+    openInterview(page);
+    page.navigate(page.url() + "/questions/craftsmen");
+    button(page, "Ja").click();
+
+    assertThat(page.locator("#question h2")).containsText("Handwerker 1");
+    answerField(page, "Made-up Maler, R-1, 03.05.2022");
+    page.locator("#question select[name=answer]").selectOption("CASH");
+    button(page, "Weiter").click();
+    assertThat(page.locator("#question .error")).containsText("Barzahlung");
+    assertThat(page.locator("#question h2")).containsText("Wie haben Sie bezahlt?");
+
+    // Without a transfer, an amount cannot be saved.
+    page.locator("#question select[name=answer]").selectOption("");
+    button(page, "Weiter").click();
+    answerField(page, "800,00");
+    assertThat(page.locator("#question .error")).containsText("Zahlungsweg");
+    back(page).click();
+    page.locator("#question select[name=answer]").selectOption("TRANSFER");
+    button(page, "Weiter").click();
+    answerField(page, "800,00");
+    answerField(page, "500,00");
+    assertThat(page.locator("#question h2")).containsText("weitere Rechnung");
+    button(page, "Ja").click();
+
+    assertThat(page.locator("#question h2")).containsText("Handwerker 2");
+    answerInvoice(page, "Made-up Elektro, R-9, 10.10.2022", "400,00", "100,00");
+    button(page, "Nein").click();
+    assertThat(page.locator("#question h2")).containsText("Nebenkostenabrechnung");
+
+    tab(page, "Haushaltsnahe Aufwendungen").click();
+    assertThat(page.locator("#answers .field-group h2"))
+        .containsText(new String[] {"Handwerker 1", "Handwerker 2"});
+    assertThat(page.locator("#answers [name=craftsmen2-labourCost]")).hasValue("100,00");
+
+    tab(page, "Übersicht").click();
+    Locator form =
+        page.locator(".review-form")
+            .filter(new Locator.FilterOptions().setHasText("Haushaltsnahe Aufwendungen"));
+    assertThat(form).containsText("§ 35a Abs. 3 EStG");
+    assertThat(form).containsText("500,00");
+    assertThat(form).containsText("100,00");
   }
 
   @Test
@@ -287,6 +353,15 @@ class InterviewBrowserTest {
     for (int line = 0; line < 5; line++) {
       answerField(page, "");
     }
+  }
+
+  /** Answers one invoice of a household category, paid by transfer. */
+  private static void answerInvoice(Page page, String invoice, String paid, String labour) {
+    answerField(page, invoice);
+    page.locator("#question select[name=answer]").selectOption(Kind.TRANSFER);
+    button(page, "Weiter").click();
+    answerField(page, paid);
+    answerField(page, labour);
   }
 
   private static Locator fieldAnswer(Page page) {

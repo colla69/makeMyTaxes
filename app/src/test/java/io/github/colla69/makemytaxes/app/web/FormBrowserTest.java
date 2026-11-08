@@ -402,7 +402,7 @@ class FormBrowserTest {
     List<Double> columns = leftEdges(page);
 
     assertAllFieldsLookLike(reference, columns, page);
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Haushaltsnahe Aufwendungen", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertAllFieldsLookLike(reference, columns, page);
@@ -418,7 +418,13 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertOnlyOpenTab(page, "Ausgaben");
 
-    for (String tab : List.of("Fragen", "Hauptvordruck", "Anlage N", "Abgabepflicht", "Übersicht")) {
+    for (String tab : List.of(
+            "Fragen",
+            "Hauptvordruck",
+            "Anlage N",
+            "Haushaltsnahe Aufwendungen",
+            "Abgabepflicht",
+            "Übersicht")) {
       link(page, tab).click();
       assertOnlyOpenTab(page, tab);
     }
@@ -446,7 +452,7 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
 
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Haushaltsnahe Aufwendungen", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
@@ -529,7 +535,7 @@ class FormBrowserTest {
 
     openANewReturn(page, "2022");
     assertEveryFieldHasAHint(page);
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : List.of("Hauptvordruck", "Anlage N", "Haushaltsnahe Aufwendungen", "Abgabepflicht")) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEveryFieldHasAHint(page);

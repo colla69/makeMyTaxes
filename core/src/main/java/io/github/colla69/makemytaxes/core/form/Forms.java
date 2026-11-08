@@ -13,7 +13,12 @@ public final class Forms {
   public static List<FormModule> of(TaxYear taxYear) {
     return YearPack.of(taxYear)
         .<List<FormModule>>map(
-            pack -> List.of(new FilingCheckForm(pack), new MainForm(), new AnlageN(pack)))
+            pack ->
+                List.of(
+                    new FilingCheckForm(pack),
+                    new MainForm(),
+                    new AnlageN(pack),
+                    new HouseholdServicesForm()))
         .orElse(List.of());
   }
 

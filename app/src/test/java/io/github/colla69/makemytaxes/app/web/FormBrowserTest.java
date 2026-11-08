@@ -42,6 +42,8 @@ class FormBrowserTest {
           "certificateS",
           "officeRequest");
 
+  private static final int INTERVIEW_QUESTIONS = 8;
+
   /** The browser rounds column widths, so two equal columns can differ by a part of a pixel. */
   private static final double LAYOUT_ROUNDING = 0.1;
 
@@ -91,6 +93,63 @@ class FormBrowserTest {
     assertThat(page.locator("#filing-result")).containsText("Sie müssen diese Erklärung abgeben");
     assertThat(page.locator("#filing-result")).containsText("§ 46 Abs. 2 Nr. 2 EStG");
     assertThat(page.locator("#filing-result")).containsText("endete am 02.10.2023");
+  }
+
+  @Test
+  void theInterviewAsksOneQuestionAtATimeAndThenListsThePagesOfTheReturn() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Fragen").click();
+    assertOnlyOpenTab(page, "Fragen");
+
+    Locator question = page.locator("#question h2");
+    assertThat(question).containsText("Arbeitslohn");
+    assertThat(page.locator("#steps")).hasCount(0);
+    answer(page, "Ja");
+    assertThat(question).not().containsText("Arbeitslohn");
+
+    assertThat(page.locator("#answered li")).hasCount(1);
+    for (int answered = 2; answered <= INTERVIEW_QUESTIONS; answered++) {
+      answer(page, question.textContent().contains("Handwerker") ? "Ja" : "Nein");
+      assertThat(page.locator("#answered li")).hasCount(answered);
+    }
+    assertThat(page.locator("#question")).hasCount(0);
+
+    Locator steps = page.locator("#steps li a");
+    assertThat(steps).containsText(new String[] {"Abgabepflicht", "Hauptvordruck", "Anlage N", "Ausgaben"});
+    assertThat(page.locator("#steps")).containsText("Haushaltsnahe Aufwendungen");
+    assertThat(page.locator("#steps")).not().containsText("Kinderbetreuung");
+    assertThat(link(page, "Fragen")).hasClass(Pattern.compile("\\bdone\\b"));
+
+    steps.filter(new Locator.FilterOptions().setHasText("Anlage N")).click();
+    assertThat(page.locator("#answers [name=grossWage]")).isVisible();
+    assertTrue(isGreen(link(page, "Fragen")), "The done interview tab is not green");
+
+    link(page, "Fragen").click();
+    page.locator("#answered li").first()
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ändern"))
+        .click();
+    assertThat(question).containsText("Arbeitslohn");
+    assertThat(link(page, "Fragen")).not().hasClass(Pattern.compile("\\bdone\\b"));
+  }
+
+  @Test
+  void aFormWithAllRequiredAnswersSavedHasAGreenTab() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Abgabepflicht").click();
+    assertThat(link(page, "Abgabepflicht")).not().hasClass(Pattern.compile("\\bdone\\b"));
+
+    for (String question : QUESTIONS) {
+      field(page, question).selectOption("NO");
+    }
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+    link(page, "Anlage N").click();
+
+    assertTrue(isGreen(link(page, "Abgabepflicht")), "The done form tab is not green");
+    assertTrue(!isGreen(link(page, "Hauptvordruck")), "A form without answers has a green tab");
+    assertTrue(!isGreen(link(page, "Anlage N")), "The open tab is green");
   }
 
   @Test
@@ -372,6 +431,7 @@ class FormBrowserTest {
     assertThat(page.getByLabel("Datum")).isVisible();
     assertThat(link(page, "Übersicht")).hasCount(0);
     assertThat(link(page, "Anlage N")).hasCount(0);
+    assertThat(link(page, "Fragen")).hasCount(0);
   }
 
   @Test
@@ -398,7 +458,7 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertOnlyOpenTab(page, "Ausgaben");
 
-    for (String tab : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht", "Übersicht")) {
+    for (String tab : List.of("Fragen", "Hauptvordruck", "Anlage N", "Abgabepflicht", "Übersicht")) {
       link(page, tab).click();
       assertOnlyOpenTab(page, tab);
     }
@@ -755,6 +815,20 @@ class FormBrowserTest {
 
   private static void fill(Page page, String name, String value) {
     field(page, name).fill(value);
+  }
+
+  private static void answer(Page page, String answer) {
+    page.locator("#question").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName(answer)).click();
+  }
+
+  /** Green: the green channel of the background is clearly above red and blue. */
+  private static boolean isGreen(Locator tab) {
+    String background = (String) tab.evaluate("tab => getComputedStyle(tab).backgroundColor");
+    String[] rgb = background.replaceAll("[^0-9,]", "").split(",");
+    int red = Integer.parseInt(rgb[0]);
+    int green = Integer.parseInt(rgb[1]);
+    int blue = Integer.parseInt(rgb[2]);
+    return green - red > 15 && green - blue > 15;
   }
 
   private static void save(Page page) {

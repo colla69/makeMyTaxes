@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="'Fragen ' + ${taxYear}">Fragen</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+  </head>
+  <body>
+    <nav th:replace="~{nav :: nav}"></nav>
+    <main class="panel">
+    <h1 th:text="'Fragen zu Ihrem Jahr ' + ${taxYear}">Fragen</h1>
+    <p>Beantworten Sie die Fragen mit Ja oder Nein. Danach zeigt die App, welche Seiten Ihre Erklärung braucht.</p>
+
+    <ol id="answered" th:unless="${#lists.isEmpty(answered)}">
+      <li th:each="item : ${answered}">
+        <span th:text="${item.text}">Frage</span>
+        <strong th:text="${item.answer}">Ja</strong>
+        <form class="inline" method="post" th:action="@{/returns/{r}/interview(r=${returnId})}">
+          <input type="hidden" name="question" th:value="${item.id}">
+          <input type="hidden" name="answer" value="">
+          <button>Ändern</button>
+        </form>
+      </li>
+    </ol>
+
+    <section id="question" th:if="${next}">
+      <h2 th:text="${next.text}">Frage</h2>
+      <form method="post" class="form-buttons" th:action="@{/returns/{r}/interview(r=${returnId})}">
+        <input type="hidden" name="question" th:value="${next.id}">
+        <button name="answer" value="YES">Ja</button>
+        <button name="answer" value="NO">Nein</button>
+      </form>
+    </section>
+
+    <section id="steps" th:unless="${next}">
+      <h2>Diese Seiten braucht Ihre Erklärung</h2>
+      <ol>
+        <li th:each="step : ${steps}">
+          <a th:href="@{${step.href}}" th:text="${step.label}">Seite</a>
+          <span class="help" th:text="${step.hint}">Hinweis</span>
+        </li>
+      </ol>
+      <form method="post" th:action="@{/returns/{r}/interview/restart(r=${returnId})}">
+        <button>Fragen neu beginnen</button>
+      </form>
+    </section>
+    </main>
+  </body>
+</html>

@@ -1,14 +1,20 @@
 <!doctype html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
   <body>
-    <!-- The pages of one return show as tabs. The tab of the open page has aria-current="page". -->
-    <nav th:fragment="nav">
+    <!-- The pages of one return show as tabs. The tab of the open page has aria-current="page".
+         A done page has the class "done". -->
+    <nav th:fragment="nav" th:with="done=${@returnProgress.doneTabs(returnId)}">
       <a th:href="@{/}">Zurück</a>
       <div class="tabs">
+        <a th:unless="${#lists.isEmpty(forms)}"
+           th:href="@{/returns/{id}/interview(id=${returnId})}"
+           th:classappend="${done.contains('interview')} ? 'done'"
+           th:attr="aria-current=${tab == 'interview'} ? 'page' : null">Fragen</a>
         <a th:href="@{/returns/{id}(id=${returnId})}"
            th:attr="aria-current=${tab == 'expenses'} ? 'page' : null">Ausgaben</a>
         <a th:each="item : ${forms}"
            th:href="@{/returns/{r}/forms/{f}(r=${returnId},f=${item.id})}"
+           th:classappend="${done.contains(item.id)} ? 'done'"
            th:attr="aria-current=${tab == item.id} ? 'page' : null"
            th:text="${item.title}">Vordruck</a>
         <a th:unless="${#lists.isEmpty(forms)}"

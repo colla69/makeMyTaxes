@@ -170,6 +170,16 @@ nav {
   background: #d3d8de;
 }
 
+/* A done page has a green tab. The open tab keeps the colour of the panel and a green top line. */
+.tabs a.done {
+  background: #cdebd0;
+  border-top: 3px solid #3c8c46;
+}
+
+.tabs a.done:not([aria-current]):hover {
+  background: #b9e0bd;
+}
+
 .tabs a[aria-current="page"] {
   background: #fff;
   font-weight: 600;
@@ -230,6 +240,16 @@ nav {
 
 .hint:hover .hint-text {
   display: block;
+}
+
+/* A form that holds only one button, inside a line of text. */
+form.inline {
+  display: inline;
+  margin-left: 0.5rem;
+}
+
+#answered li {
+  margin-bottom: 0.4rem;
 }
 
 .saved {

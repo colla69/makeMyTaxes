@@ -8,6 +8,8 @@ import java.util.List;
 /** Hauptvordruck ESt 1 A 2022. */
 public final class MainForm implements FormModule {
 
+  public static final String ID = "main";
+
   private static final String GENERAL = "Allgemeine Angaben";
   private static final String BANK = "Bankverbindung";
   private static final String BENEFITS = "Einkommensersatzleistungen";
@@ -15,7 +17,7 @@ public final class MainForm implements FormModule {
 
   @Override
   public String id() {
-    return "main";
+    return ID;
   }
 
   @Override

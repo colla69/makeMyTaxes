@@ -52,6 +52,42 @@ body {
   padding: 0 0.5rem;
 }
 
+/* The control of a field fills its column. A calendar button sits inside the right end of a date field. */
+.field .control {
+  display: block;
+  position: relative;
+}
+
+.field .control input {
+  width: 100%;
+}
+
+.field .control:has(.calendar) input {
+  padding-right: 2.25rem;
+}
+
+.calendar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  height: 2.25rem;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.25rem;
+}
+
+/* The date input of the browser only opens its calendar. It stays invisible below the calendar button. */
+#calendar-picker {
+  border: 0;
+  height: 1px;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 1px;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;

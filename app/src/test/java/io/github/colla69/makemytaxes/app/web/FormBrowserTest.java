@@ -355,6 +355,7 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-commute")).containsText("0,38 EUR");
     assertThat(estimate.locator("#limit-commute")).containsText("4.500,00 EUR");
     assertThat(estimate.locator("#limit-commute")).containsText("§ 9 Abs. 1 Satz 3 Nr. 4");
+    assertThat(estimate.locator("#limit-commute")).containsText("§ 40 Abs. 2 Satz 2 Nr. 1 EStG");
     assertThat(estimate.locator("#limit-home-office")).containsText("5,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("600,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6b");

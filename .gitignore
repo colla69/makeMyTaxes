@@ -15,6 +15,11 @@ deploy/data/*
 !deploy/data/.gitkeep
 deploy/.env
 
+# The data and the passphrase of the dev container. It holds made-up test data only.
+deploy/data-dev/*
+!deploy/data-dev/.gitkeep
+deploy/.env.dev
+
 # The law library is rebuilt from law/sources.tsv
 law/text/
 

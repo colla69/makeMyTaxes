@@ -27,6 +27,23 @@ else
   fail "the app keeps its bind to 127.0.0.1"
 fi
 
+# The dev compose file must also keep the app closed to other devices.
+compose_dev="$scripts/../deploy/compose-dev.yaml"
+if grep -qE '^[[:space:]]*network_mode: host$' "$compose_dev" &&
+  ! grep -qE '^[[:space:]]*(ports:|SERVER_ADDRESS:)' "$compose_dev"; then
+  ok "the dev app keeps its bind to 127.0.0.1"
+else
+  fail "the dev app keeps its bind to 127.0.0.1"
+fi
+
+# The real repository must ignore the dev data and the dev passphrase.
+if git -C "$scripts/.." check-ignore -q deploy/.env.dev &&
+  git -C "$scripts/.." check-ignore -q deploy/data-dev/made-up.txt; then
+  ok "git ignores the dev data and the dev passphrase"
+else
+  fail "git ignores the dev data and the dev passphrase"
+fi
+
 # The real repository must ignore the live data and the passphrase.
 if git -C "$scripts/.." check-ignore -q deploy/.env &&
   git -C "$scripts/.." check-ignore -q deploy/data/made-up.txt; then

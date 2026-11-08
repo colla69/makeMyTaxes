@@ -16,6 +16,11 @@ an official ELSTER program, and it sends no data to the tax office.
 - Holds form modules, and shows each value with its line and evidence for entry in Mein ELSTER
 - Holds pinned, per-year versions of the tax laws, so each tax rule can cite the right wording
 
+The UI is in German. It shows the pages of a return as tabs. The fields are in three columns,
+grouped by section. Date and amount fields have input masks, date fields have a calendar, and each
+field has a clear button. Input that is not saved yet stays when you change tabs. A `?` beside a
+field shows a short Italian explanation on hover.
+
 ## How it is built
 
 ```mermaid
@@ -43,7 +48,8 @@ MAKEMYTAXES_DATABASE_PASSPHRASE=<passphrase> java -jar app/target/app-*.jar
 ```
 
 Then open <http://127.0.0.1:9091/>. The database is at `~/.local/share/makemytaxes/makemytaxes.db`.
-Keep the passphrase. The app cannot open the database without it.
+Keep the passphrase. The app cannot open the database without it. The dev container also uses
+port 9091, so stop it first with `docker stop makemytaxes-dev`.
 
 ### Run a release in Docker
 
@@ -58,6 +64,18 @@ scripts/deploy-live.sh v<version>
 The container does not read the default database path. To keep an existing database, copy it to
 `deploy/data/makemytaxes.db` before the first start, and use the same passphrase.
 
+### Run dev in Docker
+
+The dev container runs the latest `origin/dev` on <http://127.0.0.1:9091/>, with made-up test data
+only, in `deploy/data-dev`:
+
+```
+scripts/deploy-dev.sh
+```
+
+On the first start, the script writes a fixed test passphrase to `deploy/.env.dev`. Do not put real
+data in the dev container. The review script runs `scripts/deploy-dev.sh` after each merge into `dev`.
+
 ## Run the agents
 
 Agents build this project. You write an issue with the label `agent-ready`, and agents work on it up
@@ -71,7 +89,7 @@ flowchart LR
 ```
 
 You need the [`claude`](https://claude.com/claude-code) and [`gh`](https://cli.github.com/) command
-line tools, with a login for each. Prepare the clone once:
+line tools, with a login for each, and Docker for the dev container. Prepare the clone once:
 
 ```
 git config core.hooksPath .githooks   # turn on the commit checks

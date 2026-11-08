@@ -15,7 +15,8 @@
     <p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p>
     <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
 
-    <form id="answers" method="post"
+    <!-- data-remember: fields.js keeps the input of this form while the user switches tabs. -->
+    <form id="answers" method="post" data-remember
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
         <h2 th:text="${group.title}">Abschnitt</h2>
@@ -25,7 +26,10 @@
           </th:block>
         </div>
       </section>
-      <p><button>Speichern</button></p>
+      <p class="form-buttons">
+        <button>Speichern</button>
+        <button type="button" data-clear-form>Alle Felder leeren</button>
+      </p>
     </form>
 
     <th:block th:if="${filing}">

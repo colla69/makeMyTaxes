@@ -1,6 +1,7 @@
 // Input masks for the fields of fields.html. They only help with typing: the server still parses
 // and checks every value. The listeners sit on the document, so they also work on parts of the
-// page that htmx swaps in.
+// page that htmx swaps in. The same file keeps a draft of the input and runs the clear buttons,
+// because all of this works on the fields of fields.html.
 (() => {
   // A date that the user types with dots, such as 3.2.2022, stays as it is.
   const DATE_WITH_DOTS = /^\d{1,2}(\.(\d{1,2}(\.\d{0,4})?)?)?$/;
@@ -75,6 +76,7 @@
         const [year, month, day] = picker.value.split("-");
         if (target && day) {
           target.value = day + "." + month + "." + year;
+          target.dispatchEvent(new Event("change", { bubbles: true }));
           target.focus();
         }
       });
@@ -104,5 +106,107 @@
     } catch {
       input.focus();
     }
+  });
+
+  // The draft keeps the input of each form while the user switches tabs.
+  //
+  // The input stays in sessionStorage, so it stays only in this browser tab. Each form has its own
+  // entry, with the path of the page and the id of the form.
+  //
+  // A page that the server shows after a save, with a success or an error, holds the current truth.
+  // Then the script stores the values of that page. On other pages, the script puts the stored
+  // input back into the fields.
+  function storageKey(form) {
+    return "draft:" + window.location.pathname + "#" + form.id;
+  }
+
+  function controls(form) {
+    return form.querySelectorAll("input[name]:not([type=hidden]), select[name], textarea[name]");
+  }
+
+  function store(form) {
+    const values = {};
+    controls(form).forEach((control) => {
+      values[control.name] = control.value;
+    });
+    sessionStorage.setItem(storageKey(form), JSON.stringify(values));
+  }
+
+  function restore(form) {
+    const stored = sessionStorage.getItem(storageKey(form));
+    if (stored === null) {
+      return;
+    }
+    const values = JSON.parse(stored);
+    controls(form).forEach((control) => {
+      if (Object.prototype.hasOwnProperty.call(values, control.name)) {
+        control.value = values[control.name];
+      }
+    });
+  }
+
+  // A select goes back to its first option, so that it always has a value. On a form page, the
+  // first option is the blank "Bitte wählen".
+  function clear(control) {
+    if (control.tagName === "SELECT") {
+      control.selectedIndex = 0;
+    } else {
+      control.value = "";
+    }
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function rememberedForms(root) {
+    return root.querySelectorAll("form[data-remember]");
+  }
+
+  function showsAServerResult() {
+    return document.querySelector("main .saved, main .error") !== null;
+  }
+
+  // The draft also listens to "change", because the amount format and the calendar change a value
+  // without an "input" event. These listeners come after the mask listeners, so they store the
+  // masked value.
+  function storeDraft(event) {
+    const form = event.target.closest?.("form[data-remember]");
+    if (form) {
+      store(form);
+    }
+  }
+
+  document.addEventListener("input", storeDraft);
+  document.addEventListener("change", storeDraft);
+
+  document.addEventListener("click", (event) => {
+    const fieldButton = event.target.closest?.("[data-clear-field]");
+    if (fieldButton) {
+      const control = fieldButton.closest(".field").querySelector("input[name], select[name]");
+      clear(control);
+      control.focus();
+      return;
+    }
+    const formButton = event.target.closest?.("[data-clear-form]");
+    if (formButton) {
+      controls(formButton.closest("form")).forEach(clear);
+    }
+  });
+
+  function storeOrRestore() {
+    const fromServer = showsAServerResult();
+    rememberedForms(document).forEach((form) => {
+      if (fromServer) {
+        store(form);
+      } else {
+        restore(form);
+      }
+    });
+  }
+
+  // The script has "defer", so the document is parsed when it runs.
+  storeOrRestore();
+
+  // htmx puts the answer of the server in place. That answer holds the current truth.
+  document.addEventListener("htmx:afterSwap", () => {
+    rememberedForms(document).forEach(store);
   });
 })();

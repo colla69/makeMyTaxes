@@ -68,7 +68,8 @@ public final class Interview {
   /**
    * One screen of the interview.
    *
-   * @param step the page that a yes needs, for a yes/no question only
+   * @param step the page that a yes needs, for a yes/no question only. It is null for a question
+   *     that adds no page.
    * @param formId the form of the field, for a field question only. The ID of the question is the
    *     ID of the field.
    */
@@ -86,6 +87,11 @@ public final class Interview {
     static Question confirm(String id, Topic topic, String text) {
       return new Question(id, topic, Type.CONFIRM, text, null, null);
     }
+
+    /** The ID of the hint text. The questions of each employer share one hint. */
+    public String hintId() {
+      return id.substring(id.indexOf('-') + 1);
+    }
   }
 
   /** The ID of the confirmation of the personal details of the person. */
@@ -95,15 +101,52 @@ public final class Interview {
   private static final List<Step> ALWAYS =
       List.of(Step.form(FilingCheckForm.ID), Step.form(MainForm.ID));
 
-  private static final List<Question> QUESTIONS =
+  /** The ID of the question that starts the employers. */
+  public static final String EMPLOYED = "employed";
+
+  /** The question after the values of one employer. A no ends the employers. */
+  public static final String ANOTHER_EMPLOYER = "anotherEmployer";
+
+  private static final List<Question> START =
       List.of(
           Question.confirm(
               PERSONAL_DETAILS, Topic.JOB, "Stimmen Ihre Angaben zur Person?"),
           Question.yesNo(
-              "employed",
+              EMPLOYED,
               Topic.JOB,
               "Haben Sie in diesem Jahr Arbeitslohn als Arbeitnehmer bekommen?",
-              Step.form(AnlageN.ID)),
+              Step.form(AnlageN.ID)));
+
+  private record EmployerQuestion(String fieldId, String text) {}
+
+  /** One question for each line of the Lohnsteuerbescheinigung, in the order of the form. */
+  private static final List<EmployerQuestion> EMPLOYER_QUESTIONS =
+      List.of(
+          new EmployerQuestion("employerName", "Wie heißt der Arbeitgeber?"),
+          new EmployerQuestion(
+              "employedFrom", "Nr. 1 der Lohnsteuerbescheinigung: Ab welchem Tag dauerte das"
+                  + " Dienstverhältnis?"),
+          new EmployerQuestion(
+              "employedTo", "Nr. 1 der Lohnsteuerbescheinigung: Bis zu welchem Tag dauerte das"
+                  + " Dienstverhältnis?"),
+          new EmployerQuestion(
+              "taxClass", "Welche Steuerklasse steht auf der Lohnsteuerbescheinigung?"),
+          new EmployerQuestion(
+              "grossWage", "Welcher Betrag steht in Nr. 3, Bruttoarbeitslohn?"),
+          new EmployerQuestion("wageTax", "Welcher Betrag steht in Nr. 4, Lohnsteuer?"),
+          new EmployerQuestion(
+              "solidarity", "Welcher Betrag steht in Nr. 5, Solidaritätszuschlag?"),
+          new EmployerQuestion(
+              "churchTax", "Welcher Betrag steht in Nr. 6, Kirchensteuer des Arbeitnehmers?"),
+          new EmployerQuestion(
+              "shortTimeWork", "Welcher Betrag steht in Nr. 15, Kurzarbeitergeld?"),
+          new EmployerQuestion(
+              "employerCommute",
+              "Wie hoch ist die Summe von Nr. 17 und Nr. 18, Arbeitgeberleistungen für Fahrten"
+                  + " zur Arbeit?"));
+
+  private static final List<Question> REST =
+      List.of(
           Question.field(MainForm.ID, "occupation", Topic.JOB, "Welchen Beruf üben Sie aus?"),
           Question.field(
               AnlageN.ID,
@@ -168,33 +211,70 @@ public final class Interview {
 
   private Interview() {}
 
-  public static List<Question> questions() {
-    return QUESTIONS;
+  /**
+   * The questions for these interview answers. A yes to {@link #EMPLOYED} adds the questions of
+   * the first employer, and each yes to {@link #ANOTHER_EMPLOYER} adds one more employer.
+   */
+  public static List<Question> questions(Answers answers) {
+    List<Question> questions = new ArrayList<>(START);
+    if (YES.equals(answers.text(EMPLOYED))) {
+      int employer = 0;
+      do {
+        employer++;
+        questions.addAll(employerQuestions(employer));
+      } while (YES.equals(answers.text(anotherEmployerId(employer))));
+    }
+    questions.addAll(REST);
+    return questions;
   }
 
-  public static Optional<Question> find(String id) {
-    return QUESTIONS.stream().filter(question -> question.id().equals(id)).findFirst();
+  /** The ID of the question after employer {@code employer}. */
+  public static String anotherEmployerId(int employer) {
+    return AnlageN.employerFieldId(employer, ANOTHER_EMPLOYER);
   }
 
-  public static List<Question> questionsOf(Topic topic) {
-    return QUESTIONS.stream().filter(question -> question.topic() == topic).toList();
+  private static List<Question> employerQuestions(int employer) {
+    List<Question> questions = new ArrayList<>();
+    for (EmployerQuestion question : EMPLOYER_QUESTIONS) {
+      questions.add(
+          Question.field(
+              AnlageN.ID,
+              AnlageN.employerFieldId(employer, question.fieldId()),
+              Topic.JOB,
+              "Arbeitgeber " + employer + ": " + question.text()));
+    }
+    questions.add(
+        Question.yesNo(
+            anotherEmployerId(employer),
+            Topic.JOB,
+            "Hatten Sie einen weiteren Arbeitgeber?",
+            null));
+    return questions;
+  }
+
+  public static Optional<Question> find(Answers answers, String id) {
+    return questions(answers).stream().filter(question -> question.id().equals(id)).findFirst();
+  }
+
+  public static List<Question> questionsOf(Answers answers, Topic topic) {
+    return questions(answers).stream().filter(question -> question.topic() == topic).toList();
   }
 
   /** The first question without an answer, or none when the interview is done. */
   public static Optional<Question> next(Answers answers) {
-    return QUESTIONS.stream().filter(question -> !answers.has(question.id())).findFirst();
+    return questions(answers).stream().filter(question -> !answers.has(question.id())).findFirst();
   }
 
   /** The question after this one in the same topic, or none after the last one of the topic. */
-  public static Optional<Question> nextInTopic(Question question) {
-    List<Question> topic = questionsOf(question.topic());
+  public static Optional<Question> nextInTopic(Answers answers, Question question) {
+    List<Question> topic = questionsOf(answers, question.topic());
     int index = topic.indexOf(question);
     return index + 1 < topic.size() ? Optional.of(topic.get(index + 1)) : Optional.empty();
   }
 
   /** The question before this one in the same topic, or none before the first one. */
-  public static Optional<Question> previousInTopic(Question question) {
-    List<Question> topic = questionsOf(question.topic());
+  public static Optional<Question> previousInTopic(Answers answers, Question question) {
+    List<Question> topic = questionsOf(answers, question.topic());
     int index = topic.indexOf(question);
     return index > 0 ? Optional.of(topic.get(index - 1)) : Optional.empty();
   }
@@ -215,7 +295,7 @@ public final class Interview {
   }
 
   public static long answeredCount(Answers answers) {
-    return QUESTIONS.stream().filter(question -> answers.has(question.id())).count();
+    return questions(answers).stream().filter(question -> answers.has(question.id())).count();
   }
 
   public static boolean isDone(Answers answers) {
@@ -225,8 +305,9 @@ public final class Interview {
   /** The pages that the return needs, in the order of the questions. */
   public static List<Step> steps(Answers answers) {
     List<Step> steps = new ArrayList<>(ALWAYS);
-    for (Question question : QUESTIONS) {
+    for (Question question : questions(answers)) {
       if (question.type() == Type.YES_NO
+          && question.step() != null
           && YES.equals(answers.text(question.id()))
           && !steps.contains(question.step())) {
         steps.add(question.step());

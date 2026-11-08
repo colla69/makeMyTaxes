@@ -22,7 +22,7 @@
     <section id="question" th:if="${question}">
       <p class="topic" th:text="${topicLabel} + ', Frage ' + ${position} + ' von ' + ${positions}">Thema</p>
       <h2><span th:text="${question.text}">Frage</span>
-        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + question.id)}"><span class="hint"
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + question.hintId())}"><span class="hint"
               th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
 
       <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}">
@@ -35,7 +35,7 @@
 
         <th:block th:if="${question.type.name() == 'FIELD'}">
           <div class="fields">
-            <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.id)}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
+            <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.hintId())}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
           </div>
           <p class="form-buttons"><button>Weiter</button></p>
         </th:block>

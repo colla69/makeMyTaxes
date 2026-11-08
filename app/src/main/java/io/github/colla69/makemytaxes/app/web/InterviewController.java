@@ -34,7 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 class InterviewController {
 
-  record AnsweredView(String id, String text, String answer) {}
+  record AnsweredView(String id, String hintId, String text, String answer) {}
 
   record TopicView(String name, String label, List<AnsweredView> answers) {}
 
@@ -75,7 +75,8 @@ class InterviewController {
       Model model) {
     taxYearWithForms(returnId);
     model.addAttribute("saved", saved);
-    return questionScreen(returnId, questionOf(questionId), model);
+    return questionScreen(
+        returnId, questionOf(forms.answers(returnId, Interview.ID), questionId), model);
   }
 
   @GetMapping("/returns/{returnId}/interview/topics/{topic}")
@@ -87,13 +88,17 @@ class InterviewController {
     taxYearWithForms(returnId);
     model.addAttribute("saved", saved);
     Topic shown = topicOf(topic);
+    Answers answers = forms.answers(returnId, Interview.ID);
     addCommon(returnId, model);
     model.addAttribute("summary", topicView(returnId, shown));
-    model.addAttribute("back", questionHref(returnId, Interview.questionsOf(shown).getLast()));
+    model.addAttribute(
+        "back", questionHref(returnId, Interview.questionsOf(answers, shown).getLast()));
     model.addAttribute(
         "forward",
         Interview.nextTopic(shown)
-            .map(nextTopic -> questionHref(returnId, Interview.questionsOf(nextTopic).getFirst()))
+            .map(
+                nextTopic ->
+                    questionHref(returnId, Interview.questionsOf(answers, nextTopic).getFirst()))
             .orElse(interviewHref(returnId)));
     return "interview";
   }
@@ -109,7 +114,7 @@ class InterviewController {
       @RequestParam(defaultValue = "") String answer,
       Model model) {
     taxYearWithForms(returnId);
-    Question question = questionOf(questionId);
+    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
     if (question.type() == Type.YES_NO && !List.of(Interview.YES, Interview.NO).contains(answer)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
@@ -123,11 +128,13 @@ class InterviewController {
     }
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
     values.put(question.id(), question.type() == Type.YES_NO ? answer : Interview.DONE);
-    forms.save(returnId, Interview.ID, new Answers(values));
+    Answers answers = new Answers(values);
+    forms.save(returnId, Interview.ID, answers);
     // The next page tells fields.js that a form changed, so the drafts of the form tabs are old.
     String saved = question.type() == Type.FIELD ? "?saved=true" : "";
+    // The new answer can add questions, such as those of another employer.
     return "redirect:"
-        + Interview.nextInTopic(question)
+        + Interview.nextInTopic(answers, question)
             .map(next -> questionHref(returnId, next))
             .orElse(topicHref(returnId, question.topic()))
         + saved;
@@ -144,7 +151,7 @@ class InterviewController {
   /** Writes the value into the form, or returns the error. An empty value clears the field. */
   private String saveField(long returnId, Question question, String value) {
     FormModule form = formOf(returnId, question.formId());
-    Field field = fieldOf(form, question.id());
+    Field field = form.field(question.id()).orElseThrow();
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, form.id()).values());
     if (value.isEmpty()) {
       values.remove(field.id());
@@ -166,16 +173,17 @@ class InterviewController {
 
   private String questionScreen(long returnId, Question question, Model model) {
     addCommon(returnId, model);
-    List<Question> inTopic = Interview.questionsOf(question.topic());
+    Answers answers = forms.answers(returnId, Interview.ID);
+    List<Question> inTopic = Interview.questionsOf(answers, question.topic());
     model.addAttribute("question", question);
     model.addAttribute("topicLabel", question.topic().label());
     model.addAttribute("position", inTopic.indexOf(question) + 1);
     model.addAttribute("positions", inTopic.size());
-    model.addAttribute("back", backHref(returnId, question));
-    model.addAttribute("current", forms.answers(returnId, Interview.ID).text(question.id()));
+    model.addAttribute("back", backHref(returnId, answers, question));
+    model.addAttribute("current", answers.text(question.id()));
     if (question.type() == Type.FIELD) {
       FormModule form = formOf(returnId, question.formId());
-      model.addAttribute("field", fieldOf(form, question.id()));
+      model.addAttribute("field", form.field(question.id()).orElseThrow());
       if (!model.containsAttribute("value")) {
         model.addAttribute("value", forms.answers(returnId, form.id()).text(question.id()));
       }
@@ -203,14 +211,21 @@ class InterviewController {
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute(
         "answeredCount", Interview.answeredCount(forms.answers(returnId, Interview.ID)));
-    model.addAttribute("questionCount", Interview.questions().size());
+    model.addAttribute(
+        "questionCount", Interview.questions(forms.answers(returnId, Interview.ID)).size());
   }
 
   private TopicView topicView(long returnId, Topic topic) {
     Answers answers = forms.answers(returnId, Interview.ID);
     List<AnsweredView> views =
-        Interview.questionsOf(topic).stream()
-            .map(question -> new AnsweredView(question.id(), question.text(), shown(returnId, question, answers)))
+        Interview.questionsOf(answers, topic).stream()
+            .map(
+                question ->
+                    new AnsweredView(
+                        question.id(),
+                        question.hintId(),
+                        question.text(),
+                        shown(returnId, question, answers)))
             .toList();
     return new TopicView(topic.name(), topic.label(), views);
   }
@@ -225,14 +240,14 @@ class InterviewController {
       case CONFIRM -> "Bestätigt";
       case FIELD -> {
         String value = forms.answers(returnId, question.formId()).text(question.id());
-        Field field = fieldOf(formOf(returnId, question.formId()), question.id());
+        Field field = formOf(returnId, question.formId()).field(question.id()).orElseThrow();
         yield value.isEmpty() ? "Keine Angabe" : field.kind().display(value);
       }
     };
   }
 
-  private static String backHref(long returnId, Question question) {
-    return Interview.previousInTopic(question)
+  private static String backHref(long returnId, Answers answers, Question question) {
+    return Interview.previousInTopic(answers, question)
         .map(previous -> questionHref(returnId, previous))
         .or(() -> Interview.previousTopic(question.topic()).map(topic -> topicHref(returnId, topic)))
         .orElse(null);
@@ -268,8 +283,8 @@ class InterviewController {
         "Erfassen Sie jede Zahlung mit der Kategorie „" + step.topic().label() + "“.");
   }
 
-  private static Question questionOf(String questionId) {
-    return Interview.find(questionId).orElseThrow(InterviewController::notFound);
+  private static Question questionOf(Answers answers, String questionId) {
+    return Interview.find(answers, questionId).orElseThrow(InterviewController::notFound);
   }
 
   private static Topic topicOf(String name) {
@@ -277,13 +292,6 @@ class InterviewController {
         .filter(topic -> topic.name().equals(name))
         .findFirst()
         .orElseThrow(InterviewController::notFound);
-  }
-
-  private static Field fieldOf(FormModule form, String fieldId) {
-    return form.fields().stream()
-        .filter(field -> field.id().equals(fieldId))
-        .findFirst()
-        .orElseThrow();
   }
 
   private FormModule formOf(long returnId, String formId) {

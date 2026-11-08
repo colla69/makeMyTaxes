@@ -20,4 +20,17 @@ public record Field(
   public Field withHelp(String text) {
     return new Field(id, section, line, label, kind, required, text);
   }
+
+  /** The same field for one entry of a list, such as one employer. */
+  Field inEntry(String entryId, String entrySection) {
+    return new Field(entryId, entrySection, line, label, kind, required, help);
+  }
+
+  /**
+   * The ID of the hint text. A field of a list entry has the ID {@code <entry>-<field>}, and all
+   * entries share the hint of the field.
+   */
+  public String hintId() {
+    return id.substring(id.indexOf('-') + 1);
+  }
 }

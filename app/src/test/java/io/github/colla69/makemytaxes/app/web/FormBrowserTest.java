@@ -96,6 +96,25 @@ class FormBrowserTest {
   }
 
   @Test
+  void everyInterviewQuestionShowsAnItalianHintOnHover() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Fragen").click();
+
+    Locator hint = page.locator("#question h2 .hint");
+    assertThat(hint.locator(".hint-text")).isHidden();
+    hint.hover();
+    assertThat(hint.locator(".hint-text")).isVisible();
+    assertThat(hint.locator(".hint-text")).containsText("salario");
+
+    for (int answered = 1; answered <= INTERVIEW_QUESTIONS; answered++) {
+      assertThat(hint.locator(".hint-text")).not().isEmpty();
+      answer(page, "Nein");
+    }
+    assertThat(page.locator("#answered li .hint-text")).hasCount(INTERVIEW_QUESTIONS);
+  }
+
+  @Test
   void theInterviewAsksOneQuestionAtATimeAndThenListsThePagesOfTheReturn() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");

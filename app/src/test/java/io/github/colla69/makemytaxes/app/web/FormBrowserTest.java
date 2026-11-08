@@ -107,9 +107,93 @@ class FormBrowserTest {
     assertThat(field(page, "taxId")).hasValue("12345678901");
     assertThat(field(page, "lastName")).hasValue("Made-up");
 
-    page.reload();
+    // A new page has no input in its session, so it shows only what the server saved.
+    Page other = browser.newPage();
+    other.navigate(page.url());
+    assertThat(field(other, "lastName")).hasValue("");
+  }
+
+  @Test
+  void inputThatIsNotSavedStaysWhenTheUserSwitchesTabs() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    page.getByLabel("Beschreibung").fill("Made-up chair");
+    link(page, "Anlage N").click();
+    fill(page, "grossWage", "2.345,67");
+    field(page, "commuteTransport").selectOption("CAR");
     link(page, "Hauptvordruck").click();
-    assertThat(field(page, "lastName")).hasValue("");
+    fill(page, "lastName", "Made-up");
+
+    link(page, "Anlage N").click();
+    assertThat(field(page, "grossWage")).hasValue("2.345,67");
+    assertThat(field(page, "commuteTransport")).hasValue("CAR");
+    link(page, "Hauptvordruck").click();
+    assertThat(field(page, "lastName")).hasValue("Made-up");
+    link(page, "Ausgaben").click();
+    assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up chair");
+  }
+
+  @Test
+  void anAddedExpenseDoesNotComeBackAfterATabSwitch() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("10,00");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Beschreibung").press("Enter");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+
+    link(page, "Anlage N").click();
+    link(page, "Ausgaben").click();
+    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
+    assertThat(page.getByLabel("Beschreibung")).hasValue("");
+    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
+  }
+
+  @Test
+  void clearingTheExpenseTabKeepsAKategorieSoAnExpenseCanStillBeAdded() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Alle Felder leeren"))
+        .click();
+    assertThat(page.getByLabel("Beschreibung")).hasValue("");
+    assertThat(page.getByLabel("Kategorie")).not().hasValue("");
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("10,00");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Beschreibung").press("Enter");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+  }
+
+  @Test
+  void aClearButtonEmptiesOneFieldAndAnotherEmptiesTheTab() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+
+    fill(page, "grossWage", "2.345,67");
+    fill(page, "commuteKm", "12");
+    clearButton(page, "grossWage").click();
+    assertThat(field(page, "grossWage")).hasValue("");
+    assertThat(field(page, "commuteKm")).hasValue("12");
+
+    fill(page, "grossWage", "2.345,67");
+    field(page, "commuteTransport").selectOption("CAR");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Alle Felder leeren"))
+        .click();
+    assertThat(field(page, "grossWage")).hasValue("");
+    assertThat(field(page, "commuteKm")).hasValue("");
+    assertThat(field(page, "commuteTransport")).hasValue("");
+
+    link(page, "Hauptvordruck").click();
+    link(page, "Anlage N").click();
+    assertThat(field(page, "grossWage")).hasValue("");
   }
 
   @Test
@@ -533,6 +617,11 @@ class FormBrowserTest {
 
   private static Locator field(Page page, String name) {
     return page.locator("#answers [name=" + name + "]");
+  }
+
+  private static Locator clearButton(Page page, String name) {
+    return page.locator("#answers .field:has([name=" + name + "])")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Feld leeren"));
   }
 
   private static void fill(Page page, String name, String value) {

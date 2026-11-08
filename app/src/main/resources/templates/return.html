@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>makeMyTaxes</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/app.js}" defer></script>
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
@@ -14,8 +15,10 @@
     <div id="panel" th:fragment="panel">
       <h1 th:text="'Steuererklärung ' + ${taxYear}">Steuererklärung</h1>
 
+      <!-- data-remember: app.js keeps the input of this form while the user switches tabs. -->
       <form id="expense-form"
             class="fields"
+            data-remember
             method="post"
             th:action="@{/returns/{id}/expenses(id=${returnId})}"
             th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"
@@ -27,7 +30,10 @@
         <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
         <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
         <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
-        <button>Ausgabe hinzufügen</button>
+        <p class="form-buttons">
+          <button>Ausgabe hinzufügen</button>
+          <button type="button" data-clear-form>Alle Felder leeren</button>
+        </p>
       </form>
 
       <h2>Summen</h2>

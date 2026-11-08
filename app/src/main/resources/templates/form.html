@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${form.title} + ' ' + ${taxYear}">Vordruck</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/app.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
@@ -14,7 +15,8 @@
     <p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p>
     <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
 
-    <form id="answers" method="post"
+    <!-- data-remember: app.js keeps the input of this form while the user switches tabs. -->
+    <form id="answers" method="post" data-remember
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
         <h2 th:text="${group.title}">Abschnitt</h2>
@@ -24,7 +26,10 @@
           </th:block>
         </div>
       </section>
-      <p><button>Speichern</button></p>
+      <p class="form-buttons">
+        <button>Speichern</button>
+        <button type="button" data-clear-form>Alle Felder leeren</button>
+      </p>
     </form>
 
     <th:block th:if="${filing}">

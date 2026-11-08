@@ -15,6 +15,8 @@
       name. So a new value here must not have the name of a model attribute, such as "error".
     -->
     <div class="field" th:fragment="field">
+      <!-- The clear button is outside the label, so that the label names only the control. -->
+      <div class="control">
       <label>
         <span class="field-label">
           <span class="line" th:if="${line}" th:text="${line}">1</span>
@@ -39,6 +41,9 @@
                th:required="${required}"
                th:autofocus="${autofocus}">
       </label>
+      <button type="button" class="clear-field" data-clear-field aria-label="Feld leeren"
+              title="Feld leeren">×</button>
+      </div>
       <p class="help" th:unless="${#strings.isEmpty(help)}" th:text="${help}">Help</p>
       <p class="error" th:if="${fieldError}" th:text="${fieldError}">Error</p>
     </div>

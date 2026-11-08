@@ -45,6 +45,7 @@ public final class Interview {
 
   public enum Type {
     YES_NO,
+    CHOICE,
     FIELD,
     CONFIRM
   }
@@ -68,24 +69,52 @@ public final class Interview {
   /**
    * One screen of the interview.
    *
-   * @param step the page that a yes needs, for a yes/no question only. It is null for a question
-   *     that adds no page.
+   * @param step the page that a yes needs, for a yes/no question, or that any answer needs, for a
+   *     choice. It is null for a question that adds no page.
    * @param formId the form of the field, for a field question only. The ID of the question is the
    *     ID of the field.
+   * @param options the answers of a yes/no question or a choice, one button each
    */
   public record Question(
-      String id, Topic topic, Type type, String text, Step step, String formId) {
+      String id,
+      Topic topic,
+      Type type,
+      String text,
+      Step step,
+      String formId,
+      List<Kind.Option> options) {
+
+    private static final List<Kind.Option> YES_NO_OPTIONS =
+        List.of(new Kind.Option(YES, "Ja"), new Kind.Option(NO, "Nein"));
 
     static Question yesNo(String id, Topic topic, String text, Step step) {
-      return new Question(id, topic, Type.YES_NO, text, step, null);
+      return new Question(id, topic, Type.YES_NO, text, step, null, YES_NO_OPTIONS);
+    }
+
+    static Question choice(String id, Topic topic, String text, Step step) {
+      return new Question(id, topic, Type.CHOICE, text, step, null, HEALTH_INSURANCE_OPTIONS);
     }
 
     static Question field(String formId, String fieldId, Topic topic, String text) {
-      return new Question(fieldId, topic, Type.FIELD, text, null, formId);
+      return new Question(fieldId, topic, Type.FIELD, text, null, formId, List.of());
     }
 
     static Question confirm(String id, Topic topic, String text) {
-      return new Question(id, topic, Type.CONFIRM, text, null, null);
+      return new Question(id, topic, Type.CONFIRM, text, null, null, List.of());
+    }
+
+    /** True if the answer is one of the buttons of this question. */
+    public boolean allows(String answer) {
+      return options.stream().anyMatch(option -> option.value().equals(answer));
+    }
+
+    /** The label of the button of this answer, or the answer itself. */
+    public String labelOf(String answer) {
+      return options.stream()
+          .filter(option -> option.value().equals(answer))
+          .map(Kind.Option::label)
+          .findFirst()
+          .orElse(answer);
     }
 
     /** The ID of the hint text. The questions of each employer share one hint. */
@@ -106,6 +135,15 @@ public final class Interview {
 
   /** The question after the values of one employer. A no ends the employers. */
   public static final String ANOTHER_EMPLOYER = "anotherEmployer";
+
+  /** The question that decides which lines of the certificates the interview asks. */
+  public static final String HEALTH_INSURANCE = "healthInsurance";
+
+  public static final String STATUTORY = "STATUTORY";
+  public static final String PRIVATE = "PRIVATE";
+
+  private static final List<Kind.Option> HEALTH_INSURANCE_OPTIONS =
+      List.of(new Kind.Option(STATUTORY, "Gesetzlich"), new Kind.Option(PRIVATE, "Privat"));
 
   private static final List<Question> START =
       List.of(
@@ -145,7 +183,7 @@ public final class Interview {
               "Wie hoch ist die Summe von Nr. 17 und Nr. 18, Arbeitgeberleistungen für Fahrten"
                   + " zur Arbeit?"));
 
-  private static final List<Question> REST =
+  private static final List<Question> JOB_AND_COMMUTE =
       List.of(
           Question.field(MainForm.ID, "occupation", Topic.JOB, "Welchen Beruf üben Sie aus?"),
           Question.field(
@@ -180,17 +218,41 @@ public final class Interview {
               "workTraining",
               Topic.COMMUTE,
               "Haben Sie selbst für eine Fortbildung für Ihren Beruf bezahlt?",
-              Step.expenses(ExpenseTopic.WORK_TRAINING)),
+              Step.expenses(ExpenseTopic.WORK_TRAINING)));
+
+  private static final Question HEALTH_INSURANCE_QUESTION =
+      Question.choice(
+          HEALTH_INSURANCE,
+          Topic.INSURANCE,
+          "Sind Sie gesetzlich oder privat krankenversichert?",
+          Step.form(AnlageVorsorgeaufwand.ID));
+
+  /** The questions on the certificate of the private health insurer, by field. */
+  private static final List<String> PRIVATE_TEXTS =
+      List.of(
+          "Bescheinigung Ihres Versicherers: Wie hoch sind die Beiträge zur Krankenversicherung"
+              + " für die Basisabsicherung?",
+          "Bescheinigung Ihres Versicherers: Wie hoch sind die Beiträge zur privaten"
+              + " Pflege-Pflichtversicherung?",
+          "Bescheinigung Ihres Versicherers: Wie hoch sind die erstatteten Beiträge?");
+
+  /** The other insurances stay receipts on the expense page, so each amount keeps its evidence. */
+  private static final List<Question> INSURANCE_REST =
+      List.of(
           Question.yesNo(
               "insurance",
               Topic.INSURANCE,
-              "Haben Sie selbst Beiträge zu Versicherungen bezahlt?",
+              "Haben Sie weitere Versicherungen bezahlt, zum Beispiel Haftpflicht, Unfall,"
+                  + " Berufsunfähigkeit oder Risikolebensversicherung?",
               Step.expenses(ExpenseTopic.INSURANCE)),
           Question.yesNo(
               "medical",
               Topic.INSURANCE,
               "Haben Sie selbst Kosten für Ärzte, Medikamente oder Brillen bezahlt?",
-              Step.expenses(ExpenseTopic.MEDICAL)),
+              Step.expenses(ExpenseTopic.MEDICAL)));
+
+  private static final List<Question> HOUSEHOLD =
+      List.of(
           Question.yesNo(
               "householdServices",
               Topic.HOUSEHOLD,
@@ -213,18 +275,70 @@ public final class Interview {
 
   /**
    * The questions for these interview answers. A yes to {@link #EMPLOYED} adds the questions of
-   * the first employer, and each yes to {@link #ANOTHER_EMPLOYER} adds one more employer.
+   * the first employer, and each yes to {@link #ANOTHER_EMPLOYER} adds one more employer. The
+   * answer to {@link #HEALTH_INSURANCE} adds the social insurance lines of each employer.
    */
   public static List<Question> questions(Answers answers) {
     List<Question> questions = new ArrayList<>(START);
-    if (YES.equals(answers.text(EMPLOYED))) {
-      int employer = 0;
-      do {
-        employer++;
-        questions.addAll(employerQuestions(employer));
-      } while (YES.equals(answers.text(anotherEmployerId(employer))));
+    int employers = employerCount(answers);
+    for (int employer = 1; employer <= employers; employer++) {
+      questions.addAll(employerQuestions(employer));
     }
-    questions.addAll(REST);
+    questions.addAll(JOB_AND_COMMUTE);
+    questions.add(HEALTH_INSURANCE_QUESTION);
+    questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
+    questions.addAll(INSURANCE_REST);
+    questions.addAll(HOUSEHOLD);
+    return questions;
+  }
+
+  /** The number of employers: none without employment, then one more for each yes. */
+  private static int employerCount(Answers answers) {
+    if (!YES.equals(answers.text(EMPLOYED))) {
+      return 0;
+    }
+    int employer = 1;
+    while (YES.equals(answers.text(anotherEmployerId(employer)))) {
+      employer++;
+    }
+    return employer;
+  }
+
+  /**
+   * The social insurance lines of each certificate, and for a private insurance the values of the
+   * certificate of the insurer. Without an answer to the kind of health insurance, there are none.
+   */
+  private static List<Question> insuranceQuestions(String healthInsurance, int employers) {
+    if (!HEALTH_INSURANCE_QUESTION.allows(healthInsurance)) {
+      return List.of();
+    }
+    boolean isPrivate = PRIVATE.equals(healthInsurance);
+    List<Field> lines =
+        isPrivate
+            ? AnlageVorsorgeaufwand.PRIVATE_EMPLOYER_FIELDS
+            : AnlageVorsorgeaufwand.STATUTORY_EMPLOYER_FIELDS;
+    List<Question> questions = new ArrayList<>();
+    for (int employer = 1; employer <= employers; employer++) {
+      for (Field line : lines) {
+        questions.add(
+            Question.field(
+                AnlageVorsorgeaufwand.ID,
+                AnlageN.employerFieldId(employer, line.id()),
+                Topic.INSURANCE,
+                "Arbeitgeber %d: Welcher Betrag steht auf der Lohnsteuerbescheinigung in %s?"
+                    .formatted(employer, line.label().replace(" (EUR)", ""))));
+      }
+    }
+    if (isPrivate) {
+      for (int index = 0; index < PRIVATE_TEXTS.size(); index++) {
+        questions.add(
+            Question.field(
+                AnlageVorsorgeaufwand.ID,
+                AnlageVorsorgeaufwand.PRIVATE_FIELDS.get(index).id(),
+                Topic.INSURANCE,
+                PRIVATE_TEXTS.get(index)));
+      }
+    }
     return questions;
   }
 
@@ -302,13 +416,21 @@ public final class Interview {
     return next(answers).isEmpty();
   }
 
+  /** A yes adds the page of a yes/no question. Any answer adds the page of a choice. */
+  private static boolean needsStep(Question question, Answers answers) {
+    return switch (question.type()) {
+      case YES_NO -> YES.equals(answers.text(question.id()));
+      case CHOICE -> question.allows(answers.text(question.id()));
+      case FIELD, CONFIRM -> false;
+    };
+  }
+
   /** The pages that the return needs, in the order of the questions. */
   public static List<Step> steps(Answers answers) {
     List<Step> steps = new ArrayList<>(ALWAYS);
     for (Question question : questions(answers)) {
-      if (question.type() == Type.YES_NO
-          && question.step() != null
-          && YES.equals(answers.text(question.id()))
+      if (question.step() != null
+          && needsStep(question, answers)
           && !steps.contains(question.step())) {
         steps.add(question.step());
       }

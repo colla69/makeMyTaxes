@@ -45,6 +45,10 @@ class FormBrowserTest {
   /** The browser rounds column widths, so two equal columns can differ by a part of a pixel. */
   private static final double LAYOUT_ROUNDING = 0.1;
 
+  /** The tabs of the forms with fields. */
+  private static final List<String> FORM_TABS =
+      List.of("Hauptvordruck", "Anlage N", "Anlage Vorsorgeaufwand", "Abgabepflicht");
+
   @TempDir static Path databaseFolder;
 
   private static Playwright playwright;
@@ -413,7 +417,7 @@ class FormBrowserTest {
     List<Double> columns = leftEdges(page);
 
     assertAllFieldsLookLike(reference, columns, page);
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : FORM_TABS) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertAllFieldsLookLike(reference, columns, page);
@@ -429,7 +433,14 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertOnlyOpenTab(page, "Ausgaben");
 
-    for (String tab : List.of("Fragen", "Hauptvordruck", "Anlage N", "Abgabepflicht", "Übersicht")) {
+    for (String tab :
+        List.of(
+            "Fragen",
+            "Hauptvordruck",
+            "Anlage N",
+            "Anlage Vorsorgeaufwand",
+            "Abgabepflicht",
+            "Übersicht")) {
       link(page, tab).click();
       assertOnlyOpenTab(page, tab);
     }
@@ -457,7 +468,7 @@ class FormBrowserTest {
     openANewReturn(page, "2022");
     assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
 
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : FORM_TABS) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
@@ -540,7 +551,7 @@ class FormBrowserTest {
 
     openANewReturn(page, "2022");
     assertEveryFieldHasAHint(page);
-    for (String form : List.of("Hauptvordruck", "Anlage N", "Abgabepflicht")) {
+    for (String form : FORM_TABS) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
       assertEveryFieldHasAHint(page);

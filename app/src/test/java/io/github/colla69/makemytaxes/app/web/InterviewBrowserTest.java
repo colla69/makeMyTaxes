@@ -23,11 +23,14 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class InterviewBrowserTest {
 
-  /** The questions without an employer. */
-  private static final int QUESTIONS = 14;
+  /** The questions without an employer and with a statutory health insurance. */
+  private static final int QUESTIONS = 15;
 
   /** The lines of one certificate and the question for another employer. */
   private static final int QUESTIONS_PER_EMPLOYER = 11;
+
+  /** The social insurance lines of one certificate, for a statutory health insurance. */
+  private static final int STATUTORY_LINES = 7;
 
   @TempDir static Path databaseFolder;
 
@@ -91,9 +94,24 @@ class InterviewBrowserTest {
     assertThat(commute.locator("[data-question=homeOfficeDays] strong")).hasText("40");
     forward(page).click();
 
+    // Insurance: a statutory insurance asks the social insurance lines of the certificate.
     assertTopic(page, "Versicherungen");
+    assertThat(page.locator("#question h2")).containsText("gesetzlich oder privat");
+    button(page, "Gesetzlich").click();
+    assertThat(page.locator("#question h2")).containsText("Nr. 22a/b");
+    answerField(page, "2.790,00");
+    answerField(page, "2.790,00");
+    answerField(page, "");
+    answerField(page, "");
+    assertThat(page.locator("#question h2")).containsText("Nr. 25");
+    answerField(page, "2.400,00");
+    answerField(page, "");
+    answerField(page, "");
+    assertThat(page.locator("#question h2")).containsText("weitere Versicherungen");
     button(page, "Ja").click();
     button(page, "Nein").click();
+    assertThat(page.locator("#summary")).containsText("Gesetzlich");
+    assertThat(page.locator("#summary")).containsText("2.400,00");
     forward(page).click();
 
     assertTopic(page, "Haushalt");
@@ -103,12 +121,22 @@ class InterviewBrowserTest {
     assertThat(page.locator("#summary")).containsText("Haushalt");
     forward(page).click();
 
-    assertThat(progress).hasAttribute("value", String.valueOf(QUESTIONS + QUESTIONS_PER_EMPLOYER));
+    assertThat(progress)
+        .hasAttribute(
+            "value", String.valueOf(QUESTIONS + QUESTIONS_PER_EMPLOYER + STATUTORY_LINES));
     assertThat(page.locator(".topic-summary h2"))
         .hasText(new String[] {"Beruf", "Arbeitsweg und Arbeit", "Versicherungen", "Haushalt"});
     assertThat(page.locator("#steps li a"))
         .containsText(
-            new String[] {"Abgabepflicht", "Hauptvordruck", "Anlage N", "Ausgaben", "Ausgaben", "Ausgaben"});
+            new String[] {
+              "Abgabepflicht",
+              "Hauptvordruck",
+              "Anlage N",
+              "Ausgaben",
+              "Anlage Vorsorgeaufwand",
+              "Ausgaben",
+              "Ausgaben"
+            });
     assertThat(page.locator("#steps")).containsText("Arbeitsmittel");
     assertThat(page.locator("#steps")).containsText("Haushaltsnahe Aufwendungen");
     assertThat(tab(page, "Fragen")).hasClass(Pattern.compile("\\bdone\\b"));
@@ -120,6 +148,9 @@ class InterviewBrowserTest {
     assertThat(page.locator("#answers [name=commuteTransport]")).hasValue("CAR");
     assertThat(page.locator("#answers [name=commuteDays]")).hasValue("180");
     assertThat(page.locator("#answers [name=homeOfficeDays]")).hasValue("40");
+    tab(page, "Anlage Vorsorgeaufwand").click();
+    assertThat(page.locator("#answers [name=pensionEmployee]")).hasValue("2.790,00");
+    assertThat(page.locator("#answers [name=healthEmployee]")).hasValue("2.400,00");
   }
 
   @Test
@@ -136,6 +167,110 @@ class InterviewBrowserTest {
     answerField(page, "180");
     assertThat(page.locator("#question .error")).containsText("Höchstbetrag");
     assertThat(fieldAnswer(page)).hasValue("180");
+  }
+
+  @Test
+  void aPrivateInsuranceAsksTheLinesOfEachCertificateAndTheCertificateOfTheInsurer() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+    answerEmployer(page, "Made-up GmbH", "30.000,00");
+    button(page, "Ja").click();
+    answerEmployer(page, "Made-up AG", "15.000,00");
+    button(page, "Nein").click();
+    answerField(page, "");
+    forward(page).click();
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
+    button(page, "Nein").click();
+    button(page, "Nein").click();
+    forward(page).click();
+
+    button(page, "Privat").click();
+    // Nr. 22a/b, Nr. 23a/b, Nr. 24b and Nr. 27 for each employer.
+    assertThat(page.locator("#question h2")).containsText("Arbeitgeber 1: ");
+    for (int line = 0; line < 2; line++) {
+      answerField(page, "");
+    }
+    assertThat(page.locator("#question h2")).containsText("Nr. 24b");
+    answerField(page, "1.200,00");
+    answerField(page, "");
+    assertThat(page.locator("#question h2")).containsText("Arbeitgeber 2: ");
+    assertThat(page.locator("#question h2 .hint-text")).containsText("punto 22a");
+    for (int line = 0; line < 2; line++) {
+      answerField(page, "");
+    }
+    answerField(page, "600,00");
+    answerField(page, "");
+    assertThat(page.locator("#question h2")).containsText("Basisabsicherung");
+    answerField(page, "4.000,00");
+    answerField(page, "500,00");
+    answerField(page, "150,00");
+    button(page, "Nein").click();
+    button(page, "Nein").click();
+    assertThat(page.locator("#summary")).containsText("Privat");
+
+    tab(page, "Anlage Vorsorgeaufwand").click();
+    assertThat(page.locator("#answers .field-group h2"))
+        .hasText(
+            new String[] {
+              "Arbeitgeber 1", "Arbeitgeber 2", "Private Kranken- und Pflegeversicherung"
+            });
+    assertThat(page.locator("#answers [name=healthAllowancePrivate]")).hasValue("1.200,00");
+    assertThat(page.locator("#answers [name=employer2-healthAllowancePrivate]"))
+        .hasValue("600,00");
+    assertThat(page.locator("#answers [name=privateHealthBasic]")).hasValue("4.000,00");
+
+    // The review shows the values only, with no sum and no deductible amount.
+    tab(page, "Übersicht").click();
+    Locator form =
+        page.locator(".review-form")
+            .filter(new Locator.FilterOptions().setHasText("Anlage Vorsorgeaufwand"));
+    assertThat(form).containsText("Nr. 24b");
+    assertThat(form).containsText("1.200,00");
+    assertThat(form).containsText("600,00");
+    assertThat(form).containsText("4.000,00");
+    assertThat(form).containsText("150,00");
+    assertThat(form).not().containsText("1.800,00");
+  }
+
+  @Test
+  void aChangeToAPrivateInsuranceRemovesTheStatutoryLines() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+    answerEmployer(page, "Made-up GmbH", "30.000,00");
+    button(page, "Nein").click();
+    answerField(page, "");
+    forward(page).click();
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
+    button(page, "Nein").click();
+    button(page, "Nein").click();
+    forward(page).click();
+
+    button(page, "Gesetzlich").click();
+    answerField(page, "");
+    answerField(page, "2.790,00");
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "2.400,00");
+
+    tab(page, "Fragen").click();
+    assertThat(page.locator("#question h2")).containsText("Nr. 26");
+    page.navigate(page.url() + "/questions/healthInsurance");
+    assertThat(button(page, "Gesetzlich")).hasAttribute("aria-pressed", "true");
+    button(page, "Privat").click();
+
+    tab(page, "Anlage Vorsorgeaufwand").click();
+    assertThat(page.locator("#answers [name=pensionEmployee]")).hasValue("2.790,00");
+    assertThat(page.locator("#answers [name=healthEmployee]")).hasValue("");
   }
 
   @Test
@@ -289,6 +424,8 @@ class InterviewBrowserTest {
         button(page, "Ja, die Angaben stimmen").click();
       } else if (fieldAnswer(page).count() > 0) {
         answerField(page, "");
+      } else if (button(page, "Gesetzlich").count() > 0) {
+        button(page, "Gesetzlich").click();
       } else {
         button(page, "Nein").click();
       }

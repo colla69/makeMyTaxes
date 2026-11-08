@@ -15,7 +15,18 @@ public final class MainForm implements FormModule {
    * form of each year shows them until the user saves other values there.
    */
   public static final List<String> PERSONAL_FIELDS =
-      List.of("taxId", "birthDate", "street", "houseNumber", "postalCode", "city");
+      List.of(
+          "taxId",
+          "birthDate",
+          "lastName",
+          "firstName",
+          "street",
+          "houseNumber",
+          "postalCode",
+          "city");
+
+  /** The personal fields that a new person must have. */
+  public static final List<String> NAME_FIELDS = List.of("lastName", "firstName");
 
   private static final String GENERAL = "Allgemeine Angaben";
   private static final String BANK = "Bankverbindung";

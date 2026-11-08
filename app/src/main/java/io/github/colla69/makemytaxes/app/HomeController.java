@@ -36,17 +36,21 @@ class HomeController {
 
   @PostMapping("/persons")
   String addPerson(@RequestParam Map<String, String> submitted, Model model) {
-    String name = submitted.getOrDefault("name", "").strip();
     Map<String, String> details = details(submitted);
+    if (displayName(details).isEmpty()) {
+      return "redirect:/";
+    }
     Map<String, String> errors = errors(details);
+    for (String nameField : MainForm.NAME_FIELDS) {
+      if (!details.containsKey(nameField)) {
+        errors.put(nameField, "Bitte ausfüllen.");
+      }
+    }
     if (!errors.isEmpty()) {
       fillHome(model, details, errors);
-      model.addAttribute("newName", name);
       return "home";
     }
-    if (!name.isEmpty()) {
-      household.addPerson(name, new Answers(details));
-    }
+    household.addPerson(displayName(details), new Answers(details));
     return "redirect:/";
   }
 
@@ -71,6 +75,10 @@ class HomeController {
       return "person";
     }
     household.saveDetails(personId, new Answers(details));
+    // A person from before the name fields keeps its name until the user enters both names here.
+    if (details.keySet().containsAll(MainForm.NAME_FIELDS)) {
+      household.rename(personId, displayName(details));
+    }
     return "redirect:/persons/" + personId + "?saved=true";
   }
 
@@ -90,6 +98,7 @@ class HomeController {
   private void fillHome(Model model, Map<String, String> values, Map<String, String> errors) {
     model.addAttribute("persons", household.persons());
     model.addAttribute("personalFields", PERSONAL_FIELDS);
+    model.addAttribute("requiredFields", MainForm.NAME_FIELDS);
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
   }
@@ -103,8 +112,15 @@ class HomeController {
     model.addAttribute("personId", personId);
     model.addAttribute("personName", name);
     model.addAttribute("personalFields", PERSONAL_FIELDS);
+    model.addAttribute("requiredFields", List.of());
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
+  }
+
+  /** The name that the app shows: first name, then surname. Empty if the user entered neither. */
+  private static String displayName(Map<String, String> details) {
+    return (details.getOrDefault("firstName", "") + " " + details.getOrDefault("lastName", ""))
+        .strip();
   }
 
   /** The personal details that the user entered. A blank detail is not in the map. */

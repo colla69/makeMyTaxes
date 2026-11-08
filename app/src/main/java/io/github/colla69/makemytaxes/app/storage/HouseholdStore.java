@@ -45,6 +45,10 @@ public class HouseholdStore {
         .optional();
   }
 
+  public void rename(long personId, String name) {
+    jdbc.sql("update person set name = ? where id = ?").params(name, personId).update();
+  }
+
   /** The personal details, such as the address. They hold for every year of the person. */
   public Answers detailsOf(long personId) {
     Map<String, String> values = new LinkedHashMap<>();

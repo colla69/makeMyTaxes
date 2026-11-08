@@ -25,8 +25,9 @@ class RestartBrowserTest {
 
       try (ConfigurableApplicationContext first = start()) {
         page.navigate(url(first));
-        page.getByLabel("Name").fill("Made-up restart person");
-        page.getByLabel("Name").press("Enter");
+        page.locator("#new-person [name=firstName]").fill("Made-up restart");
+        page.locator("#new-person [name=lastName]").fill("person");
+        page.locator("#new-person [name=lastName]").press("Enter");
         assertThat(page.locator("section").first()).containsText("Made-up restart person");
       }
 

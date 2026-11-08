@@ -23,7 +23,11 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class InterviewBrowserTest {
 
+  /** The questions without an employer. */
   private static final int QUESTIONS = 11;
+
+  /** The lines of one certificate and the question for another employer. */
+  private static final int QUESTIONS_PER_EMPLOYER = 11;
 
   @TempDir static Path databaseFolder;
 
@@ -65,6 +69,8 @@ class InterviewBrowserTest {
     button(page, "Ja, die Angaben stimmen").click();
     assertThat(progress).hasAttribute("value", "1");
     button(page, "Ja").click();
+    answerEmployer(page, "Made-up GmbH", "30.000,00");
+    button(page, "Nein").click();
     answerField(page, "Made-up job");
     assertThat(page.locator("#summary")).containsText("Made-up job");
     assertThat(page.locator("#summary")).containsText("Bestätigt");
@@ -89,7 +95,7 @@ class InterviewBrowserTest {
     assertThat(page.locator("#summary")).containsText("Haushalt");
     forward(page).click();
 
-    assertThat(progress).hasAttribute("value", String.valueOf(QUESTIONS));
+    assertThat(progress).hasAttribute("value", String.valueOf(QUESTIONS + QUESTIONS_PER_EMPLOYER));
     assertThat(page.locator(".topic-summary h2"))
         .hasText(new String[] {"Beruf", "Arbeitsweg und Arbeit", "Versicherungen", "Haushalt"});
     assertThat(page.locator("#steps li a"))
@@ -101,6 +107,74 @@ class InterviewBrowserTest {
     assertThat(page.locator("#answers [name=occupation]")).hasValue("Made-up job");
     tab(page, "Anlage N").click();
     assertThat(page.locator("#answers [name=commuteKm]")).hasValue("12");
+  }
+
+  @Test
+  void eachEmployerGetsTheLinesOfItsCertificateAndItsOwnBlockUntilANo() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+
+    // Each line names its number on the Lohnsteuerbescheinigung.
+    answerField(page, "Made-up GmbH");
+    answerField(page, "01.01.2022");
+    answerField(page, "30.06.2022");
+    answerField(page, "1");
+    assertThat(page.locator("#question h2")).containsText("Nr. 3");
+    assertThat(page.locator("#question label")).containsText("Nr. 3 Bruttoarbeitslohn");
+    answerField(page, "20.000,00");
+    answerField(page, "3.000,00");
+    for (int line = 0; line < 4; line++) {
+      answerField(page, "");
+    }
+    assertThat(page.locator("#question h2")).containsText("weiteren Arbeitgeber");
+    assertThat(page.locator("#question h2 .hint-text")).containsText("altro datore di lavoro");
+    button(page, "Ja").click();
+
+    // The second employer shares the hints of the first.
+    assertThat(page.locator("#question h2")).containsText("Arbeitgeber 2");
+    assertThat(page.locator("#question h2 .hint-text")).containsText("nome del datore di lavoro");
+    assertThat(page.locator("#question .field .hint-text")).containsText("nome del datore di lavoro");
+    answerEmployer(page, "Made-up AG", "15.000,00");
+    button(page, "Nein").click();
+    assertThat(page.locator("#question h2")).containsText("Beruf");
+    assertThat(page.locator("#progress"))
+        .hasAttribute("value", String.valueOf(2 + 2 * QUESTIONS_PER_EMPLOYER));
+
+    tab(page, "Anlage N").click();
+    assertThat(page.locator("#answers .field-group h2"))
+        .hasText(new String[] {"Arbeitgeber 1", "Arbeitgeber 2", "Werbungskosten"});
+    assertThat(page.locator("#answers [name=employerName]")).hasValue("Made-up GmbH");
+    assertThat(page.locator("#answers [name=employedTo]")).hasValue("30.06.2022");
+    assertThat(page.locator("#answers [name=employer2-employerName]")).hasValue("Made-up AG");
+    assertThat(page.locator("#answers [name=employer2-grossWage]")).hasValue("15.000,00");
+
+    // A save of the tab keeps the second employer.
+    page.locator("#answers [name=employer2-grossWage]").fill("16.000,00");
+    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator(".saved")).isVisible();
+    assertThat(page.locator("#answers [name=employer2-grossWage]")).hasValue("16.000,00");
+
+    // The period of a certificate must start before it ends.
+    page.locator("#answers [name=employer2-employedFrom]").fill("01.06.2022");
+    page.locator("#answers [name=employer2-employedTo]").fill("01.05.2022");
+    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator("p.error").first())
+        .containsText("Arbeitgeber 2: Das Ende des Dienstverhältnisses liegt vor dem Beginn.");
+    page.locator("#answers [name=employer2-employedFrom]").fill("");
+    page.locator("#answers [name=employer2-employedTo]").fill("");
+    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator(".saved")).isVisible();
+
+    // The review shows one block for each employer and no sum.
+    tab(page, "Übersicht").click();
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN.locator("h3")).containsText(new String[] {"Arbeitgeber 1", "Arbeitgeber 2"});
+    assertThat(anlageN).containsText("20.000,00");
+    assertThat(anlageN).containsText("16.000,00");
+    assertThat(anlageN).not().containsText("36.000,00");
   }
 
   @Test
@@ -203,6 +277,18 @@ class InterviewBrowserTest {
     button(page, "Weiter").click();
   }
 
+  /** Answers the lines of one certificate: the name and the gross wage, the rest empty. */
+  private static void answerEmployer(Page page, String name, String grossWage) {
+    answerField(page, name);
+    for (int line = 0; line < 3; line++) {
+      answerField(page, "");
+    }
+    answerField(page, grossWage);
+    for (int line = 0; line < 5; line++) {
+      answerField(page, "");
+    }
+  }
+
   private static Locator fieldAnswer(Page page) {
     return page.locator("#question input[name=answer]");
   }
@@ -226,9 +312,11 @@ class InterviewBrowserTest {
 
   private void openInterview(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/");
-    String name = "Made-up " + UUID.randomUUID();
+    String lastName = UUID.randomUUID().toString();
+    String name = "Made-up " + lastName;
     Locator form = page.locator("#new-person");
-    form.getByLabel("Name").fill(name);
+    form.locator("[name=firstName]").fill("Made-up");
+    form.locator("[name=lastName]").fill(lastName);
     form.locator("[name=street]").fill("Musterweg");
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));

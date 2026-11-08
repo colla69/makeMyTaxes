@@ -21,7 +21,7 @@
       <div class="field-row">
       <label>
         <span class="field-label">
-          <span class="line" th:if="${line}" th:text="${line}">1</span>
+          <span class="line" th:unless="${#strings.isEmpty(line)}" th:text="${line}">1</span>
           <span th:text="${label}">Label</span>
           <span class="hint" th:unless="${#strings.isEmpty(hint)}" aria-hidden="true">?<span
                 class="hint-text" th:text="${hint}">Hint</span></span>

@@ -38,6 +38,26 @@ prepare_worktree() { # directory, git ref
   fi
 }
 
+# Prints the number of blockers of an issue that are not done. A blocker is done when it is closed or
+# has the label on-dev, because GitHub closes an issue only when its change reaches main.
+unfinished_blockers() { # issue
+  gh api "repos/$REPO/issues/$1/dependencies/blocked_by?per_page=100" --jq \
+    '[.[] | select(.state == "open" and ((.labels | map(.name) | index("on-dev")) | not))] | length'
+}
+
+# Prints the oldest issue with the label that has no unfinished blocker.
+# A failed lookup prints no count, so the issue counts as blocked until the next round.
+next_unblocked_issue() { # label
+  local candidate
+  for candidate in $(gh issue list --repo "$REPO" --state open --label "$1" --author "$OWNER" --limit 100 \
+    --search "-label:in-progress -label:needs-input" --json number --jq 'sort_by(.number) | .[].number'); do
+    if [[ "$(unfinished_blockers "$candidate")" == 0 ]]; then
+      echo "$candidate"
+      return
+    fi
+  done
+}
+
 remove_worktree() { # directory
   git -C "$root" worktree remove --force "$1" 2>/dev/null || true
 }

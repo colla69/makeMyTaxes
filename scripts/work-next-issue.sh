@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Gives the oldest waiting issue to Claude, in its own worktree, up to a pull request into dev.
+# An issue waits until each issue that blocks it is on dev or closed. A number given by hand skips this check.
 # With no waiting issue, it stops before any call to Claude, so a run costs nothing.
 # Usage: scripts/work-next-issue.sh [issue number]
 set -euo pipefail
@@ -11,9 +12,7 @@ BUDGET=${WORKER_BUDGET_USD:-10}
 source "$(dirname "$0")/agent-lib.sh"
 take_lock
 
-issue=${1:-$(gh issue list --repo "$REPO" --state open --label "$LABEL" --author "$OWNER" \
-  --search "-label:in-progress -label:needs-input" --json number \
-  --jq 'sort_by(.number) | .[0].number // empty')}
+issue=${1:-$(next_unblocked_issue "$LABEL")}
 if [[ -z "$issue" ]]; then
   echo "No issue waits."
   exit 0

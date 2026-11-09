@@ -55,6 +55,8 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
    not hold personal facts.
 2. `scripts/work-next-issue.sh` gives the oldest waiting issue to the `work-issue` skill, in its own
    worktree. The worker opens a pull request into `dev`, with the label `needs-review`.
+   An issue waits until each issue that blocks it (a "blocked by" link on GitHub) has the label
+   `on-dev` or is closed. So a chain of issues can all have the label and still run in order.
 3. `scripts/review-next-pr.sh` starts the `review-pr` skill in a new session, from `dev`. It posts its
    findings and gives a verdict. On an approval of the exact commit, the script merges into `dev`.
 4. On requested changes, `scripts/fix-next-pr.sh` starts the `fix-pr` skill, and the review runs again.

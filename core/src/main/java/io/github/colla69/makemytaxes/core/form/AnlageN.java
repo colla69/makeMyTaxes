@@ -4,6 +4,7 @@ import static io.github.colla69.makemytaxes.core.form.Field.optional;
 import static io.github.colla69.makemytaxes.core.form.Field.required;
 
 import io.github.colla69.makemytaxes.core.GermanFormats;
+import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -257,11 +258,9 @@ public final class AnlageN implements FormModule {
 
   private static String evidenceOf(Expense expense) {
     String paid = "Bezahlt am " + GermanFormats.format(expense.payment().paidOn());
-    if (expense.hasEvidence()) {
-      return paid + ", Beleg: " + expense.documentName();
-    }
-    return expense.hasReceiptNote()
-        ? paid + ", Hinweis: " + expense.receiptReference() + ", Beleg fehlt"
-        : paid + ", Beleg fehlt";
+    Evidence evidence = expense.evidence();
+    return evidence.isPresent() || !evidence.hasReceiptNote()
+        ? paid + ", " + evidence.label()
+        : paid + ", Hinweis: " + evidence.receiptNote() + ", " + evidence.label();
   }
 }

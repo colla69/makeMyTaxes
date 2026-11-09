@@ -210,6 +210,7 @@ class FormBrowserTest {
     page.getByLabel("Datum").fill("03.02.2022");
     page.getByLabel("Betrag (EUR)").fill("10,00");
     page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
     page.getByLabel("Beschreibung").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
@@ -234,6 +235,7 @@ class FormBrowserTest {
     page.getByLabel("Datum").fill("03.02.2022");
     page.getByLabel("Betrag (EUR)").fill("10,00");
     page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
     page.getByLabel("Beschreibung").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
   }
@@ -314,8 +316,8 @@ class FormBrowserTest {
     page.getByLabel("Betrag (EUR)").fill("1.500,00");
     page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
     page.getByLabel("Beschreibung").fill("Made-up laptop");
-    page.getByLabel("Beleg").fill("made-up-laptop.pdf");
-    page.getByLabel("Beleg").press("Enter");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
+    page.getByLabel("Grundlage").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
     link(page, "Hauptvordruck").click();
@@ -358,7 +360,7 @@ class FormBrowserTest {
     assertThat(laptop.locator("td").nth(0)).hasText("42");
     assertThat(laptop).containsText("1.500,00");
     assertThat(laptop)
-        .containsText("Bezahlt am 03.02.2022, Hinweis: made-up-laptop.pdf, Beleg fehlt");
+        .containsText("Bezahlt am 03.02.2022, Grundlage: Made-up 12 days");
     assertThat(anlageN.locator("tbody tr td:first-child"))
         .hasText(new String[] {"5", "6", "35", "35", "35", "42", "42", "45"});
 
@@ -390,6 +392,7 @@ class FormBrowserTest {
     page.getByLabel("Betrag (EUR)").fill("500,00");
     page.getByLabel("Kategorie").selectOption("HOUSEHOLD_SERVICES");
     page.getByLabel("Beschreibung").fill("Made-up cleaner");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
     page.getByLabel("Beschreibung").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 

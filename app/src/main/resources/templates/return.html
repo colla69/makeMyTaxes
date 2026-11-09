@@ -35,6 +35,7 @@
           <div th:replace="~{fields :: field(name='documentId', label='Dokument', hint=#{hint.expense.document}, value=${form.documentId?.toString()}, options=${documentOptions}, blankOption=true)}"></div>
         </th:block>
         <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
+        <div th:replace="~{fields :: field(name='statedBasis', label='Grundlage', hint=#{hint.expense.statedBasis}, help='Nur wenn es keinen Beleg geben kann, zum Beispiel eine Zahl von Tagen oder eine Entfernung.', value=${form.statedBasis})}"></div>
         <p class="form-buttons">
           <button>Ausgabe hinzufügen</button>
           <button type="button" data-clear-form>Alle Felder leeren</button>
@@ -67,7 +68,8 @@
                  th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.documentId})}"
                  target="_blank" rel="noopener"
                  th:text="${row.documentName}">datei.pdf</a>
-              <span class="warning" th:if="${row.documentId == null}">Beleg fehlt</span>
+              <span th:unless="${#strings.isEmpty(row.statedBasis)}" th:text="'Grundlage: ' + ${row.statedBasis}">Grundlage</span>
+              <span class="warning" th:if="${row.evidenceMissing()}">Beleg fehlt</span>
             </td>
             <td>
               <!-- novalidate: htmx would stop the delete if the entry in progress is incomplete. -->

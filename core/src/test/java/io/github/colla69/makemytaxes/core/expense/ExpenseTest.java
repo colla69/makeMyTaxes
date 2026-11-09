@@ -34,11 +34,17 @@ class ExpenseTest {
   }
 
   @Test
-  void onlyALinkedDocumentIsEvidence() {
+  void aLinkedDocumentOrAStatedBasisIsEvidenceAndAReceiptNoteIsNot() {
     var payment = new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(100));
 
     assertThat(new Expense(payment, WORK_LAPTOP, "  ").hasEvidence()).isFalse();
     assertThat(new Expense(payment, WORK_LAPTOP, "laptop.pdf").hasEvidence()).isFalse();
-    assertThat(new Expense(payment, WORK_LAPTOP, "", "laptop.pdf").hasEvidence()).isTrue();
+    assertThat(
+            new Expense(payment, WORK_LAPTOP, new Evidence("", "laptop.pdf", "")).hasEvidence())
+        .isTrue();
+    assertThat(new Expense(payment, WORK_LAPTOP, new Evidence("", null, "12 days")).hasEvidence())
+        .isTrue();
+    assertThat(new Expense(payment, WORK_LAPTOP, new Evidence("", null, "  ")).hasEvidence())
+        .isFalse();
   }
 }

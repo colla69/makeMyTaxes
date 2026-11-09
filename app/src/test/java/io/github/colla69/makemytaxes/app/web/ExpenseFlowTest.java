@@ -78,13 +78,17 @@ class ExpenseFlowTest {
 
   private org.springframework.test.web.servlet.ResultActions addExpense(
       String paidOn, String amount, String receipt) throws Exception {
-    return mockMvc.perform(
-        post("/returns/" + returnId + "/expenses")
-            .param("paidOn", paidOn)
-            .param("amount", amount)
-            .param("topic", "WORK_OTHER")
-            .param("description", "Made-up laptop")
-            .param("receipt", receipt));
+    return mockMvc.perform(expense(paidOn, amount, receipt).param("statedBasis", "Made-up 12 days"));
+  }
+
+  private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder expense(
+      String paidOn, String amount, String receipt) {
+    return post("/returns/" + returnId + "/expenses")
+        .param("paidOn", paidOn)
+        .param("amount", amount)
+        .param("topic", "WORK_OTHER")
+        .param("description", "Made-up laptop")
+        .param("receipt", receipt);
   }
 
   @Test
@@ -156,9 +160,62 @@ class ExpenseFlowTest {
   }
 
   @Test
-  void flagsAnExpenseWithoutAReceipt() throws Exception {
-    addExpense("03.02.2022", "10,00", "")
+  void anOldExpenseWithNeitherStaysAndKeepsTheMark() throws Exception {
+    insertOldExpense("");
+
+    mockMvc
+        .perform(get("/returns/" + returnId))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("Made-up old cost")))
+        .andExpect(content().string(containsString("Beleg fehlt")))
         .andExpect(content().string(containsString("1 ohne Beleg")));
+  }
+
+  @Test
+  void aStatedBasisIsEnoughAndIsStoredAndShown() throws Exception {
+    mockMvc
+        .perform(expense("03.02.2022", "10,00", "").param("statedBasis", "  Made-up 12 days  "))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("Grundlage: Made-up 12 days")))
+        .andExpect(content().string(not(containsString("Beleg fehlt"))))
+        .andExpect(content().string(not(containsString("ohne Beleg"))));
+
+    String stored =
+        jdbcClient
+            .sql("select stated_basis from expense where tax_return_id = ?")
+            .param(returnId)
+            .query(String.class)
+            .single();
+    assertThat(stored).isEqualTo("Made-up 12 days");
+  }
+
+  @Test
+  void anExpenseWithoutEvidenceIsRejectedAndKeepsWhatTheUserTyped() throws Exception {
+    mockMvc
+        .perform(expense("03.02.2022", "10,00", "").param("statedBasis", ""))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("die Grundlage angeben")))
+        .andExpect(content().string(containsString("value=\"Made-up laptop\"")));
+
+    assertThat(expenseCount()).isZero();
+  }
+
+  @Test
+  void aBlankStatedBasisIsNotEvidence() throws Exception {
+    mockMvc
+        .perform(expense("03.02.2022", "10,00", "").param("statedBasis", "   "))
+        .andExpect(content().string(containsString("die Grundlage angeben")));
+
+    assertThat(expenseCount()).isZero();
+  }
+
+  @Test
+  void aReceiptNoteAloneIsNotEvidence() throws Exception {
+    mockMvc
+        .perform(expense("03.02.2022", "10,00", "made-up-folder").param("statedBasis", ""))
+        .andExpect(content().string(containsString("die Grundlage angeben")));
+
+    assertThat(expenseCount()).isZero();
   }
 
   @Test
@@ -181,7 +238,10 @@ class ExpenseFlowTest {
 
   @Test
   void anOldReceiptNoteStaysVisibleAndTheDocumentIsStillMissing() throws Exception {
-    addExpense("03.02.2022", "10,00", "made-up-folder")
+    insertOldExpense("made-up-folder");
+
+    mockMvc
+        .perform(get("/returns/" + returnId))
         .andExpect(content().string(containsString("made-up-folder")))
         .andExpect(content().string(containsString("Beleg fehlt")))
         .andExpect(content().string(containsString("1 ohne Beleg")));
@@ -224,7 +284,7 @@ class ExpenseFlowTest {
   }
 
   @Test
-  void noChosenFileAndNoChosenDocumentStoresTheExpenseWithoutADocument() throws Exception {
+  void noChosenFileNoChosenDocumentAndNoStatedBasisIsRejected() throws Exception {
     var noFile = new MockMultipartFile("file", "", "application/octet-stream", new byte[0]);
     mockMvc
         .perform(
@@ -232,10 +292,20 @@ class ExpenseFlowTest {
                 .file(noFile)
                 .params(expenseFields("03.02.2022"))
                 .param("documentId", ""))
-        .andExpect(content().string(containsString("Beleg fehlt")));
+        .andExpect(content().string(containsString("die Grundlage angeben")));
+
+    assertThat(expenseCount()).isZero();
+    assertThat(documentCount()).isZero();
+  }
+
+  @Test
+  void aChosenDocumentIsEnoughWithoutAStatedBasis() throws Exception {
+    long document = insertDocument(returnId);
+
+    addExpenseWithDocument(String.valueOf(document))
+        .andExpect(content().string(not(containsString("Beleg fehlt"))));
 
     assertThat(expenseCount()).isEqualTo(1);
-    assertThat(documentCount()).isZero();
   }
 
   @Test
@@ -306,7 +376,21 @@ class ExpenseFlowTest {
     fields.add("topic", "WORK_OTHER");
     fields.add("description", "Made-up cable");
     fields.add("receipt", "");
+    fields.add("statedBasis", "");
     return fields;
+  }
+
+  /** Writes the row directly, because the form no longer accepts an expense without evidence. */
+  private void insertOldExpense(String receiptNote) {
+    jdbcClient
+        .sql(
+            """
+            insert into expense(
+              tax_return_id, paid_on, amount_cents, topic, description, receipt_reference)
+            values (?, '2022-02-03', 1000, 'WORK_OTHER', 'Made-up old cost', ?)
+            """)
+        .params(returnId, receiptNote)
+        .update();
   }
 
   private long insertDocument(long ownerReturnId) {

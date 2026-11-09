@@ -212,7 +212,7 @@ class FormController {
                     expense.purpose().topic().label(),
                     expense.purpose().description(),
                     GermanFormats.format(expense.payment().amount()),
-                    expense.hasEvidence() ? "Beleg: " + expense.documentName() : "Beleg fehlt"))
+                    expense.evidence().label()))
         .toList();
   }
 

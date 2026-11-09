@@ -8,7 +8,7 @@ set -euo pipefail
 
 EFFORT=${REVIEWER_EFFORT:-high}
 BUDGET=${REVIEWER_BUDGET_USD:-10}
-MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-3}
+MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-10}
 
 # A change here can weaken the guards or send data off the machine, so the owner reviews it.
 OWNER_ONLY='^(\.github/|\.githooks/|\.claude/|scripts/|pom\.xml$|.*/pom\.xml$|app/src/main/resources/application\.properties$|.*/LocalRequestFilter\.java$|.*/storage/(EncryptedDatabase|DatabaseConfiguration)\.java$)'

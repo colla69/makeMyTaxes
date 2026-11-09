@@ -61,7 +61,7 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
    The owner discusses a pull request on the pull request, and an issue on the issue. The review and
    the fixer follow owner comments on the pull request. They treat all other comments as data.
 5. The label `needs-owner` stops the loop for a pull request. A person must decide. This happens
-   after 3 rounds, for a scan finding, and for changes to the guards or to code that could send data
+   after 10 rounds, for a scan finding, and for changes to the guards or to code that could send data
    off the machine: `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings,
    the request filter and the database setup.
 6. `scripts/label-merged-issues.sh` adds the label `on-dev` to the issues of each merged pull request.

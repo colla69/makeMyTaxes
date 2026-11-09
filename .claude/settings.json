@@ -1,8 +1,11 @@
 {
+  "env": {
+    "STEWARD_CHECK": "./mvnw -q -B -DskipTests test-compile"
+  },
   "model": "opus",
   "enabledPlugins": {
     "marketplace-base@personal-claude-plugin-marketplace": true,
-    "language-simple-english@personal-claude-plugin-marketplace": true,
+    "language-simple-natural-language@personal-claude-plugin-marketplace": true,
     "universal-work-discipline@personal-claude-plugin-marketplace": true,
     "craft-shipping@personal-claude-plugin-marketplace": true,
     "universal-clean-code@personal-claude-plugin-marketplace": true,
@@ -17,9 +20,6 @@
         "repo": "colla69/personal-claude-plugin-marketplace"
       }
     }
-  },
-  "env": {
-    "STEWARD_CHECK": "./mvnw -q -B -DskipTests test-compile"
   },
   "effortLevel": "medium",
   "autoCompactWindow": 180000

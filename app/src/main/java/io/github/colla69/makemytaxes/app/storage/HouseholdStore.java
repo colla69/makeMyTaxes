@@ -73,6 +73,19 @@ public class HouseholdStore {
                     .update());
   }
 
+  /** Replaces one detail. An empty value clears it. */
+  @Transactional
+  public void saveDetail(long personId, String fieldId, String value) {
+    jdbc.sql("delete from person_detail where person_id = ? and field_id = ?")
+        .params(personId, fieldId)
+        .update();
+    if (!value.isEmpty()) {
+      jdbc.sql("insert into person_detail(person_id, field_id, value) values (?, ?, ?)")
+          .params(personId, fieldId, value)
+          .update();
+    }
+  }
+
   private long createHousehold() {
     jdbc.sql("insert into household(name) values ('Household')").update();
     return jdbc.sql("select last_insert_rowid()").query(Long.class).single();

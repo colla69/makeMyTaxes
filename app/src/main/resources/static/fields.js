@@ -1,7 +1,7 @@
 // Input masks for the fields of fields.html. They only help with typing: the server still parses
 // and checks every value. The listeners sit on the document, so they also work on parts of the
-// page that htmx swaps in. The same file keeps a draft of the input and runs the clear buttons,
-// because all of this works on the fields of fields.html.
+// page that htmx swaps in. The same file saves each field when the user leaves it, and runs the
+// clear buttons, because all of this works on the fields of fields.html.
 (() => {
   // A date that the user types with dots, such as 3.2.2022, stays as it is.
   const DATE_WITH_DOTS = /^\d{1,2}(\.(\d{1,2}(\.\d{0,4})?)?)?$/;
@@ -108,45 +108,94 @@
     }
   });
 
-  // The draft keeps the input of each form while the user switches tabs.
+  // Autosave: the database is the only store of a value. When the user leaves a changed field of a
+  // form with data-autosave, the script sends the name and the value of the field to that address.
+  // The server saves a valid value. For an invalid value it answers 422 with the error, and the
+  // script shows the error at the field. The other fields still save.
   //
-  // The input stays in sessionStorage, so it stays only in this browser tab. Each form has its own
-  // entry, with the path of the page and the id of the form.
-  //
-  // A page that the server shows after a save, with a success or an error, holds the current truth.
-  // Then the script stores the values of that page. On other pages, the script puts the stored
-  // input back into the fields.
-  function storageKey(form) {
-    return "draft:" + window.location.pathname + "#" + form.id;
-  }
+  // The saves go one after the other. A click on a link waits for the open saves, so that the next
+  // page shows the saved values. "keepalive" lets a save finish when the page closes.
+  let saves = Promise.resolve();
+  let openSaves = 0;
 
   function controls(form) {
     return form.querySelectorAll("input[name]:not([type=hidden]), select[name], textarea[name]");
   }
 
-  function store(form) {
-    const values = {};
-    controls(form).forEach((control) => {
-      values[control.name] = control.value;
-    });
-    sessionStorage.setItem(storageKey(form), JSON.stringify(values));
-  }
-
-  function restore(form) {
-    const stored = sessionStorage.getItem(storageKey(form));
-    if (stored === null) {
+  function showFieldError(control, message) {
+    const field = control.closest(".field");
+    let error = field.querySelector(":scope > p.error");
+    if (!message) {
+      error?.remove();
       return;
     }
-    const values = JSON.parse(stored);
-    controls(form).forEach((control) => {
-      if (Object.prototype.hasOwnProperty.call(values, control.name)) {
-        control.value = values[control.name];
-      }
-    });
+    if (!error) {
+      error = document.createElement("p");
+      error.className = "error";
+      field.append(error);
+    }
+    error.textContent = message;
   }
 
+  // The checks of several fields. Only a form page has a place for them.
+  function showFormMessages(text) {
+    const place = document.getElementById("form-messages");
+    if (!place) {
+      return;
+    }
+    place.replaceChildren(
+      ...text.split("\n").filter(Boolean).map((message) => {
+        const paragraph = document.createElement("p");
+        paragraph.className = "error";
+        paragraph.textContent = message;
+        return paragraph;
+      }),
+    );
+  }
+
+  async function save(address, control) {
+    const body = new URLSearchParams({ field: control.name, value: control.value });
+    try {
+      const response = await fetch(address, { method: "POST", body, keepalive: true });
+      const text = await response.text();
+      if (response.status === 422) {
+        showFieldError(control, text);
+      } else if (response.ok) {
+        showFieldError(control, "");
+        showFormMessages(text);
+      } else {
+        showFieldError(control, "Nicht gespeichert. Bitte versuchen Sie es noch einmal.");
+      }
+    } catch {
+      showFieldError(control, "Nicht gespeichert. Bitte versuchen Sie es noch einmal.");
+    }
+  }
+
+  // This listener comes after the listener of the amount format, so it saves the formatted value.
+  document.addEventListener("change", (event) => {
+    const control = event.target;
+    const form = control.closest?.("form[data-autosave]");
+    if (!form || !control.name || control.type === "hidden") {
+      return;
+    }
+    openSaves++;
+    saves = saves
+      .then(() => save(form.dataset.autosave, control))
+      .finally(() => openSaves--);
+  });
+
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest?.("a[href]");
+    const opensElsewhere = event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey
+      || event.altKey || link?.target;
+    if (link && openSaves > 0 && !event.defaultPrevented && !opensElsewhere) {
+      event.preventDefault();
+      saves.then(() => window.location.assign(link.href));
+    }
+  });
+
   // A select goes back to its first option, so that it always has a value. On a form page, the
-  // first option is the blank "Bitte wählen".
+  // first option is the blank "Bitte wählen". The "change" event saves the cleared field.
   function clear(control) {
     if (control.tagName === "SELECT") {
       control.selectedIndex = 0;
@@ -154,28 +203,8 @@
       control.value = "";
     }
     control.dispatchEvent(new Event("input", { bubbles: true }));
+    control.dispatchEvent(new Event("change", { bubbles: true }));
   }
-
-  function rememberedForms(root) {
-    return root.querySelectorAll("form[data-remember]");
-  }
-
-  function showsAServerResult() {
-    return document.querySelector("main .saved, main .error") !== null;
-  }
-
-  // The draft also listens to "change", because the amount format and the calendar change a value
-  // without an "input" event. These listeners come after the mask listeners, so they store the
-  // masked value.
-  function storeDraft(event) {
-    const form = event.target.closest?.("form[data-remember]");
-    if (form) {
-      store(form);
-    }
-  }
-
-  document.addEventListener("input", storeDraft);
-  document.addEventListener("change", storeDraft);
 
   document.addEventListener("click", (event) => {
     const fieldButton = event.target.closest?.("[data-clear-field]");
@@ -189,37 +218,5 @@
     if (formButton) {
       controls(formButton.closest("form")).forEach(clear);
     }
-  });
-
-  function storeOrRestore() {
-    const fromServer = showsAServerResult();
-    rememberedForms(document).forEach((form) => {
-      if (fromServer) {
-        store(form);
-      } else {
-        restore(form);
-      }
-    });
-  }
-
-  // A save on a page with data-clear-drafts changes values that the forms of other pages show,
-  // such as the personal details in the main form. Then all drafts are old.
-  function clearDraftsAfterASave() {
-    if (document.querySelector("main .saved") === null
-        || document.querySelector("[data-clear-drafts]") === null) {
-      return;
-    }
-    Object.keys(sessionStorage)
-      .filter((key) => key.startsWith("draft:"))
-      .forEach((key) => sessionStorage.removeItem(key));
-  }
-
-  // The script has "defer", so the document is parsed when it runs.
-  clearDraftsAfterASave();
-  storeOrRestore();
-
-  // htmx puts the answer of the server in place. That answer holds the current truth.
-  document.addEventListener("htmx:afterSwap", () => {
-    rememberedForms(document).forEach(store);
   });
 })();

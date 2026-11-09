@@ -435,6 +435,35 @@ class InterviewBrowserTest {
   }
 
   @Test
+  void aFieldAnswerSavesWhenTheUserLeavesTheFieldWithoutAClickOnWeiter() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Nein").click();
+
+    fieldAnswer(page).fill("Made-up saved job");
+    tab(page, "Hauptvordruck").click();
+    // The link waits for the open save, so the next page comes a moment later.
+    assertThat(page.locator("#answers")).isVisible();
+    page.reload();
+    assertThat(page.locator("#answers [name=occupation]")).hasValue("Made-up saved job");
+  }
+
+  @Test
+  void aWrongFieldAnswerShowsItsErrorWhenTheUserLeavesTheField() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Nein").click();
+    answerField(page, "");
+    forward(page).click();
+
+    fieldAnswer(page).fill("12,5");
+    fieldAnswer(page).press("Tab");
+    assertThat(page.locator("#question .field .error")).isVisible();
+  }
+
+  @Test
   void everyQuestionShowsAnItalianHintOnHover() {
     Page page = browser.newPage();
     openInterview(page);

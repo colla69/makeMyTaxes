@@ -24,12 +24,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 @Controller
@@ -126,6 +128,33 @@ class FormController {
     }
     forms.save(returnId, formId, new Answers(values));
     return "redirect:/returns/" + returnId + "/forms/" + formId + "?saved=true";
+  }
+
+  /**
+   * Saves one field when the user leaves it. A value that fails its own check is not saved, and
+   * the answer holds the error. Otherwise the answer holds the messages of the checks of several
+   * fields, one per line. They do not stop the save, because the other value of such a check can
+   * still be missing.
+   */
+  @PostMapping("/returns/{returnId}/forms/{formId}/field")
+  @ResponseBody
+  ResponseEntity<String> saveField(
+      @PathVariable long returnId,
+      @PathVariable String formId,
+      @RequestParam String field,
+      @RequestParam(defaultValue = "") String value) {
+    FormModule form = formOf(returnId, formId);
+    Field target = form.field(field).orElseThrow(FormController::notFound);
+    String text = value.strip();
+    if (!text.isEmpty()) {
+      try {
+        target.kind().validate(text);
+      } catch (IllegalArgumentException e) {
+        return ResponseEntity.status(422).body(e.getMessage());
+      }
+    }
+    forms.saveAnswer(returnId, formId, field, text);
+    return ResponseEntity.ok(String.join("\n", form.check(forms.answers(returnId, formId))));
   }
 
   @GetMapping("/returns/{returnId}/review")

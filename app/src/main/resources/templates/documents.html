@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>makeMyTaxes</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
+  </head>
+  <body>
+    <nav th:replace="~{nav :: nav}"></nav>
+    <main class="panel">
+      <h1 th:text="'Belege ' + ${taxYear}">Belege</h1>
+
+      <form id="document-form"
+            class="fields"
+            method="post"
+            enctype="multipart/form-data"
+            th:action="@{/returns/{id}/documents(id=${returnId})}">
+        <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
+        <div th:replace="~{fields :: field(name='kind', label='Art', options=${kinds})}"></div>
+        <div class="field">
+          <label>
+            <span class="field-label">Datei</span>
+            <input type="file" name="file" required
+                   accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
+          </label>
+          <p class="help">PDF, JPEG oder PNG, höchstens 20 MB.</p>
+        </div>
+        <p class="form-buttons">
+          <button>Hochladen</button>
+        </p>
+      </form>
+
+      <h2>Dokumente</h2>
+      <table id="documents">
+        <thead>
+          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${rows}">
+            <td>
+              <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.id})}"
+                 target="_blank" rel="noopener"
+                 th:text="${row.fileName}">datei.pdf</a>
+            </td>
+            <td th:text="${row.kind}">Art</td>
+            <td class="amount" th:text="${row.size}">1 KB</td>
+            <td th:text="${row.uploadedOn}">01.01.2022</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </body>
+</html>

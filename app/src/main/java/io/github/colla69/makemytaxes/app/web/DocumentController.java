@@ -1,0 +1,201 @@
+package io.github.colla69.makemytaxes.app.web;
+
+import io.github.colla69.makemytaxes.app.storage.DocumentStore;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
+import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.GermanFormats;
+import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.form.Forms;
+import io.github.colla69.makemytaxes.core.form.Kind;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.server.ResponseStatusException;
+
+@Controller
+class DocumentController {
+
+  static final long MAX_BYTES = 20L * 1024 * 1024;
+  private static final String TOO_LARGE = "Die Datei ist größer als 20 MB.";
+
+  record DocumentRow(long id, String kind, String fileName, String size, String uploadedOn) {
+
+    static DocumentRow of(StoredDocument stored) {
+      return new DocumentRow(
+          stored.id(),
+          stored.kind().label(),
+          stored.fileName(),
+          sizeText(stored.sizeBytes()),
+          GermanFormats.format(stored.uploadedOn()));
+    }
+  }
+
+  private final HouseholdStore household;
+  private final DocumentStore documents;
+
+  DocumentController(HouseholdStore household, DocumentStore documents) {
+    this.household = household;
+    this.documents = documents;
+  }
+
+  @GetMapping("/returns/{returnId}/documents")
+  String page(@PathVariable long returnId, Model model) {
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  @PostMapping("/returns/{returnId}/documents")
+  String upload(
+      @PathVariable long returnId,
+      @RequestParam DocumentKind kind,
+      @RequestParam MultipartFile file,
+      Model model)
+      throws IOException {
+    taxYearOf(returnId);
+    try {
+      documents.add(returnId, toNewDocument(kind, file), LocalDate.now());
+    } catch (IllegalArgumentException e) {
+      model.addAttribute("error", e.getMessage());
+      fillPage(returnId, model);
+      return "documents";
+    }
+    return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  /** The browser shows the document with its own viewer, because the response says "inline". */
+  @GetMapping("/returns/{returnId}/documents/{documentId}")
+  void open(
+      @PathVariable long returnId, @PathVariable long documentId, HttpServletResponse response)
+      throws IOException {
+    StoredDocument stored =
+        documents
+            .find(returnId, documentId)
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Kein Dokument mit der ID " + documentId + "."));
+    response.setContentType(stored.mediaType());
+    response.setContentLengthLong(stored.sizeBytes());
+    response.setHeader(
+        HttpHeaders.CONTENT_DISPOSITION,
+        ContentDisposition.inline()
+            .filename(stored.fileName(), StandardCharsets.UTF_8)
+            .build()
+            .toString());
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.getOutputStream().write(documents.content(stored.id()));
+  }
+
+  /**
+   * The server stops a file over its own limit before the upload method runs. The upload is
+   * parsed lazily, so this handler still knows the return and can show the page with the message.
+   */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  String tooLarge(HttpServletRequest request, Model model) {
+    @SuppressWarnings("unchecked")
+    var path =
+        (Map<String, String>)
+            request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+    long returnId = Long.parseLong(path.get("returnId"));
+    model.addAttribute("error", TOO_LARGE);
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /** The type comes from the first bytes of the file, not from the name or from the browser. */
+  static NewDocument toNewDocument(DocumentKind kind, MultipartFile file) throws IOException {
+    if (file.isEmpty()) {
+      throw new IllegalArgumentException("Bitte eine Datei wählen. Eine leere Datei geht nicht.");
+    }
+    if (file.getSize() > MAX_BYTES) {
+      throw new IllegalArgumentException(TOO_LARGE);
+    }
+    byte[] bytes = file.getBytes();
+    String mediaType = mediaTypeOf(bytes);
+    if (mediaType == null) {
+      throw new IllegalArgumentException("Nur PDF, JPEG und PNG sind möglich.");
+    }
+    return new NewDocument(kind, fileNameOf(file.getOriginalFilename()), mediaType, bytes);
+  }
+
+  static String mediaTypeOf(byte[] bytes) {
+    if (startsWith(bytes, "%PDF-".getBytes(StandardCharsets.US_ASCII))) {
+      return "application/pdf";
+    }
+    if (startsWith(bytes, new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF})) {
+      return "image/jpeg";
+    }
+    if (startsWith(bytes, new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'})) {
+      return "image/png";
+    }
+    return null;
+  }
+
+  private static boolean startsWith(byte[] bytes, byte[] prefix) {
+    return bytes.length >= prefix.length
+        && Arrays.equals(bytes, 0, prefix.length, prefix, 0, prefix.length);
+  }
+
+  /** Some browsers send a path with the name. Only the last part is the name of the file. */
+  private static String fileNameOf(String original) {
+    if (original == null) {
+      return "Dokument";
+    }
+    String name = original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
+    return name.isBlank() ? "Dokument" : name.strip();
+  }
+
+  static String sizeText(long bytes) {
+    if (bytes < 1024 * 1024) {
+      return Math.ceilDiv(bytes, 1024) + " KB";
+    }
+    return String.format(Locale.GERMANY, "%.1f MB", bytes / (1024.0 * 1024));
+  }
+
+  private TaxYear taxYearOf(long returnId) {
+    return household
+        .taxYearOf(returnId)
+        .orElseThrow(
+            () ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Keine Erklärung mit der ID " + returnId + "."));
+  }
+
+  private void fillPage(long returnId, Model model) {
+    TaxYear taxYear = taxYearOf(returnId);
+    model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", "documents");
+    model.addAttribute("forms", Forms.of(taxYear));
+    model.addAttribute("taxYear", taxYear.value());
+    model.addAttribute("kinds", kindOptions());
+    model.addAttribute(
+        "rows", documents.documentsOf(returnId).stream().map(DocumentRow::of).toList());
+  }
+
+  private static List<Kind.Option> kindOptions() {
+    return Arrays.stream(DocumentKind.values())
+        .map(kind -> new Kind.Option(kind.name(), kind.label()))
+        .toList();
+  }
+}

@@ -269,7 +269,8 @@ class InterviewController {
       case CONFIRM -> "Bestätigt";
       case FIELD -> {
         String value = forms.answers(returnId, question.formId()).text(question.id());
-        yield value.isEmpty() ? "Keine Angabe" : value;
+        Field field = formOf(returnId, question.formId()).field(question.id()).orElseThrow();
+        yield value.isEmpty() ? "Keine Angabe" : field.kind().display(value);
       }
     };
   }

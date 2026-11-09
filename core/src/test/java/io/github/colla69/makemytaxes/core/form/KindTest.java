@@ -51,7 +51,8 @@ class KindTest {
     "WHOLE_NUMBER, -3",
     "DATE, 31.02.2022",
     "YES_NO_UNSURE, MAYBE",
-    "COMMUTE_TRANSPORT, BOAT"
+    "COMMUTE_TRANSPORT, BOAT",
+    "PAYMENT, CHEQUE"
   })
   void rejectsAValueOfTheWrongKind(Kind kind, String value) {
     assertThatIllegalArgumentException().isThrownBy(() -> kind.validate(value));

@@ -152,7 +152,9 @@ class InterviewTest {
   void eachYesAddsItsPageAndTheInterviewEndsWhenAllAreAnswered() {
     Map<String, String> values = new LinkedHashMap<>();
     values.put("employed", Interview.YES);
-    values.put("householdServices", Interview.YES);
+    values.put("medical", Interview.YES);
+    values.put("cleaning", Interview.YES);
+    values.put("craftsmen", Interview.YES);
     Interview.questions(new Answers(values))
         .forEach(question -> values.putIfAbsent(question.id(), Interview.NO));
     Answers answers = new Answers(values);
@@ -163,7 +165,59 @@ class InterviewTest {
             new Step(FilingCheckForm.ID, null),
             new Step("main", null),
             new Step(AnlageN.ID, null),
-            new Step(null, ExpenseTopic.HOUSEHOLD_SERVICES));
+            new Step(null, ExpenseTopic.MEDICAL),
+            new Step(HouseholdServicesForm.ID, null));
+  }
+
+  @Test
+  void theHouseholdAsksEachCategoryAndAfterAYesTheInvoiceTheAmountTheLabourAndThePayment() {
+    assertThat(ids(Interview.questionsOf(NONE, Topic.HOUSEHOLD)))
+        .containsExactly(
+            "cleaning", "gardening", "craftsmen", "ancillaryCosts", "childcare", "donations");
+
+    Answers cleaning = new Answers(Map.of("cleaning", Interview.YES));
+    List<String> ids = ids(Interview.questionsOf(cleaning, Topic.HOUSEHOLD));
+    assertThat(ids.subList(0, 7))
+        .containsExactly(
+            "cleaning",
+            "cleaning1-invoice",
+            "cleaning1-payment",
+            "cleaning1-paidAmount",
+            "cleaning1-labourCost",
+            "cleaning1-another",
+            "gardening");
+    HouseholdServicesForm form = new HouseholdServicesForm();
+    for (String id : ids.subList(1, 5)) {
+      Question question = Interview.find(cleaning, id).orElseThrow();
+      assertThat(question.formId()).isEqualTo(HouseholdServicesForm.ID);
+      assertThat(form.field(id)).isPresent();
+      assertThat(question.text()).startsWith("Reinigung 1:");
+    }
+  }
+
+  @Test
+  void theAncillaryCostStatementAsksTheLabourForServicesAndForCraftsmen() {
+    Answers statement = new Answers(Map.of("ancillaryCosts", Interview.YES));
+    assertThat(ids(Interview.questionsOf(statement, Topic.HOUSEHOLD)))
+        .contains(
+            "ancillaryCosts1-statement",
+            "ancillaryCosts1-paidAmount",
+            "ancillaryCosts1-labourServices",
+            "ancillaryCosts1-labourCraftsmen",
+            "ancillaryCosts1-another");
+    assertThat(ids(Interview.questionsOf(statement, Topic.HOUSEHOLD)))
+        .doesNotContain("ancillaryCosts1-payment");
+  }
+
+  @Test
+  void aYesToAnotherInvoiceAsksTheNextInvoiceOfTheSameCategory() {
+    Answers two =
+        new Answers(Map.of("craftsmen", Interview.YES, "craftsmen1-another", Interview.YES));
+    List<String> ids = ids(Interview.questionsOf(two, Topic.HOUSEHOLD));
+    assertThat(ids).contains("craftsmen2-invoice", "craftsmen2-another");
+    assertThat(ids).doesNotContain("craftsmen3-invoice");
+    assertThat(Interview.find(two, "craftsmen2-paidAmount").orElseThrow().hintId())
+        .isEqualTo("paidAmount");
   }
 
   @Test

@@ -12,7 +12,8 @@ public enum Kind {
   TAX_ID,
   IBAN,
   YES_NO_UNSURE,
-  COMMUTE_TRANSPORT;
+  COMMUTE_TRANSPORT,
+  PAYMENT;
 
   public record Option(String value, String label) {}
 
@@ -21,6 +22,8 @@ public enum Kind {
   public static final String UNSURE = "UNSURE";
   public static final String CAR = "CAR";
   public static final String OTHER_TRANSPORT = "OTHER";
+  public static final String TRANSFER = "TRANSFER";
+  public static final String CASH = "CASH";
 
   public List<Option> options() {
     return switch (this) {
@@ -30,6 +33,10 @@ public enum Kind {
           List.of(
               new Option(CAR, "Eigener oder zur Nutzung überlassener Kraftwagen"),
               new Option(OTHER_TRANSPORT, "Öffentliche Verkehrsmittel, Fahrrad, zu Fuß oder Carsharing"));
+      case PAYMENT ->
+          List.of(
+              new Option(TRANSFER, "Zahlung auf das Konto des Leistenden"),
+              new Option(CASH, "Bar oder anders"));
       default -> List.of();
     };
   }
@@ -62,7 +69,7 @@ public enum Kind {
               "Diese IBAN ist ungültig. Prüfen Sie die Buchstaben, die Ziffern und die Prüfziffern.");
         }
       }
-      case YES_NO_UNSURE, COMMUTE_TRANSPORT -> {
+      case YES_NO_UNSURE, COMMUTE_TRANSPORT, PAYMENT -> {
         if (options().stream().noneMatch(option -> option.value().equals(value))) {
           throw new IllegalArgumentException("Wählen Sie eine der Möglichkeiten.");
         }

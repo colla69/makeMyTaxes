@@ -47,7 +47,12 @@ class FormBrowserTest {
 
   /** The tabs of the forms with fields. */
   private static final List<String> FORM_TABS =
-      List.of("Hauptvordruck", "Anlage N", "Anlage Vorsorgeaufwand", "Abgabepflicht");
+      List.of(
+          "Hauptvordruck",
+          "Anlage N",
+          "Anlage Vorsorgeaufwand",
+          "Haushaltsnahe Aufwendungen",
+          "Abgabepflicht");
 
   @TempDir static Path databaseFolder;
 
@@ -449,6 +454,7 @@ class FormBrowserTest {
             "Hauptvordruck",
             "Anlage N",
             "Anlage Vorsorgeaufwand",
+            "Haushaltsnahe Aufwendungen",
             "Abgabepflicht",
             "Übersicht")) {
       link(page, tab).click();

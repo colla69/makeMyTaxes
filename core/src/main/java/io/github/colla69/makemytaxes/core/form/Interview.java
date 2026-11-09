@@ -1,8 +1,10 @@
 package io.github.colla69.makemytaxes.core.form;
 
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
+import io.github.colla69.makemytaxes.core.form.HouseholdServicesForm.Category;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -251,14 +253,37 @@ public final class Interview {
               "Haben Sie selbst Kosten für Ärzte, Medikamente oder Brillen bezahlt?",
               Step.expenses(ExpenseTopic.MEDICAL)));
 
-  private static final List<Question> HOUSEHOLD =
+  /** The question that starts each category of household costs. A yes asks its invoices. */
+  private static final Map<Category, String> CATEGORY_QUESTIONS =
+      Map.of(
+          Category.CLEANING,
+          "Haben Sie eine Reinigungskraft oder eine Reinigungsfirma für Ihren Haushalt bezahlt?",
+          Category.GARDENING,
+          "Haben Sie jemanden für die Pflege Ihres Gartens bezahlt?",
+          Category.CRAFTSMEN,
+          "Haben Sie Handwerker für Arbeiten in Ihrem Haushalt bezahlt, zum Beispiel für eine"
+              + " Reparatur?",
+          Category.ANCILLARY_COSTS,
+          "Haben Sie eine Nebenkostenabrechnung für Ihre Mietwohnung?");
+
+  /** One question for each field of an invoice or a statement, by the field ID. */
+  private static final Map<String, String> ENTRY_QUESTIONS =
+      Map.of(
+          "invoice", "Wer hat die Rechnung gestellt, mit welcher Nummer und welchem Datum?",
+          "statement", "Wer hat die Abrechnung erstellt, und mit welchem Datum?",
+          HouseholdServicesForm.PAID, "Welchen Betrag haben Sie bezahlt?",
+          HouseholdServicesForm.LABOUR, "Wie hoch sind die Arbeitskosten auf der Rechnung?",
+          HouseholdServicesForm.LABOUR_SERVICES,
+              "Welche Arbeitskosten für haushaltsnahe Dienstleistungen nennt die Abrechnung?",
+          HouseholdServicesForm.LABOUR_CRAFTSMEN,
+              "Welche Arbeitskosten für Handwerkerleistungen nennt die Abrechnung?",
+          HouseholdServicesForm.PAYMENT, "Wie haben Sie bezahlt?");
+
+  /** The ID of the question after one invoice of a category. A no ends the category. */
+  public static final String ANOTHER_ENTRY = "another";
+
+  private static final List<Question> HOUSEHOLD_REST =
       List.of(
-          Question.yesNo(
-              "householdServices",
-              Topic.HOUSEHOLD,
-              "Haben Sie für Handwerker, eine Reinigungskraft oder einen Gärtner in Ihrem"
-                  + " Haushalt bezahlt?",
-              Step.expenses(ExpenseTopic.HOUSEHOLD_SERVICES)),
           Question.yesNo(
               "childcare",
               Topic.HOUSEHOLD,
@@ -288,7 +313,10 @@ public final class Interview {
     questions.add(HEALTH_INSURANCE_QUESTION);
     questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
     questions.addAll(INSURANCE_REST);
-    questions.addAll(HOUSEHOLD);
+    for (Category category : Category.values()) {
+      questions.addAll(householdQuestions(answers, category));
+    }
+    questions.addAll(HOUSEHOLD_REST);
     return questions;
   }
 
@@ -340,6 +368,47 @@ public final class Interview {
       }
     }
     return questions;
+  }
+
+  /**
+   * The question of a category, and after a yes the fields of each invoice. A yes to {@link
+   * #anotherEntryId} adds one more invoice.
+   */
+  private static List<Question> householdQuestions(Answers answers, Category category) {
+    List<Question> questions = new ArrayList<>();
+    questions.add(
+        Question.yesNo(
+            category.id(),
+            Topic.HOUSEHOLD,
+            CATEGORY_QUESTIONS.get(category),
+            Step.form(HouseholdServicesForm.ID)));
+    if (!YES.equals(answers.text(category.id()))) {
+      return questions;
+    }
+    int entry = 0;
+    do {
+      entry++;
+      for (Field field : category.fields(entry)) {
+        questions.add(
+            Question.field(
+                HouseholdServicesForm.ID,
+                field.id(),
+                Topic.HOUSEHOLD,
+                category.label() + " " + entry + ": " + ENTRY_QUESTIONS.get(field.hintId())));
+      }
+      questions.add(
+          Question.yesNo(
+              anotherEntryId(category, entry),
+              Topic.HOUSEHOLD,
+              category.label() + ": Haben Sie eine weitere Rechnung?",
+              null));
+    } while (YES.equals(answers.text(anotherEntryId(category, entry))));
+    return questions;
+  }
+
+  /** The ID of the question after invoice {@code entry} of a category. */
+  public static String anotherEntryId(Category category, int entry) {
+    return category.fieldId(entry, ANOTHER_ENTRY);
   }
 
   /** The ID of the question after employer {@code employer}. */

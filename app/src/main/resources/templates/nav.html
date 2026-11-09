@@ -12,6 +12,8 @@
            th:attr="aria-current=${tab == 'interview'} ? 'page' : null">Fragen</a>
         <a th:href="@{/returns/{id}(id=${returnId})}"
            th:attr="aria-current=${tab == 'expenses'} ? 'page' : null">Ausgaben</a>
+        <a th:href="@{/returns/{id}/documents(id=${returnId})}"
+           th:attr="aria-current=${tab == 'documents'} ? 'page' : null">Belege</a>
         <a th:each="item : ${forms}"
            th:href="@{/returns/{r}/forms/{f}(r=${returnId},f=${item.id})}"
            th:classappend="${done.contains(item.id)} ? 'done'"

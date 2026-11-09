@@ -53,6 +53,24 @@ public class FormStore {
                     .update());
   }
 
+  /**
+   * Replaces one answer of the form, with the same rules as {@link #save}. An empty value clears
+   * the answer. The transaction keeps two saves of the same form from losing each other's value.
+   */
+  @Transactional
+  public void saveAnswer(long returnId, String formId, String fieldId, String value) {
+    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
+        .params(returnId, formId, fieldId)
+        .update();
+    if (!value.isEmpty() && !value.equals(personalDetails(returnId, formId).get(fieldId))) {
+      jdbc.sql(
+              "insert into form_answer(tax_return_id, form_id, field_id, value)"
+                  + " values (?, ?, ?, ?)")
+          .params(returnId, formId, fieldId, value)
+          .update();
+    }
+  }
+
   /** The personal details of the person of the return. Only the main form has them. */
   private Map<String, String> personalDetails(long returnId, String formId) {
     Map<String, String> details = new LinkedHashMap<>();

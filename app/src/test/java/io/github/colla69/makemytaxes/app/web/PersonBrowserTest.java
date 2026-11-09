@@ -137,6 +137,28 @@ class PersonBrowserTest {
     assertThat(mainField(page, "street")).hasValue("Alte Gasse");
   }
 
+  @Test
+  void aDetailSavesWhenTheUserLeavesItsFieldWithoutAClickOnSpeichern() {
+    Page page = browser.newPage();
+    String name = addPerson(page, "01.02.1990", "Musterweg");
+    section(page, name)
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Persönliche Angaben ändern"))
+        .click();
+
+    page.locator("#details [name=street]").fill("Beispielstraße");
+    page.locator("#details [name=birthDate]").fill("31.02.1990");
+    page.locator("#details [name=birthDate]").press("Tab");
+    assertThat(page.locator("#details .field:has([name=birthDate]) .error")).isVisible();
+    page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Zurück")).click();
+    // The link waits for the open save, so the next page comes a moment later.
+    assertThat(page.locator("#new-person")).isVisible();
+
+    page.goBack();
+    page.reload();
+    assertThat(page.locator("#details [name=street]")).hasValue("Beispielstraße");
+    assertThat(page.locator("#details [name=birthDate]")).hasValue("01.02.1990");
+  }
+
   private static void saveMainForm(Page page) {
     page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
     assertThat(page.locator(".saved")).isVisible();

@@ -14,11 +14,11 @@
     <p>Jede Steuererklärung dieser Person übernimmt diese Angaben in den Hauptvordruck,
       solange Sie dort keine anderen Werte speichern.</p>
     <p class="saved" th:if="${saved}">Gespeichert.</p>
-    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Die markierten Felder sind nicht gespeichert. Korrigieren Sie sie.</p>
 
-    <!-- data-clear-drafts: after a save, fields.js forgets the unsaved input of all forms, so the
-         main form shows the new details. -->
-    <form id="details" class="fields" method="post" data-clear-drafts th:action="@{/persons/{id}(id=${personId})}">
+    <!-- data-autosave: fields.js saves each field to this address when the user leaves it. -->
+    <form id="details" class="fields" method="post" th:action="@{/persons/{id}(id=${personId})}"
+          th:data-autosave="@{/persons/{id}/field(id=${personId})}">
       <div th:replace="~{person-details :: details}"></div>
       <p class="form-buttons">
         <button>Speichern</button>

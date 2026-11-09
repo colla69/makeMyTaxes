@@ -9,12 +9,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 @Controller
@@ -80,6 +82,37 @@ class HomeController {
       household.rename(personId, displayName(details));
     }
     return "redirect:/persons/" + personId + "?saved=true";
+  }
+
+  /** Saves one detail when the user leaves its field. The answer is empty, or it holds the error. */
+  @PostMapping("/persons/{personId}/field")
+  @ResponseBody
+  ResponseEntity<String> saveDetail(
+      @PathVariable long personId,
+      @RequestParam String field,
+      @RequestParam(defaultValue = "") String value) {
+    if (!household.hasPerson(personId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    }
+    Field target =
+        PERSONAL_FIELDS.stream()
+            .filter(candidate -> candidate.id().equals(field))
+            .findFirst()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    String text = value.strip();
+    if (!text.isEmpty()) {
+      try {
+        target.kind().validate(text);
+      } catch (IllegalArgumentException e) {
+        return ResponseEntity.status(422).body(e.getMessage());
+      }
+    }
+    household.saveDetail(personId, field, text);
+    Map<String, String> details = household.detailsOf(personId).values();
+    if (details.keySet().containsAll(MainForm.NAME_FIELDS)) {
+      household.rename(personId, displayName(details));
+    }
+    return ResponseEntity.ok("");
   }
 
   @PostMapping("/persons/{personId}/returns")

@@ -15,10 +15,8 @@
     <div id="panel" th:fragment="panel">
       <h1 th:text="'Steuererklärung ' + ${taxYear}">Steuererklärung</h1>
 
-      <!-- data-remember: fields.js keeps the input of this form while the user switches tabs. -->
       <form id="expense-form"
             class="fields"
-            data-remember
             method="post"
             th:action="@{/returns/{id}/expenses(id=${returnId})}"
             th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"

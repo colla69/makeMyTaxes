@@ -1,66 +1,76 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="'Review ' + ${taxYear}">Review</title>
+    <title th:text="'Übersicht ' + ${taxYear}">Übersicht</title>
     <link rel="stylesheet" th:href="@{/app.css}">
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
-    <h1 th:text="'Review ' + ${taxYear}">Review</h1>
-    <p>Enter these values in Mein ELSTER. The line numbers are from the 2022 forms.</p>
+    <main class="panel">
+    <h1 th:text="'Übersicht ' + ${taxYear}">Übersicht</h1>
+    <p>Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken 2022.</p>
 
     <section th:replace="~{filing-result :: result}"></section>
 
     <section id="estimate">
-      <h2>Work expenses against the lump sum</h2>
+      <h2>Werbungskosten im Vergleich zum Pauschbetrag</h2>
       <table>
-        <tr><td>Commuting</td><td class="amount" th:text="${estimate.commute}">0,00</td></tr>
-        <tr><td>Home office</td><td class="amount" th:text="${estimate.homeOffice}">0,00</td></tr>
-        <tr><td>Listed expenses</td><td class="amount" th:text="${estimate.listed}">0,00</td></tr>
-        <tr><th>Total</th><th class="amount" th:text="${estimate.total}">0,00</th></tr>
-        <tr><td>Lump sum (§ 9a EStG)</td><td class="amount" th:text="${estimate.lumpSum}">0,00</td></tr>
+        <tr><td>Wege zur Arbeit</td><td class="amount" th:text="${estimate.commute}">0,00</td></tr>
+        <tr><td>Homeoffice</td><td class="amount" th:text="${estimate.homeOffice}">0,00</td></tr>
+        <tr><td>Erfasste Ausgaben</td><td class="amount" th:text="${estimate.listed}">0,00</td></tr>
+        <tr><th>Summe</th><th class="amount" th:text="${estimate.total}">0,00</th></tr>
+        <tr><td>Arbeitnehmer-Pauschbetrag (§ 9a Satz 1 Nr. 1 Buchstabe a EStG)</td><td class="amount" th:text="${estimate.lumpSum}">0,00</td></tr>
       </table>
-      <p th:if="${estimate.aboveLumpSum}">Your work expenses are above the lump sum, so they count in full.</p>
-      <p th:unless="${estimate.aboveLumpSum}">Your work expenses are not above the lump sum, so the tax office applies the lump sum.</p>
-      <p class="help">This is an estimate. The tax office calculates the amounts.</p>
+      <!-- Each rate and limit of the estimate, with its legal source. -->
+      <ul id="limits" class="help">
+        <li id="limit-commute" th:with="l=${estimate.limits}"
+            th:text="'Wege zur Arbeit: ' + ${l.perKmFirst20} + ' EUR je vollen Kilometer bis 20 km, ' + ${l.perKmFrom21} + ' EUR ab dem 21. Kilometer, für jeden Tag an der ersten Tätigkeitsstätte. Ohne eigenen oder überlassenen Kraftwagen höchstens ' + ${l.commuteLimit} + ' EUR im Jahr. Quelle: § 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG. Arbeitgeberleistungen mindern den Betrag: § 9 Abs. 1 Satz 3 Nr. 4 Satz 5, § 3 Nr. 15 Satz 3 und § 40 Abs. 2 Satz 2 Nr. 1 EStG.'">Wege zur Arbeit</li>
+        <li id="limit-home-office" th:with="l=${estimate.limits}"
+            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR für jeden Tag nur zu Hause, höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: § 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG mit § 9 Abs. 5 EStG.'">Homeoffice</li>
+        <li>Erfasste Ausgaben: die Summe der Beträge, die Sie als Werbungskosten erfasst haben. Die App verteilt keine Kosten über mehrere Jahre (Absetzung für Abnutzung, § 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG). Prüfen Sie das bei teuren Arbeitsmitteln selbst.</li>
+      </ul>
+      <p th:if="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen über dem Pauschbetrag. Sie zählen daher in voller Höhe.</p>
+      <p th:unless="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen nicht über dem Pauschbetrag. Das Finanzamt setzt daher den Pauschbetrag an.</p>
+      <p class="help">Dies ist eine Schätzung. Das Finanzamt berechnet die Beträge.</p>
     </section>
 
-    <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' without a receipt'">0</p>
+    <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' ohne Beleg'">0</p>
 
     <section id="without-form" class="warning" th:unless="${#lists.isEmpty(withoutForm)}">
-      <h2>Not on a form yet</h2>
-      <p>The app has no form for these costs yet. Enter them by hand in Mein ELSTER.</p>
+      <h2>Noch auf keinem Vordruck</h2>
+      <p>Die App hat für diese Kosten noch keinen Vordruck. Tragen Sie sie von Hand in Mein ELSTER ein.</p>
       <table>
         <tr th:each="cost : ${withoutForm}">
-          <td th:text="${cost.topic}">Topic</td>
-          <td th:text="${cost.description}">Description</td>
+          <td th:text="${cost.topic}">Kategorie</td>
+          <td th:text="${cost.description}">Beschreibung</td>
           <td class="amount" th:text="${cost.amount}">0,00</td>
         </tr>
       </table>
     </section>
 
     <section class="review-form" th:each="review : ${reviews}">
-      <h2 th:text="${review.title}">Form</h2>
+      <h2 th:text="${review.title}">Vordruck</h2>
       <div class="warning" th:unless="${#lists.isEmpty(review.missing)}">
-        <p>Missing:</p>
-        <ul><li th:each="field : ${review.missing}" th:text="${field.label}">Field</li></ul>
+        <p>Es fehlt:</p>
+        <ul><li th:each="field : ${review.missing}" th:text="${field.label}">Feld</li></ul>
       </div>
       <th:block th:each="section : ${review.sections}">
-        <h3 th:text="${section.title}">Section</h3>
+        <h3 th:text="${section.title}">Abschnitt</h3>
         <table>
-          <thead><tr><th>Line</th><th>Field</th><th>Value</th><th>Evidence</th></tr></thead>
+          <thead><tr><th>Zeile</th><th>Feld</th><th>Wert</th><th>Nachweis</th></tr></thead>
           <tbody>
             <tr th:each="line : ${section.lines}">
               <td th:text="${line.line}">1</td>
-              <td th:text="${line.label}">Label</td>
-              <td class="amount" th:text="${line.value}">Value</td>
-              <td th:text="${line.evidence}">Evidence</td>
+              <td th:text="${line.label}">Bezeichnung</td>
+              <td class="amount" th:text="${line.value}">Wert</td>
+              <td th:text="${line.evidence}">Nachweis</td>
             </tr>
           </tbody>
         </table>
       </th:block>
     </section>
+    </main>
   </body>
 </html>

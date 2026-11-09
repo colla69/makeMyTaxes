@@ -8,7 +8,7 @@ set -euo pipefail
 
 EFFORT=${REVIEWER_EFFORT:-high}
 BUDGET=${REVIEWER_BUDGET_USD:-10}
-MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-3}
+MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-10}
 
 # A change here can weaken the guards or send data off the machine, so the owner reviews it.
 OWNER_ONLY='^(\.github/|\.githooks/|\.claude/|scripts/|pom\.xml$|.*/pom\.xml$|app/src/main/resources/application\.properties$|.*/LocalRequestFilter\.java$|.*/storage/(EncryptedDatabase|DatabaseConfiguration)\.java$)'
@@ -41,6 +41,15 @@ send_back() { # message
   exit 0
 }
 
+# Brings the local dev branch and the dev container up to date. A failure here does not undo the merge.
+update_dev_environment() {
+  git -C "$root" fetch -q origin dev
+  if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain)" ]]; then
+    git -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
+  fi
+  "$root/scripts/deploy-dev.sh" || echo "The dev container did not update." >&2
+}
+
 checks=$(gh pr checks "$number" --repo "$REPO" --required --json bucket --jq '[.[].bucket] | unique | join(" ")' || true)
 if [[ -z "$checks" || "$checks" == *pending* ]]; then
   echo "Pull request $number: CI is still running."
@@ -54,10 +63,14 @@ if [[ "$(gh pr view "$number" --repo "$REPO" --json mergeable --jq .mergeable)" 
   send_back "This pull request has a merge conflict with dev. Merge dev into the branch."
 fi
 
-rounds=$(gh pr view "$number" --repo "$REPO" --json reviews \
-  --jq '[.reviews[] | select(.body | startswith("Automatic review"))] | length')
+# The comment "Keep going" from the owner starts a new count of rounds.
+rounds=$(OWNER=$OWNER gh pr view "$number" --repo "$REPO" --json reviews,comments --jq '
+  ([.comments[] | select(.author.login == env.OWNER)
+    | select(.body | ascii_downcase | test("^\\s*keep going\\W*$")) | .createdAt] | max // "") as $since
+  | [.reviews[] | select(.body | startswith("Automatic review")) | select(.submittedAt > $since)]
+  | length')
 if ((rounds >= MAX_ROUNDS)); then
-  hand_to_owner "$MAX_ROUNDS review rounds did not end in an approval."
+  hand_to_owner "$MAX_ROUNDS review rounds did not end in an approval. For $MAX_ROUNDS more rounds, comment \`Keep going\` and add the label \`needs-review\`."
 fi
 
 changed=$(gh pr diff "$number" --repo "$REPO" --name-only | grep -E "$OWNER_ONLY" || true)
@@ -103,6 +116,7 @@ case "$verdict" in
     gh pr merge "$number" --repo "$REPO" --merge --match-head-commit "$head"
     gh pr edit "$number" --repo "$REPO" --remove-label needs-review >/dev/null
     echo "Pull request $number: merged into dev."
+    update_dev_environment
     ;;
   "VERDICT: CHANGES")
     set_pr_label "$number" changes-requested needs-review

@@ -41,7 +41,7 @@ class KindTest {
   void showsMoneyAndDatesInTheFormatOfTheApp() {
     assertThat(Kind.MONEY.display("1234,5")).isEqualTo("1.234,50");
     assertThat(Kind.DATE.display("3.2.1990")).isEqualTo("03.02.1990");
-    assertThat(Kind.YES_NO_UNSURE.display("UNSURE")).isEqualTo("Not sure");
+    assertThat(Kind.YES_NO_UNSURE.display("UNSURE")).isEqualTo("Weiß nicht");
   }
 
   @ParameterizedTest
@@ -51,7 +51,8 @@ class KindTest {
     "WHOLE_NUMBER, -3",
     "DATE, 31.02.2022",
     "YES_NO_UNSURE, MAYBE",
-    "COMMUTE_TRANSPORT, BOAT"
+    "COMMUTE_TRANSPORT, BOAT",
+    "PAYMENT, CHEQUE"
   })
   void rejectsAValueOfTheWrongKind(Kind kind, String value) {
     assertThatIllegalArgumentException().isThrownBy(() -> kind.validate(value));

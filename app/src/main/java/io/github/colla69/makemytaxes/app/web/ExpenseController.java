@@ -42,7 +42,8 @@ class ExpenseController {
       var payment = new Payment(GermanFormats.parseDate(paidOn), GermanFormats.parseMoney(amount));
       if (!payment.isIn(taxYear)) {
         throw new IllegalArgumentException(
-            "This return is for %d, but the payment date is %s. A cost counts in the year of the payment."
+            ("Diese Erklärung gilt für %d, aber das Zahlungsdatum ist %s. Eine Ausgabe zählt im"
+                    + " Jahr der Zahlung.")
                 .formatted(taxYear.value(), GermanFormats.format(payment.paidOn())));
       }
       return new Expense(payment, new Purpose(topic, description.strip()), receipt.strip());
@@ -110,13 +111,14 @@ class ExpenseController {
         .orElseThrow(
             () ->
                 new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "No return with the id " + returnId + "."));
+                    HttpStatus.NOT_FOUND, "Keine Erklärung mit der ID " + returnId + "."));
   }
 
   private void fillPanel(long returnId, ExpenseForm form, Model model) {
     List<StoredExpense> stored = expenses.expensesOf(returnId);
     var summary = ExpenseSummary.of(stored.stream().map(StoredExpense::expense).toList());
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", "expenses");
     model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);

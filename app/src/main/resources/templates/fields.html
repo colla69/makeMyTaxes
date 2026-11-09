@@ -1,13 +1,15 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <body>
     <!--
       The one look of a field. Put it in an element with the class "fields".
 
       Call it with named values. Only "name" and "label" are necessary:
-        name, label, value, line, help, hint, fieldError, placeholder, required, autofocus, type, min, max
+        name, label, value, line, help, hint, fieldError, placeholder, required, autofocus, type, min, max, kind
         options: a list of Kind.Option. This makes the field a select, and "value" selects the option.
         blankOption: true adds an empty first option to the select.
+        kind: the name of a Kind. DATE, MONEY and WHOLE_NUMBER get an input mask from fields.js,
+          and DATE also gets a calendar button. The server still checks every value.
         hint: a short Italian explanation. A "?" beside the label shows it on hover.
           The hint is hidden from screen readers, so the name of the field stays its label.
 
@@ -15,30 +17,40 @@
       name. So a new value here must not have the name of a model attribute, such as "error".
     -->
     <div class="field" th:fragment="field">
+      <!-- The clear button is outside the label, so that the label names only the control. -->
+      <div class="field-row">
       <label>
         <span class="field-label">
-          <span class="line" th:if="${line}" th:text="${line}">1</span>
+          <span class="line" th:unless="${#strings.isEmpty(line)}" th:text="${line}">1</span>
           <span th:text="${label}">Label</span>
           <span class="hint" th:unless="${#strings.isEmpty(hint)}" aria-hidden="true">?<span
                 class="hint-text" th:text="${hint}">Hint</span></span>
         </span>
         <select th:unless="${#lists.isEmpty(options)}" th:name="${name}">
-          <option th:if="${blankOption}" value="">Choose</option>
+          <option th:if="${blankOption}" value="">Bitte wählen</option>
           <option th:each="option : ${options}"
                   th:value="${option.value}"
                   th:text="${option.label}"
                   th:selected="${option.value == value}">Option</option>
         </select>
-        <input th:if="${#lists.isEmpty(options)}"
-               th:name="${name}"
-               th:value="${value}"
-               th:type="${type}"
-               th:min="${min}"
-               th:max="${max}"
-               th:placeholder="${placeholder}"
-               th:required="${required}"
-               th:autofocus="${autofocus}">
+        <span class="control" th:if="${#lists.isEmpty(options)}">
+          <input th:name="${name}"
+                 th:value="${value}"
+                 th:type="${type}"
+                 th:min="${min}"
+                 th:max="${max}"
+                 th:placeholder="${placeholder}"
+                 th:required="${required}"
+                 th:autofocus="${autofocus}"
+                 th:data-kind="${kind}"
+                 th:inputmode="${kind == 'MONEY' ? 'decimal' : (kind == 'DATE' or kind == 'WHOLE_NUMBER' ? 'numeric' : null)}">
+          <button type="button" class="calendar" th:if="${kind == 'DATE'}"
+                  title="Kalender" tabindex="-1" aria-hidden="true">&#128197;</button>
+        </span>
       </label>
+      <button type="button" class="clear-field" data-clear-field tabindex="-1" aria-label="Feld leeren"
+              title="Feld leeren">×</button>
+      </div>
       <p class="help" th:unless="${#strings.isEmpty(help)}" th:text="${help}">Help</p>
       <p class="error" th:if="${fieldError}" th:text="${fieldError}">Error</p>
     </div>

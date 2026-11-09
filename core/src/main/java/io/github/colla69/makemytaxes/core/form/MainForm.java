@@ -8,6 +8,26 @@ import java.util.List;
 /** Hauptvordruck ESt 1 A 2022. */
 public final class MainForm implements FormModule {
 
+  public static final String ID = "main";
+
+  /**
+   * The fields that belong to the person and not to one year. The person keeps them, and the main
+   * form of each year shows them until the user saves other values there.
+   */
+  public static final List<String> PERSONAL_FIELDS =
+      List.of(
+          "taxId",
+          "birthDate",
+          "lastName",
+          "firstName",
+          "street",
+          "houseNumber",
+          "postalCode",
+          "city");
+
+  /** The personal fields that a new person must have. */
+  public static final List<String> NAME_FIELDS = List.of("lastName", "firstName");
+
   private static final String GENERAL = "Allgemeine Angaben";
   private static final String BANK = "Bankverbindung";
   private static final String BENEFITS = "Einkommensersatzleistungen";
@@ -15,19 +35,24 @@ public final class MainForm implements FormModule {
 
   @Override
   public String id() {
-    return "main";
+    return ID;
   }
 
   @Override
   public String title() {
-    return "Main form (ESt 1 A)";
+    return "Hauptvordruck (ESt 1 A)";
+  }
+
+  /** The personal fields, in the order of the form. */
+  public List<Field> personalFields() {
+    return fields().stream().filter(field -> PERSONAL_FIELDS.contains(field.id())).toList();
   }
 
   @Override
   public List<Field> fields() {
     return List.of(
         optional("taxNumber", GENERAL, "4", "Steuernummer", Kind.TEXT)
-            .withHelp("If this is your first return and you have no tax number, leave this blank."),
+            .withHelp("Lassen Sie das Feld leer, wenn dies Ihre erste Erklärung ist und Sie keine Steuernummer haben."),
         required("taxOffice", GENERAL, "5", "An das Finanzamt", Kind.TEXT),
         required("taxId", GENERAL, "8", "Identifikationsnummer (IdNr.)", Kind.TAX_ID),
         required("birthDate", GENERAL, "8", "Geburtsdatum", Kind.DATE),
@@ -40,8 +65,8 @@ public final class MainForm implements FormModule {
         required("occupation", GENERAL, "17", "Ausgeübter Beruf", Kind.TEXT),
         required("iban", BANK, "31", "IBAN", Kind.IBAN),
         optional("benefits", BENEFITS, "43", "Einkommensersatzleistungen (EUR)", Kind.MONEY)
-            .withHelp("For example Arbeitslosengeld, Elterngeld or Krankengeld."),
+            .withHelp("Zum Beispiel Arbeitslosengeld, Elterngeld oder Krankengeld."),
         optional("notes", NOTES, "45", "Ergänzende Angaben", Kind.TEXT)
-            .withHelp("Facts for the tax office that have no other field on the form."));
+            .withHelp("Angaben für das Finanzamt, für die der Vordruck kein anderes Feld hat."));
   }
 }

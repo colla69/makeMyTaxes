@@ -48,8 +48,11 @@ class ExpenseFlowTest {
 
   @BeforeEach
   void createAPersonWithAReturn() throws Exception {
-    String name = "Made-up " + UUID.randomUUID();
-    mockMvc.perform(post("/persons").param("name", name)).andExpect(status().is3xxRedirection());
+    String lastName = UUID.randomUUID().toString();
+    String name = "Made-up " + lastName;
+    mockMvc
+        .perform(post("/persons").param("firstName", "Made-up").param("lastName", lastName))
+        .andExpect(status().is3xxRedirection());
     long personId =
         jdbcClient
             .sql("select id from person where name = ?")
@@ -149,7 +152,7 @@ class ExpenseFlowTest {
   @Test
   void flagsAnExpenseWithoutAReceipt() throws Exception {
     addExpense("03.02.2022", "10,00", "")
-        .andExpect(content().string(containsString("1 without a receipt")));
+        .andExpect(content().string(containsString("1 ohne Beleg")));
   }
 
   @Test

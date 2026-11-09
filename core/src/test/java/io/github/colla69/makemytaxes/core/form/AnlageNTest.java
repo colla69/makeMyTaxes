@@ -12,6 +12,7 @@ import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class AnlageNTest {
@@ -31,8 +32,8 @@ class AnlageNTest {
 
     assertThat(lines).extracting(ReviewLine::line).containsExactly("6", "42", "42", "45");
     assertThat(lines.get(1).value()).isEqualTo("123,45");
-    assertThat(lines.get(1).evidence()).isEqualTo("Paid on 03.02.2022, receipt: made-up.pdf");
-    assertThat(lines.get(2).label()).isEqualTo("Aufwendungen für Arbeitsmittel: total");
+    assertThat(lines.get(1).evidence()).isEqualTo("Bezahlt am 03.02.2022, Beleg: made-up.pdf");
+    assertThat(lines.get(2).label()).isEqualTo("Aufwendungen für Arbeitsmittel: Summe");
   }
 
   @Test
@@ -44,7 +45,7 @@ class AnlageNTest {
             "");
 
     assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
-        .isEqualTo("Paid on 03.02.2022, no receipt");
+        .isEqualTo("Bezahlt am 03.02.2022, ohne Beleg");
   }
 
   @Test
@@ -79,13 +80,74 @@ class AnlageNTest {
     assertThat(form.check(new Answers(Map.of("commuteDays", "10"))))
         .singleElement()
         .asString()
-        .contains("how you travelled");
+        .contains("womit Sie zur Arbeit");
   }
 
   @Test
   void missingNamesOnlyRequiredFields() {
     assertThat(form.missing(new Answers(Map.of("taxClass", "1", "grossWage", "1,00"))))
         .extracting(Field::id)
-        .containsExactly("wageTax");
+        .containsExactly("employerName", "wageTax");
+  }
+
+  @Test
+  void eachEmployerHasItsOwnBlockAndTheReviewDoesNotAddThemTogether() {
+    var answers =
+        new Answers(
+            Map.of(
+                "employerName", "Made-up GmbH",
+                "grossWage", "1.000,00",
+                "employer2-employerName", "Made-up AG",
+                "employer2-grossWage", "2.000,00",
+                "commuteKm", "5"));
+
+    assertThat(AnlageN.employerCount(answers)).isEqualTo(2);
+    assertThat(form.fields(answers))
+        .extracting(Field::section)
+        .containsSubsequence("Arbeitgeber 1", "Arbeitgeber 2", "Werbungskosten");
+    assertThat(form.review(answers, List.of()))
+        .extracting(line -> line.section() + "|" + line.line() + "|" + line.value())
+        .containsExactly(
+            "Arbeitgeber 1||Made-up GmbH",
+            "Arbeitgeber 1|6|1.000,00",
+            "Arbeitgeber 2||Made-up AG",
+            "Arbeitgeber 2|6|2.000,00",
+            "Werbungskosten|35|5");
+    assertThat(form.missing(answers))
+        .extracting(Field::id)
+        .contains("wageTax", "employer2-wageTax");
+  }
+
+  @Test
+  void eachLabelOfTheCertificateNamesItsNumber() {
+    assertThat(form.field("employer3-grossWage"))
+        .hasValueSatisfying(
+            field -> {
+              assertThat(field.label()).startsWith("Nr. 3 ");
+              assertThat(field.section()).isEqualTo("Arbeitgeber 3");
+              assertThat(field.hintId()).isEqualTo("grossWage");
+            });
+    assertThat(form.field("wageTax").orElseThrow().label()).startsWith("Nr. 4 ");
+    assertThat(form.field("employedFrom").orElseThrow().label()).startsWith("Nr. 1 ");
+  }
+
+  @Test
+  @DisplayName("§ 41b(1) sentence 2 no. 2 EStG, version 31.12.2022: the period lies in the calendar year")
+  void thePeriodOfACertificateLiesInTheTaxYearAndStartsBeforeItEnds() {
+    assertThat(
+            form.check(
+                new Answers(Map.of("employedFrom", "01.03.2022", "employedTo", "31.12.2022"))))
+        .isEmpty();
+    assertThat(
+            form.check(
+                new Answers(
+                    Map.of("employer2-employedFrom", "01.06.2022", "employer2-employedTo", "01.05.2022"))))
+        .singleElement()
+        .asString()
+        .contains("Arbeitgeber 2", "vor dem Beginn");
+    assertThat(form.check(new Answers(Map.of("employedTo", "01.01.2023"))))
+        .singleElement()
+        .asString()
+        .contains("2022");
   }
 }

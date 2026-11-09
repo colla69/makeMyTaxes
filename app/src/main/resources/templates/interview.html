@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="'Fragen ' + ${taxYear}">Fragen</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
+  </head>
+  <body>
+    <nav th:replace="~{nav :: nav}"></nav>
+    <main class="panel">
+    <h1 th:text="'Fragen zu Ihrem Jahr ' + ${taxYear}">Fragen</h1>
+    <p class="saved" th:if="${saved}">Gespeichert.</p>
+    <p id="progress-text">
+      <progress id="progress" th:max="${questionCount}" th:value="${answeredCount}"></progress>
+      <span th:text="${answeredCount} + ' von ' + ${questionCount} + ' Fragen beantwortet'">0 von 1</span>
+    </p>
+
+    <!-- One question per screen. -->
+    <section id="question" th:if="${question}">
+      <p class="topic" th:text="${topicLabel} + ', Frage ' + ${position} + ' von ' + ${positions}">Thema</p>
+      <h2><span th:text="${question.text}">Frage</span>
+        <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + question.hintId())}"><span class="hint"
+              th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
+
+      <!-- data-autosave: fields.js saves the field of a field question when the user leaves it. -->
+      <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}"
+            th:data-autosave="${question.type.name() == 'FIELD'} ? @{/returns/{r}/interview/questions/{q}/field(r=${returnId},q=${question.id})} : null">
+        <!-- A yes/no question or a choice: one button for each answer. -->
+        <th:block th:unless="${question.options.isEmpty()}">
+          <p class="form-buttons">
+            <button th:each="option : ${question.options}" name="answer" th:value="${option.value}"
+                    th:attr="aria-pressed=${current == option.value}" th:text="${option.label}">Ja</button>
+          </p>
+        </th:block>
+
+        <th:block th:if="${question.type.name() == 'FIELD'}">
+          <div class="fields">
+            <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.hintId())}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
+          </div>
+          <p class="form-buttons"><button>Weiter</button></p>
+        </th:block>
+
+        <th:block th:if="${question.type.name() == 'CONFIRM'}">
+          <dl id="details">
+            <th:block th:each="detail : ${details}">
+              <dt th:text="${detail.label}">Feld</dt>
+              <dd th:text="${#strings.isEmpty(detail.value)} ? '–' : ${detail.value}">Wert</dd>
+            </th:block>
+          </dl>
+          <p class="help">Diese Angaben gelten für jedes Jahr. Sie ändern sie bei der Person.</p>
+          <p class="form-buttons">
+            <button name="answer" value="DONE">Ja, die Angaben stimmen</button>
+            <a th:href="@{${personHref}}">Angaben ändern</a>
+          </p>
+        </th:block>
+      </form>
+      <p><a th:if="${back}" th:href="@{${back}}" class="back">Zurück</a></p>
+    </section>
+
+    <!-- The summary after the last question of a topic. -->
+    <section id="summary" th:if="${summary}">
+      <h2 th:text="'Zusammenfassung: ' + ${summary.label}">Zusammenfassung</h2>
+      <ol th:replace="~{interview-answers :: answers(topic=${summary})}"></ol>
+      <p class="form-buttons">
+        <a th:href="@{${back}}" class="back">Zurück</a>
+        <a th:href="@{${forward}}" class="forward">Weiter</a>
+      </p>
+    </section>
+
+    <!-- When each question has an answer: all topics and the pages that the return needs. -->
+    <th:block th:if="${topics}">
+      <section class="topic-summary" th:each="topic : ${topics}">
+        <h2 th:text="${topic.label}">Thema</h2>
+        <ol th:replace="~{interview-answers :: answers(topic=${topic})}"></ol>
+      </section>
+
+      <section id="steps">
+        <h2>Diese Seiten braucht Ihre Erklärung</h2>
+        <ol>
+          <li th:each="step : ${steps}">
+            <a th:href="@{${step.href}}" th:text="${step.label}">Seite</a>
+            <span class="help" th:text="${step.hint}">Hinweis</span>
+          </li>
+        </ol>
+        <form method="post" th:action="@{/returns/{r}/interview/restart(r=${returnId})}">
+          <button>Fragen neu beginnen</button>
+        </form>
+      </section>
+    </th:block>
+    </main>
+  </body>
+</html>

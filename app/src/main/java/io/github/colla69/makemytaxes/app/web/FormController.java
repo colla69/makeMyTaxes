@@ -24,12 +24,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 @Controller
@@ -52,16 +54,32 @@ class FormController {
 
   record EstimateView(
       String commute, String homeOffice, String listed, String total, String lumpSum,
-      boolean aboveLumpSum) {
+      boolean aboveLumpSum, LimitsView limits) {
 
-    static EstimateView of(WorkExpenseEstimate estimate) {
+    static EstimateView of(WorkExpenseEstimate estimate, YearPack pack) {
       return new EstimateView(
           GermanFormats.format(estimate.commute()),
           GermanFormats.format(estimate.homeOffice()),
           GermanFormats.format(estimate.listed()),
           GermanFormats.format(estimate.total()),
           GermanFormats.format(estimate.lumpSum()),
-          estimate.isAboveLumpSum());
+          estimate.isAboveLumpSum(),
+          LimitsView.of(pack));
+    }
+  }
+
+  /** The rates and limits of the year pack that the estimate uses. The page names their source. */
+  record LimitsView(
+      String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
+      String homeOfficeLimit) {
+
+    static LimitsView of(YearPack pack) {
+      return new LimitsView(
+          GermanFormats.format(pack.commutePerKmFirst20()),
+          GermanFormats.format(pack.commutePerKmFrom21()),
+          GermanFormats.format(pack.commuteLimitWithoutCar()),
+          GermanFormats.format(pack.homeOfficePerDay()),
+          GermanFormats.format(pack.homeOfficeLimit()));
     }
   }
 
@@ -104,7 +122,8 @@ class FormController {
     FormModule form = formOf(returnId, formId);
     Map<String, String> values = new LinkedHashMap<>();
     Map<String, String> errors = new LinkedHashMap<>();
-    for (Field field : form.fields()) {
+    // The submitted names tell which list entries, such as employers, the page had.
+    for (Field field : form.fields(new Answers(submitted))) {
       String value = submitted.getOrDefault(field.id(), "").strip();
       if (value.isEmpty()) {
         continue;
@@ -127,6 +146,33 @@ class FormController {
     return "redirect:/returns/" + returnId + "/forms/" + formId + "?saved=true";
   }
 
+  /**
+   * Saves one field when the user leaves it. A value that fails its own check is not saved, and
+   * the answer holds the error. Otherwise the answer holds the messages of the checks of several
+   * fields, one per line. They do not stop the save, because the other value of such a check can
+   * still be missing.
+   */
+  @PostMapping("/returns/{returnId}/forms/{formId}/field")
+  @ResponseBody
+  ResponseEntity<String> saveField(
+      @PathVariable long returnId,
+      @PathVariable String formId,
+      @RequestParam String field,
+      @RequestParam(defaultValue = "") String value) {
+    FormModule form = formOf(returnId, formId);
+    Field target = form.field(field).orElseThrow(FormController::notFound);
+    String text = value.strip();
+    if (!text.isEmpty()) {
+      try {
+        target.kind().validate(text);
+      } catch (IllegalArgumentException e) {
+        return ResponseEntity.status(422).body(e.getMessage());
+      }
+    }
+    forms.saveAnswer(returnId, formId, field, text);
+    return ResponseEntity.ok(String.join("\n", form.check(forms.answers(returnId, formId))));
+  }
+
   @GetMapping("/returns/{returnId}/review")
   String review(@PathVariable long returnId, Model model) {
     TaxYear taxYear = taxYearOf(returnId);
@@ -142,13 +188,15 @@ class FormController {
       }
     }
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", "review");
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("filing", filingOf(returnId, pack));
     model.addAttribute("reviews", reviews);
     model.addAttribute(
         "estimate",
-        EstimateView.of(WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored)));
+        EstimateView.of(
+            WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored), pack));
     model.addAttribute("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
     model.addAttribute("withoutForm", withoutForm(stored));
     return "review";
@@ -176,10 +224,11 @@ class FormController {
       Model model) {
     TaxYear taxYear = taxYearOf(returnId);
     model.addAttribute("returnId", returnId);
+    model.addAttribute("tab", form.id());
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
-    model.addAttribute("fieldGroups", fieldGroups(form.fields()));
+    model.addAttribute("fieldGroups", fieldGroups(form.fields(new Answers(values))));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
     model.addAttribute("formErrors", formErrors);

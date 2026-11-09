@@ -10,7 +10,7 @@ public final class FilingCheckForm implements FormModule {
 
   public static final String ID = "filing-check";
 
-  private static final String SECTION = "Must you file?";
+  private static final String SECTION = "Müssen Sie eine Erklärung abgeben?";
 
   private final YearPack pack;
 
@@ -25,7 +25,7 @@ public final class FilingCheckForm implements FormModule {
 
   @Override
   public String title() {
-    return "Filing check";
+    return "Abgabepflicht";
   }
 
   @Override
@@ -35,39 +35,48 @@ public final class FilingCheckForm implements FormModule {
     return List.of(
         question(
             "otherIncome",
-            "§ 46(2) no. 1 EStG",
-            "Income without wage tax, such as rent or a side job, above " + income + " euros?"),
+            "§ 46 Abs. 2 Nr. 1 EStG",
+            "Einkünfte ohne Lohnsteuerabzug, etwa aus Vermietung oder einem Nebenjob, über "
+                + income
+                + " Euro?"),
         question(
             "benefits",
-            "§ 46(2) no. 1 EStG",
-            "Benefits such as Arbeitslosengeld, Elterngeld or Krankengeld above "
+            "§ 46 Abs. 2 Nr. 1 EStG",
+            "Lohnersatzleistungen wie Arbeitslosengeld, Elterngeld oder Krankengeld über "
                 + income
-                + " euros?"),
+                + " Euro?"),
         question(
-            "severalEmployers", "§ 46(2) no. 2 EStG", "Two or more employers at the same time?"),
+            "severalEmployers",
+            "§ 46 Abs. 2 Nr. 2 EStG",
+            "Arbeitslohn von zwei oder mehr Arbeitgebern gleichzeitig?"),
         question(
             "healthAllowance",
-            "§ 46(2) no. 3 EStG",
-            "Wage above "
+            "§ 46 Abs. 2 Nr. 3 EStG",
+            "Arbeitslohn über "
                 + wage
-                + " euros, and the Vorsorgepauschale in the wage tax was higher than your"
-                + " deductible health and care insurance costs?"),
+                + " Euro, und die Teilbeträge der Vorsorgepauschale für die Kranken- und"
+                + " Pflegeversicherung (§ 39b Abs. 2 Satz 5 Nr. 3 Buchst. b bis d EStG) beim"
+                + " Lohnsteuerabzug waren höher als Ihre abziehbaren Vorsorgeaufwendungen nach"
+                + " § 10 Abs. 1 Nr. 3 und 3a in Verbindung mit Abs. 4 EStG?"),
         question(
             "wageTaxAllowance",
-            "§ 46(2) no. 4 EStG",
-            "Wage above " + wage + " euros, and an allowance (Freibetrag) in your wage tax data?"),
+            "§ 46 Abs. 2 Nr. 4 EStG",
+            "Arbeitslohn über "
+                + wage
+                + " Euro, und ein Freibetrag nach § 39a Abs. 1 Satz 1 Nr. 1 bis 3, 5 oder 6 EStG in"
+                + " Ihren Lohnsteuerabzugsmerkmalen?"),
         question(
             "specialPayment",
-            "§ 46(2) no. 5 EStG",
-            "Your employer taxed a one-off payment, such as a severance payment, at a reduced rate?"),
+            "§ 46 Abs. 2 Nr. 5 EStG",
+            "Hat Ihr Arbeitgeber eine Einmalzahlung, etwa eine Abfindung, ermäßigt besteuert?"),
         question(
             "certificateS",
-            "§ 46(2) no. 5a EStG",
-            "The letter S on your wage tax certificate (Großbuchstabe S)?"),
+            "§ 46 Abs. 2 Nr. 5a EStG",
+            "Steht der Großbuchstabe S auf Ihrer Lohnsteuerbescheinigung?"),
         question(
             "officeRequest",
-            "§ 149(1) AO",
-            "Did the tax office ask you to file a return for this year?"));
+            "§ 149 Abs. 1 AO",
+            "Hat das Finanzamt Sie aufgefordert, für dieses Jahr eine Erklärung abzugeben?"));
   }
 
   private static Field question(String id, String source, String label) {

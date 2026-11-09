@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="'Persönliche Angaben ' + ${personName}">Persönliche Angaben</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
+  </head>
+  <body>
+    <main class="panel">
+    <p><a th:href="@{/}">Zurück</a></p>
+    <h1 th:text="'Persönliche Angaben ' + ${personName}">Persönliche Angaben</h1>
+    <p>Jede Steuererklärung dieser Person übernimmt diese Angaben in den Hauptvordruck,
+      solange Sie dort keine anderen Werte speichern.</p>
+    <p class="saved" th:if="${saved}">Gespeichert.</p>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Die markierten Felder sind nicht gespeichert. Korrigieren Sie sie.</p>
+
+    <!-- data-autosave: fields.js saves each field to this address when the user leaves it. -->
+    <form id="details" class="fields" method="post" th:action="@{/persons/{id}(id=${personId})}"
+          th:data-autosave="@{/persons/{id}/field(id=${personId})}">
+      <div th:replace="~{person-details :: details}"></div>
+      <p class="form-buttons">
+        <button>Speichern</button>
+      </p>
+    </form>
+    </main>
+  </body>
+</html>

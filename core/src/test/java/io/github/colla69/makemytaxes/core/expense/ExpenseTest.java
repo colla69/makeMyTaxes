@@ -15,14 +15,14 @@ class ExpenseTest {
   void rejectsAPaymentOfZero() {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(0)))
-        .withMessageContaining("more than zero");
+        .withMessageContaining("größer als null");
   }
 
   @Test
   void rejectsAnEmptyDescription() {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> new Purpose(ExpenseTopic.WORK_OTHER, "  "))
-        .withMessageContaining("description");
+        .withMessageContaining("Beschreibung");
   }
 
   @Test

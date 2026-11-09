@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!--
+      The personal details of a person, such as the address. The main form of each year starts
+      with them. The model gives personalFields, requiredFields, values and errors.
+    -->
+    <th:block th:fragment="details">
+      <th:block th:each="field : ${personalFields}">
+        <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, hint=${#messages.msgOrNull('hint.main.' + field.id)}, fieldError=${errors[field.id]}, kind=${field.kind.name()}, required=${requiredFields.contains(field.id)})}"></div>
+      </th:block>
+    </th:block>
+  </body>
+</html>

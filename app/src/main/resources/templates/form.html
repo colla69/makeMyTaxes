@@ -1,33 +1,42 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${form.title} + ' ' + ${taxYear}">Form</title>
+    <title th:text="${form.title} + ' ' + ${taxYear}">Vordruck</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
-    <h1 th:text="${form.title} + ' ' + ${taxYear}">Form</h1>
-    <p class="saved" th:if="${saved}">Saved.</p>
-    <p class="error" th:each="message : ${formErrors}" th:text="${message}">Error</p>
-    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nothing is saved. Correct the marked fields.</p>
+    <main class="panel">
+    <h1 th:text="${form.title} + ' ' + ${taxYear}">Vordruck</h1>
+    <p class="saved" th:if="${saved}">Gespeichert.</p>
+    <!-- After each save of a field, fields.js writes the checks of several fields here. -->
+    <div id="form-messages"><p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p></div>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Die markierten Felder sind nicht gespeichert. Korrigieren Sie sie.</p>
 
+    <!-- data-autosave: fields.js saves each field to this address when the user leaves it. -->
     <form id="answers" method="post"
+          th:data-autosave="@{/returns/{r}/forms/{f}/field(r=${returnId},f=${form.id})}"
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
-        <h2 th:text="${group.title}">Section</h2>
+        <h2 th:text="${group.title}">Abschnitt</h2>
         <div class="fields">
           <th:block th:each="field : ${group.fields}">
-            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.id)}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true)}"></div>
+            <div th:replace="~{fields :: field(name=${field.id}, label=${field.label}, value=${values[field.id]}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + form.id + '.' + field.hintId())}, fieldError=${errors[field.id]}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()})}"></div>
           </th:block>
         </div>
       </section>
-      <p><button>Save</button></p>
+      <p class="form-buttons">
+        <button>Speichern</button>
+        <button type="button" data-clear-form>Alle Felder leeren</button>
+      </p>
     </form>
 
     <th:block th:if="${filing}">
       <section th:replace="~{filing-result :: result}"></section>
     </th:block>
+    </main>
   </body>
 </html>

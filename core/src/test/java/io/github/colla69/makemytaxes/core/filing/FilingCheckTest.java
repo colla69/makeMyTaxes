@@ -37,14 +37,14 @@ class FilingCheckTest {
 
   @ParameterizedTest(name = "{1}")
   @CsvSource({
-    "otherIncome, § 46(2) no. 1 EStG",
-    "benefits, § 46(2) no. 1 EStG",
-    "severalEmployers, § 46(2) no. 2 EStG",
-    "healthAllowance, § 46(2) no. 3 EStG",
-    "wageTaxAllowance, § 46(2) no. 4 EStG",
-    "specialPayment, § 46(2) no. 5 EStG",
-    "certificateS, § 46(2) no. 5a EStG",
-    "officeRequest, § 149(1) AO"
+    "otherIncome, § 46 Abs. 2 Nr. 1 EStG",
+    "benefits, § 46 Abs. 2 Nr. 1 EStG",
+    "severalEmployers, § 46 Abs. 2 Nr. 2 EStG",
+    "healthAllowance, § 46 Abs. 2 Nr. 3 EStG",
+    "wageTaxAllowance, § 46 Abs. 2 Nr. 4 EStG",
+    "specialPayment, § 46 Abs. 2 Nr. 5 EStG",
+    "certificateS, § 46 Abs. 2 Nr. 5a EStG",
+    "officeRequest, § 149 Abs. 1 AO"
   })
   void oneYesMakesTheReturnMandatoryAndNamesTheSource(String fieldId, String source) {
     Map<String, String> answers = allNo();

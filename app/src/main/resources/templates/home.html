@@ -1,34 +1,40 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>makeMyTaxes</title>
     <link rel="stylesheet" th:href="@{/app.css}">
+    <script th:src="@{/fields.js}" defer></script>
   </head>
   <body>
+    <!-- The same panel as the pages with tabs, so that every field has the same width. -->
+    <main class="panel">
     <h1>makeMyTaxes</h1>
 
     <section th:each="person : ${persons}">
       <h2 th:text="${person.name}">Name</h2>
+      <p><a th:href="@{/persons/{id}(id=${person.id})}">Persönliche Angaben ändern</a></p>
       <ul>
         <li th:each="taxReturn : ${person.returns}">
           <a th:href="@{/returns/{id}(id=${taxReturn.id})}"
-             th:text="'Return ' + ${taxReturn.taxYear.value}">Return</a>
+             th:text="'Steuererklärung ' + ${taxReturn.taxYear.value}">Steuererklärung</a>
         </li>
       </ul>
       <form class="fields" method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
-        <div th:replace="~{fields :: field(name='taxYear', label='Tax year', hint=#{hint.home.taxYear},type='number', min='2000', max='2100', required=true)}"></div>
-        <button>Add return</button>
+        <div th:replace="~{fields :: field(name='taxYear', label='Steuerjahr', hint=#{hint.home.taxYear},type='number', min='2000', max='2100', required=true)}"></div>
+        <button>Erklärung anlegen</button>
       </form>
     </section>
 
     <section>
-      <h2>Add a person</h2>
-      <form class="fields" method="post" th:action="@{/persons}">
-        <div th:replace="~{fields :: field(name='name', label='Name', hint=#{hint.home.name},required=true)}"></div>
-        <button>Add person</button>
+      <h2>Person anlegen</h2>
+      <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
+      <form id="new-person" class="fields" method="post" th:action="@{/persons}">
+        <div th:replace="~{person-details :: details}"></div>
+        <button>Person anlegen</button>
       </form>
     </section>
+    </main>
   </body>
 </html>

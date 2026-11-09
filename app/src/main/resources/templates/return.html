@@ -18,6 +18,8 @@
       <form id="expense-form"
             class="fields"
             method="post"
+            enctype="multipart/form-data"
+            hx-encoding="multipart/form-data"
             th:action="@{/returns/{id}/expenses(id=${returnId})}"
             th:attr="hx-post=@{/returns/{id}/expenses(id=${returnId})}"
             hx-target="#panel"
@@ -28,6 +30,11 @@
         <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
         <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
         <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
+        <!-- The block holds the condition, because th:replace runs before th:unless on one element. -->
+        <th:block th:unless="${#lists.isEmpty(documentOptions)}">
+          <div th:replace="~{fields :: field(name='documentId', label='Dokument', hint=#{hint.expense.document}, value=${form.documentId?.toString()}, options=${documentOptions}, blankOption=true)}"></div>
+        </th:block>
+        <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
         <p class="form-buttons">
           <button>Ausgabe hinzufügen</button>
           <button type="button" data-clear-form>Alle Felder leeren</button>
@@ -54,7 +61,14 @@
             <td class="amount" th:text="${row.amount}">0,00</td>
             <td th:text="${row.topic}">Kategorie</td>
             <td th:text="${row.description}">Beschreibung</td>
-            <td th:text="${row.receipt}">Beleg</td>
+            <td>
+              <span th:unless="${#strings.isEmpty(row.receipt)}" th:text="${row.receipt}">Hinweis</span>
+              <a th:if="${row.documentId != null}"
+                 th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.documentId})}"
+                 target="_blank" rel="noopener"
+                 th:text="${row.documentName}">datei.pdf</a>
+              <span class="warning" th:if="${row.documentId == null}">Beleg fehlt</span>
+            </td>
             <td>
               <!-- novalidate: htmx would stop the delete if the entry in progress is incomplete. -->
               <form method="post"

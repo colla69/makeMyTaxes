@@ -357,7 +357,8 @@ class FormBrowserTest {
     Locator laptop = anlageN.locator("tr").filter(new Locator.FilterOptions().setHasText("Made-up laptop"));
     assertThat(laptop.locator("td").nth(0)).hasText("42");
     assertThat(laptop).containsText("1.500,00");
-    assertThat(laptop).containsText("Bezahlt am 03.02.2022, Beleg: made-up-laptop.pdf");
+    assertThat(laptop)
+        .containsText("Bezahlt am 03.02.2022, Hinweis: made-up-laptop.pdf, Beleg fehlt");
     assertThat(anlageN.locator("tbody tr td:first-child"))
         .hasText(new String[] {"5", "6", "35", "35", "35", "42", "42", "45"});
 

@@ -5,7 +5,7 @@
       The one look of a field. Put it in an element with the class "fields".
 
       Call it with named values. Only "name" and "label" are necessary:
-        name, label, value, line, help, hint, fieldError, placeholder, required, autofocus, type, min, max, kind
+        name, label, value, line, help, hint, fieldError, placeholder, required, autofocus, type, accept, min, max, kind
         options: a list of Kind.Option. This makes the field a select, and "value" selects the option.
         blankOption: true adds an empty first option to the select.
         kind: the name of a Kind. DATE, MONEY and WHOLE_NUMBER get an input mask from fields.js,
@@ -37,6 +37,7 @@
           <input th:name="${name}"
                  th:value="${value}"
                  th:type="${type}"
+                 th:accept="${accept}"
                  th:min="${min}"
                  th:max="${max}"
                  th:placeholder="${placeholder}"

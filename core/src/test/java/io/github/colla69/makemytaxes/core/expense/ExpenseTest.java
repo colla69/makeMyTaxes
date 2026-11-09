@@ -34,10 +34,11 @@ class ExpenseTest {
   }
 
   @Test
-  void anExpenseWithoutAReceiptHasNoEvidence() {
+  void onlyALinkedDocumentIsEvidence() {
     var payment = new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(100));
 
     assertThat(new Expense(payment, WORK_LAPTOP, "  ").hasEvidence()).isFalse();
-    assertThat(new Expense(payment, WORK_LAPTOP, "laptop.pdf").hasEvidence()).isTrue();
+    assertThat(new Expense(payment, WORK_LAPTOP, "laptop.pdf").hasEvidence()).isFalse();
+    assertThat(new Expense(payment, WORK_LAPTOP, "", "laptop.pdf").hasEvidence()).isTrue();
   }
 }

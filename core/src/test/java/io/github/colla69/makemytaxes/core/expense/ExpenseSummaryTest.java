@@ -35,12 +35,15 @@ class ExpenseSummaryTest {
   }
 
   @Test
-  void countsTheExpensesWithoutEvidence() {
+  void countsTheExpensesWithoutADocument() {
+    var payment = new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(100));
+    var withDocument =
+        new Expense(payment, new Purpose(ExpenseTopic.WORK_OTHER, "Made-up cost"), "", "a.pdf");
     var summary =
         ExpenseSummary.of(
             List.of(
-                expense(ExpenseTopic.WORK_OTHER, 100, "a.pdf"),
-                expense(ExpenseTopic.WORK_OTHER, 100, ""),
+                withDocument,
+                expense(ExpenseTopic.WORK_OTHER, 100, "only-a-note.pdf"),
                 expense(ExpenseTopic.MEDICAL, 100, "")));
 
     assertThat(summary.expensesWithoutEvidence()).isEqualTo(2);

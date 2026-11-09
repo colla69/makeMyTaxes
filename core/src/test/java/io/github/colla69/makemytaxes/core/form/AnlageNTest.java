@@ -26,6 +26,7 @@ class AnlageNTest {
         new Expense(
             new Payment(LocalDate.of(2022, 2, 3), Money.ofCents(123_45)),
             new Purpose(ExpenseTopic.WORK_EQUIPMENT, "Made-up laptop"),
+            "",
             "made-up.pdf");
 
     List<ReviewLine> lines = form.review(answers, List.of(laptop));
@@ -45,7 +46,19 @@ class AnlageNTest {
             "");
 
     assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
-        .isEqualTo("Bezahlt am 03.02.2022, ohne Beleg");
+        .isEqualTo("Bezahlt am 03.02.2022, Beleg fehlt");
+  }
+
+  @Test
+  void anOldReceiptNoteStaysVisibleButIsNotADocument() {
+    var cable =
+        new Expense(
+            new Payment(LocalDate.of(2022, 2, 3), Money.ofCents(10_00)),
+            new Purpose(ExpenseTopic.WORK_OTHER, "Made-up fee"),
+            "made-up-folder");
+
+    assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
+        .isEqualTo("Bezahlt am 03.02.2022, Hinweis: made-up-folder, Beleg fehlt");
   }
 
   @Test

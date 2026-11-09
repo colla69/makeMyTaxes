@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.core.form;
 
 import static io.github.colla69.makemytaxes.core.form.Field.optional;
+import static io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022.label;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
  * values of the certificate of a private health insurer. The app shows the values only. It does
  * not compute the deductible amount and does not apply a limit.
  *
- * <p>The fields have no line of the form yet. Each label names the number on its certificate.
+ * <p>The fields have no line of the form yet. Each label names the line on its certificate.
  */
 public final class AnlageVorsorgeaufwand implements FormModule {
 
@@ -30,56 +31,68 @@ public final class AnlageVorsorgeaufwand implements FormModule {
           "pensionEmployer",
           "",
           "",
-          "Nr. 22a/b Arbeitgeberanteil zur Rentenversicherung (EUR)",
+          label(
+              "pensionEmployer",
+              "Arbeitgeberanteil zur Rentenversicherung und an berufsständische"
+                  + " Versorgungseinrichtungen (EUR)"),
           Kind.MONEY);
   public static final Field PENSION_EMPLOYEE =
       optional(
           "pensionEmployee",
           "",
           "",
-          "Nr. 23a/b Arbeitnehmeranteil zur Rentenversicherung (EUR)",
+          label(
+              "pensionEmployee",
+              "Arbeitnehmeranteil zur Rentenversicherung und an berufsständische"
+                  + " Versorgungseinrichtungen (EUR)"),
           Kind.MONEY);
   public static final Field HEALTH_ALLOWANCE_STATUTORY =
       optional(
           "healthAllowanceStatutory",
           "",
           "",
-          "Nr. 24a Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung (EUR)",
+          label(
+              "healthAllowanceStatutory",
+              "Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Krankenversicherung (EUR)"),
           Kind.MONEY);
   public static final Field HEALTH_ALLOWANCE_PRIVATE =
       optional(
           "healthAllowancePrivate",
           "",
           "",
-          "Nr. 24b Steuerfreie Arbeitgeberzuschüsse zur privaten Krankenversicherung (EUR)",
+          label(
+              "healthAllowancePrivate",
+              "Steuerfreie Arbeitgeberzuschüsse zur privaten Krankenversicherung (EUR)"),
           Kind.MONEY);
   public static final Field CARE_ALLOWANCE =
       optional(
           "careAllowance",
           "",
           "",
-          "Nr. 24c Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Pflegeversicherung (EUR)",
+          label(
+              "careAllowance",
+              "Steuerfreie Arbeitgeberzuschüsse zur gesetzlichen Pflegeversicherung (EUR)"),
           Kind.MONEY);
   public static final Field HEALTH_EMPLOYEE =
       optional(
           "healthEmployee",
           "",
           "",
-          "Nr. 25 Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung (EUR)",
+          label("healthEmployee", "Arbeitnehmerbeiträge zur gesetzlichen Krankenversicherung (EUR)"),
           Kind.MONEY);
   public static final Field CARE_EMPLOYEE =
       optional(
           "careEmployee",
           "",
           "",
-          "Nr. 26 Arbeitnehmerbeiträge zur sozialen Pflegeversicherung (EUR)",
+          label("careEmployee", "Arbeitnehmerbeiträge zur sozialen Pflegeversicherung (EUR)"),
           Kind.MONEY);
   public static final Field UNEMPLOYMENT_EMPLOYEE =
       optional(
           "unemploymentEmployee",
           "",
           "",
-          "Nr. 27 Arbeitnehmerbeiträge zur Arbeitslosenversicherung (EUR)",
+          label("unemploymentEmployee", "Arbeitnehmerbeiträge zur Arbeitslosenversicherung (EUR)"),
           Kind.MONEY);
 
   /** The social insurance lines of one certificate, in the order of the certificate. */

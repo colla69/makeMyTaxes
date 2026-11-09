@@ -1,15 +1,26 @@
 package io.github.colla69.makemytaxes.app.storage;
 
+import io.github.colla69.makemytaxes.core.form.AnlageN;
+import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.MainForm;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class FormStore {
+
+  /** The forms with values from the Lohnsteuerbescheinigung. */
+  private static final List<String> CERTIFICATE_FORMS =
+      List.of(AnlageN.ID, AnlageVorsorgeaufwand.ID);
+
+  private record FormAnswer(long returnId, String formId, String fieldId, String value) {}
 
   private final JdbcClient jdbc;
 
@@ -34,11 +45,22 @@ public class FormStore {
   /**
    * Replaces all answers of the form, so a field that the user cleared loses its old value. An
    * answer that is equal to a personal detail is not saved, so a later change of the detail
-   * reaches this form.
+   * reaches this form. A new interview answer can change the certificate of an employer, so the
+   * values of the forms take their source again.
    */
   @Transactional
   public void save(long returnId, String formId, Answers answers) {
+    replace(returnId, formId, answers);
+    if (formId.equals(Interview.ID)) {
+      for (String form : CERTIFICATE_FORMS) {
+        replace(returnId, form, answers(returnId, form));
+      }
+    }
+  }
+
+  private void replace(long returnId, String formId, Answers answers) {
     Map<String, String> details = personalDetails(returnId, formId);
+    Answers interview = answers(returnId, Interview.ID);
     jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ?")
         .params(returnId, formId)
         .update();
@@ -46,11 +68,9 @@ public class FormStore {
         .filter(answer -> !answer.getValue().equals(details.get(answer.getKey())))
         .forEach(
             answer ->
-                jdbc.sql(
-                        "insert into form_answer(tax_return_id, form_id, field_id, value)"
-                            + " values (?, ?, ?, ?)")
-                    .params(returnId, formId, answer.getKey(), answer.getValue())
-                    .update());
+                insert(
+                    new FormAnswer(returnId, formId, answer.getKey(), answer.getValue()),
+                    interview));
   }
 
   /**
@@ -63,12 +83,28 @@ public class FormStore {
         .params(returnId, formId, fieldId)
         .update();
     if (!value.isEmpty() && !value.equals(personalDetails(returnId, formId).get(fieldId))) {
-      jdbc.sql(
-              "insert into form_answer(tax_return_id, form_id, field_id, value)"
-                  + " values (?, ?, ?, ?)")
-          .params(returnId, formId, fieldId, value)
-          .update();
+      insert(new FormAnswer(returnId, formId, fieldId, value), answers(returnId, Interview.ID));
     }
+  }
+
+  /** The source of a value of a certificate is the certificate of its employer, if it has one. */
+  private void insert(FormAnswer answer, Answers interview) {
+    OptionalLong document =
+        CERTIFICATE_FORMS.contains(answer.formId())
+            ? Interview.certificateDocument(interview, answer.fieldId())
+            : OptionalLong.empty();
+    jdbc.sql(
+            "insert into form_answer"
+                + "(tax_return_id, form_id, field_id, value, document_id, own_statement)"
+                + " values (?, ?, ?, ?, ?, ?)")
+        .params(
+            answer.returnId(),
+            answer.formId(),
+            answer.fieldId(),
+            answer.value(),
+            document.isPresent() ? document.getAsLong() : null,
+            document.isPresent() ? 0 : 1)
+        .update();
   }
 
   /** The personal details of the person of the return. Only the main form has them. */

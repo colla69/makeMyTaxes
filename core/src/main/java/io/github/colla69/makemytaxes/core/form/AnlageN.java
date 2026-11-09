@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.core.form;
 
 import static io.github.colla69.makemytaxes.core.form.Field.optional;
 import static io.github.colla69.makemytaxes.core.form.Field.required;
+import static io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022.label;
 
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.expense.Evidence;
@@ -39,27 +40,51 @@ public final class AnlageN implements FormModule {
           new ExpenseLine(ExpenseTopic.WORK_OTHER, "48", "Weitere Werbungskosten"));
 
   /**
-   * The fields of one Lohnsteuerbescheinigung. A label starts with the number on the certificate.
+   * The fields of one Lohnsteuerbescheinigung. A label starts with the line on the certificate.
    * The name and the period have no line on Anlage N.
    */
   private static final List<Field> EMPLOYER_FIELDS =
       List.of(
           required("employerName", "", "", "Name des Arbeitgebers", Kind.TEXT),
-          optional("employedFrom", "", "", "Nr. 1 Dauer des Dienstverhältnisses: vom", Kind.DATE),
-          optional("employedTo", "", "", "Nr. 1 Dauer des Dienstverhältnisses: bis", Kind.DATE),
+          optional(
+              "employedFrom",
+              "",
+              "",
+              label("employedFrom", "Dauer des Dienstverhältnisses: vom"),
+              Kind.DATE),
+          optional(
+              "employedTo",
+              "",
+              "",
+              label("employedTo", "Dauer des Dienstverhältnisses: bis"),
+              Kind.DATE),
           required("taxClass", "", "5", "Steuerklasse", Kind.WHOLE_NUMBER),
-          required("grossWage", "", "6", "Nr. 3 Bruttoarbeitslohn (EUR)", Kind.MONEY),
-          required("wageTax", "", "7", "Nr. 4 Lohnsteuer (EUR)", Kind.MONEY),
-          optional("solidarity", "", "8", "Nr. 5 Solidaritätszuschlag (EUR)", Kind.MONEY),
-          optional("churchTax", "", "9", "Nr. 6 Kirchensteuer des Arbeitnehmers (EUR)", Kind.MONEY),
-          optional("shortTimeWork", "", "28", "Nr. 15 Kurzarbeitergeld (EUR)", Kind.MONEY),
+          required("grossWage", "", "6", label("grossWage", "Bruttoarbeitslohn (EUR)"), Kind.MONEY),
+          required("wageTax", "", "7", label("wageTax", "Lohnsteuer (EUR)"), Kind.MONEY),
+          optional(
+              "solidarity", "", "8", label("solidarity", "Solidaritätszuschlag (EUR)"), Kind.MONEY),
+          optional(
+              "churchTax",
+              "",
+              "9",
+              label("churchTax", "Kirchensteuer des Arbeitnehmers (EUR)"),
+              Kind.MONEY),
+          optional(
+              "shortTimeWork",
+              "",
+              "28",
+              label(
+                  "shortTimeWork",
+                  "Kurzarbeitergeld, Zuschuss zum Mutterschaftsgeld, Verdienstausfallentschädigung,"
+                      + " Aufstockungsbetrag (EUR)"),
+              Kind.MONEY),
           optional(
                   "employerCommute",
                   "",
                   "39",
-                  "Nr. 17 und Nr. 18 Arbeitgeberleistungen (EUR)",
+                  label("employerCommute", "Arbeitgeberleistungen (EUR)"),
                   Kind.MONEY)
-              .withHelp("Die Summe der Beträge in Nr. 17 und Nr. 18."));
+              .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."));
 
   private static final List<Field> WORK_FIELDS =
       List.of(
@@ -100,6 +125,12 @@ public final class AnlageN implements FormModule {
    */
   public static String employerFieldId(int employer, String fieldId) {
     return employer == 1 ? fieldId : "employer" + employer + "-" + fieldId;
+  }
+
+  /** The employer of a field ID. A plain ID belongs to the first employer. */
+  public static int employerOf(String fieldId) {
+    Matcher matcher = EMPLOYER_ID.matcher(fieldId);
+    return matcher.matches() ? Integer.parseInt(matcher.group(1)) : 1;
   }
 
   /** The number of employers in the answers. The form always has the first employer. */

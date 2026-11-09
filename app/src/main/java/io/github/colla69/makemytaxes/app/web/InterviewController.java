@@ -1,8 +1,11 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.storage.DocumentStore;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.Field;
@@ -13,20 +16,28 @@ import io.github.colla69.makemytaxes.core.form.Interview.Question;
 import io.github.colla69.makemytaxes.core.form.Interview.Step;
 import io.github.colla69.makemytaxes.core.form.Interview.Topic;
 import io.github.colla69.makemytaxes.core.form.Interview.Type;
+import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.form.MainForm;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -46,12 +57,17 @@ class InterviewController {
   /** A link to a page of the return. The hint says what to do there. */
   record StepView(String label, String href, String hint) {}
 
+  /** The answer to the question for the certificate: a new file, or a document of the return. */
+  record CertificateChoice(Long documentId, MultipartFile file) {}
+
   private final HouseholdStore household;
   private final FormStore forms;
+  private final DocumentStore documents;
 
-  InterviewController(HouseholdStore household, FormStore forms) {
+  InterviewController(HouseholdStore household, FormStore forms, DocumentStore documents) {
     this.household = household;
     this.forms = forms;
+    this.documents = documents;
   }
 
   /** The first open question, or the summary of all topics when each question has an answer. */
@@ -119,7 +135,7 @@ class InterviewController {
     taxYearWithForms(returnId);
     Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
     boolean hasButtons = !question.options().isEmpty();
-    if (hasButtons && !question.allows(answer)) {
+    if (question.type() == Type.DOCUMENT || (hasButtons && !question.allows(answer))) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
     if (question.type() == Type.FIELD) {
@@ -130,10 +146,7 @@ class InterviewController {
         return questionScreen(returnId, question, model);
       }
     }
-    Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
-    values.put(question.id(), hasButtons ? answer : Interview.DONE);
-    Answers answers = new Answers(values);
-    forms.save(returnId, Interview.ID, answers);
+    Answers answers = record(returnId, question, hasButtons ? answer : Interview.DONE);
     if (question.id().equals(Interview.HEALTH_INSURANCE)) {
       Answers lines = forms.answers(returnId, AnlageVorsorgeaufwand.ID);
       forms.save(
@@ -142,12 +155,80 @@ class InterviewController {
           AnlageVorsorgeaufwand.forHealthInsurance(lines, Interview.PRIVATE.equals(answer)));
     }
     String saved = question.type() == Type.FIELD ? "?saved=true" : "";
-    // The new answer can add questions, such as those of another employer.
-    return "redirect:"
-        + Interview.nextInTopic(answers, question)
-            .map(next -> questionHref(returnId, next))
-            .orElse(topicHref(returnId, question.topic()))
-        + saved;
+    return "redirect:" + nextHref(returnId, answers, question) + saved;
+  }
+
+  /**
+   * Saves the certificate of an employer: a new file wins over a chosen document. The file comes
+   * as a request parameter, because only then Spring reports a file over the server limit as
+   * {@link MaxUploadSizeExceededException}.
+   */
+  @PostMapping("/returns/{returnId}/interview/questions/{questionId}/document")
+  String chooseCertificate(
+      @PathVariable long returnId,
+      @PathVariable String questionId,
+      @RequestParam(required = false) MultipartFile file,
+      @RequestParam(required = false) Long documentId,
+      Model model)
+      throws IOException {
+    taxYearWithForms(returnId);
+    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
+    if (question.type() != Type.DOCUMENT) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+    }
+    long certificate;
+    try {
+      certificate = certificateOf(returnId, new CertificateChoice(documentId, file));
+    } catch (IllegalArgumentException e) {
+      model.addAttribute("documentError", e.getMessage());
+      return questionScreen(returnId, question, model);
+    }
+    Answers answers = record(returnId, question, Long.toString(certificate));
+    return "redirect:" + nextHref(returnId, answers, question);
+  }
+
+  /** The server stops a file over its own limit before the method for the document runs. */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  String tooLarge(HttpServletRequest request, Model model) {
+    long returnId = DocumentController.returnIdOf(request);
+    Question question =
+        questionOf(
+            forms.answers(returnId, Interview.ID),
+            DocumentController.pathVariable(request, "questionId"));
+    model.addAttribute("documentError", DocumentController.TOO_LARGE);
+    return questionScreen(returnId, question, model);
+  }
+
+  private long certificateOf(long returnId, CertificateChoice choice) throws IOException {
+    if (choice.file() != null && !choice.file().isEmpty()) {
+      return documents.add(
+          returnId,
+          DocumentController.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, choice.file()),
+          LocalDate.now());
+    }
+    return Optional.ofNullable(choice.documentId())
+        .flatMap(id -> documents.find(returnId, id))
+        .filter(document -> document.kind() == DocumentKind.WAGE_TAX_CERTIFICATE)
+        .map(StoredDocument::id)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Bitte wählen Sie eine Lohnsteuerbescheinigung, oder laden Sie eine hoch."));
+  }
+
+  private Answers record(long returnId, Question question, String value) {
+    Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
+    values.put(question.id(), value);
+    Answers answers = new Answers(values);
+    forms.save(returnId, Interview.ID, answers);
+    return answers;
+  }
+
+  /** The new answer can add questions, such as those of another employer. */
+  private static String nextHref(long returnId, Answers answers, Question question) {
+    return Interview.nextInTopic(answers, question)
+        .map(next -> questionHref(returnId, next))
+        .orElse(topicHref(returnId, question.topic()));
   }
 
   /**
@@ -216,6 +297,14 @@ class InterviewController {
       if (!model.containsAttribute("value")) {
         model.addAttribute("value", forms.answers(returnId, form.id()).text(question.id()));
       }
+      Interview.certificateDocument(answers, question.id())
+          .ifPresent(
+              document ->
+                  model.addAttribute(
+                      "certificateHref", "/returns/" + returnId + "/documents/" + document));
+    }
+    if (question.type() == Type.DOCUMENT) {
+      model.addAttribute("certificateOptions", certificateOptions(returnId));
     }
     if (question.type() == Type.CONFIRM) {
       Answers main = forms.answers(returnId, MainForm.ID);
@@ -230,6 +319,13 @@ class InterviewController {
           household.personOf(returnId).map(person -> "/persons/" + person).orElse("/"));
     }
     return "interview";
+  }
+
+  private List<Kind.Option> certificateOptions(long returnId) {
+    return documents.documentsOf(returnId).stream()
+        .filter(document -> document.kind() == DocumentKind.WAGE_TAX_CERTIFICATE)
+        .map(document -> new Kind.Option(Long.toString(document.id()), document.fileName()))
+        .toList();
   }
 
   private void addCommon(long returnId, Model model) {
@@ -267,6 +363,11 @@ class InterviewController {
     return switch (question.type()) {
       case YES_NO, CHOICE -> question.labelOf(answers.text(question.id()));
       case CONFIRM -> "Bestätigt";
+      case DOCUMENT ->
+          documents
+              .find(returnId, Long.parseLong(answers.text(question.id())))
+              .map(StoredDocument::fileName)
+              .orElse("Noch offen");
       case FIELD -> {
         String value = forms.answers(returnId, question.formId()).text(question.id());
         yield value.isEmpty()

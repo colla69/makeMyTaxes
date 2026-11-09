@@ -25,7 +25,8 @@
               th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block></h2>
 
       <!-- data-autosave: fields.js saves the field of a field question when the user leaves it. -->
-      <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}"
+      <div th:classappend="${certificateHref} ? 'with-document'">
+      <form th:unless="${question.type.name() == 'DOCUMENT'}" method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}"
             th:data-autosave="${question.type.name() == 'FIELD'} ? @{/returns/{r}/interview/questions/{q}/field(r=${returnId},q=${question.id})} : null">
         <!-- A yes/no question or a choice: one button for each answer. -->
         <th:block th:unless="${question.options.isEmpty()}">
@@ -55,6 +56,27 @@
             <a th:href="@{${personHref}}">Angaben ändern</a>
           </p>
         </th:block>
+      </form>
+      <iframe class="certificate-view" th:if="${certificateHref}" title="Lohnsteuerbescheinigung" th:src="@{${certificateHref}}"></iframe>
+      </div>
+
+      <!-- The certificate of an employer: a new file, or one that the return already has. -->
+      <form th:if="${question.type.name() == 'DOCUMENT'}" method="post" enctype="multipart/form-data"
+            th:action="@{/returns/{r}/interview/questions/{q}/document(r=${returnId},q=${question.id})}">
+        <div class="fields">
+          <th:block th:unless="${#lists.isEmpty(certificateOptions)}">
+            <div th:replace="~{fields :: field(name='documentId', label='Vorhandene Lohnsteuerbescheinigung', value=${current}, options=${certificateOptions}, blankOption=true)}"></div>
+          </th:block>
+          <div class="field">
+            <label>
+              <span class="field-label">Neue Datei</span>
+              <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
+            </label>
+            <p class="help">PDF, JPEG oder PNG, höchstens 20 MB.</p>
+          </div>
+        </div>
+        <p class="error" th:if="${documentError}" th:text="${documentError}">Fehler</p>
+        <p class="form-buttons"><button>Weiter</button></p>
       </form>
       <p><a th:if="${back}" th:href="@{${back}}" class="back">Zurück</a></p>
     </section>

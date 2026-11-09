@@ -118,13 +118,17 @@ class DocumentController {
     return "documents";
   }
 
-  /** An exception handler cannot take a path variable, so it reads the id from the request. */
   static long returnIdOf(HttpServletRequest request) {
+    return Long.parseLong(pathVariable(request, "returnId"));
+  }
+
+  /** An exception handler cannot take a path variable, so it reads the value from the request. */
+  static String pathVariable(HttpServletRequest request, String name) {
     @SuppressWarnings("unchecked")
     var path =
         (Map<String, String>)
             request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-    return Long.parseLong(path.get("returnId"));
+    return path.get(name);
   }
 
   /** The type comes from the first bytes of the file, not from the name or from the browser. */

@@ -7,7 +7,10 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.FilePayload;
+import com.microsoft.playwright.options.SelectOption;
 import io.github.colla69.makemytaxes.core.form.Kind;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -27,14 +30,18 @@ class InterviewBrowserTest {
   /** The questions without an employer and with a statutory health insurance. */
   private static final int QUESTIONS = 18;
 
-  /** The lines of one certificate and the question for another employer. */
-  private static final int QUESTIONS_PER_EMPLOYER = 11;
+  /** The certificate question, its lines and the question for another employer. */
+  private static final int QUESTIONS_PER_EMPLOYER = 12;
 
   /** The four values of one household invoice and the question for another invoice. */
   private static final int QUESTIONS_PER_INVOICE = 5;
 
   /** The social insurance lines of one certificate, for a statutory health insurance. */
   private static final int STATUTORY_LINES = 7;
+
+  /** A made-up PDF. Only the first bytes matter for the type check. */
+  private static final byte[] MADE_UP_PDF =
+      "%PDF-1.4\n% made-up test document\n%%EOF\n".getBytes(StandardCharsets.US_ASCII);
 
   @TempDir static Path databaseFolder;
 
@@ -102,12 +109,12 @@ class InterviewBrowserTest {
     assertTopic(page, "Versicherungen");
     assertThat(page.locator("#question h2")).containsText("gesetzlich oder privat");
     button(page, "Gesetzlich").click();
-    assertThat(page.locator("#question h2")).containsText("Nr. 22a/b");
+    assertThat(page.locator("#question h2")).containsText("Zeile 22a/b");
     answerField(page, "2.790,00");
     answerField(page, "2.790,00");
     answerField(page, "");
     answerField(page, "");
-    assertThat(page.locator("#question h2")).containsText("Nr. 25");
+    assertThat(page.locator("#question h2")).containsText("Zeile 25");
     answerField(page, "2.400,00");
     answerField(page, "");
     answerField(page, "");
@@ -253,12 +260,12 @@ class InterviewBrowserTest {
     forward(page).click();
 
     button(page, "Privat").click();
-    // Nr. 22a/b, Nr. 23a/b, Nr. 24b and Nr. 27 for each employer.
+    // Zeile 22a/b, 23a/b, 24b and 27 for each employer.
     assertThat(page.locator("#question h2")).containsText("Arbeitgeber 1: ");
     for (int line = 0; line < 2; line++) {
       answerField(page, "");
     }
-    assertThat(page.locator("#question h2")).containsText("Nr. 24b");
+    assertThat(page.locator("#question h2")).containsText("Zeile 24b");
     answerField(page, "1.200,00");
     answerField(page, "");
     assertThat(page.locator("#question h2")).containsText("Arbeitgeber 2: ");
@@ -292,7 +299,7 @@ class InterviewBrowserTest {
     Locator form =
         page.locator(".review-form")
             .filter(new Locator.FilterOptions().setHasText("Anlage Vorsorgeaufwand"));
-    assertThat(form).containsText("Nr. 24b");
+    assertThat(form).containsText("Zeile 24b");
     assertThat(form).containsText("1.200,00");
     assertThat(form).containsText("600,00");
     assertThat(form).containsText("4.000,00");
@@ -326,7 +333,7 @@ class InterviewBrowserTest {
     answerField(page, "2.400,00");
 
     tab(page, "Fragen").click();
-    assertThat(page.locator("#question h2")).containsText("Nr. 26");
+    assertThat(page.locator("#question h2")).containsText("Zeile 26");
     page.navigate(page.url() + "/questions/healthInsurance");
     assertThat(button(page, "Gesetzlich")).hasAttribute("aria-pressed", "true");
     button(page, "Privat").click();
@@ -343,13 +350,15 @@ class InterviewBrowserTest {
     button(page, "Ja, die Angaben stimmen").click();
     button(page, "Ja").click();
 
-    // Each line names its number on the Lohnsteuerbescheinigung.
+    // Each line names its line on the Lohnsteuerbescheinigung.
+    button(page, "Nein").click();
+    assertThat(page.locator("iframe.certificate-view")).hasCount(0);
     answerField(page, "Made-up GmbH");
     answerField(page, "01.01.2022");
     answerField(page, "30.06.2022");
     answerField(page, "1");
-    assertThat(page.locator("#question h2")).containsText("Nr. 3");
-    assertThat(page.locator("#question label")).containsText("Nr. 3 Bruttoarbeitslohn");
+    assertThat(page.locator("#question h2")).containsText("Zeile 3");
+    assertThat(page.locator("#question label")).containsText("Zeile 3 Bruttoarbeitslohn");
     answerField(page, "20.000,00");
     answerField(page, "3.000,00");
     for (int line = 0; line < 4; line++) {
@@ -360,10 +369,11 @@ class InterviewBrowserTest {
     button(page, "Ja").click();
 
     // The second employer shares the hints of the first.
+    button(page, "Nein").click();
     assertThat(page.locator("#question h2")).containsText("Arbeitgeber 2");
     assertThat(page.locator("#question h2 .hint-text")).containsText("nome del datore di lavoro");
     assertThat(page.locator("#question .field .hint-text")).containsText("nome del datore di lavoro");
-    answerEmployer(page, "Made-up AG", "15.000,00");
+    answerLines(page, "Made-up AG", "15.000,00");
     button(page, "Nein").click();
     assertThat(page.locator("#question h2")).containsText("Beruf");
     assertThat(page.locator("#progress"))
@@ -402,6 +412,81 @@ class InterviewBrowserTest {
     assertThat(anlageN).containsText("20.000,00");
     assertThat(anlageN).containsText("16.000,00");
     assertThat(anlageN).not().containsText("36.000,00");
+  }
+
+  @Test
+  void eachEmployerShowsItsOwnCertificateBesideItsFields() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+
+    assertThat(page.locator("#question h2")).containsText("Hast du deine Lohnsteuerbescheinigung?");
+    button(page, "Ja").click();
+    uploadCertificate(page, "made-up-first.pdf");
+
+    // The field page shows the certificate, and the address of the frame delivers the file.
+    String first = certificateSrc(page);
+    assertBeside(page.locator("#question .fields"), page.locator("iframe.certificate-view"));
+    assertThat(page.request().get("http://127.0.0.1:" + port + first)).isOK();
+    answerLines(page, "Made-up GmbH", "20.000,00");
+    button(page, "Ja").click();
+
+    // The second employer can upload another certificate, or choose one that the return has.
+    button(page, "Ja").click();
+    assertThat(page.getByLabel("Vorhandene Lohnsteuerbescheinigung").locator("option"))
+        .containsText(new String[] {"", "made-up-first.pdf"});
+    uploadCertificate(page, "made-up-second.pdf");
+    String second = certificateSrc(page);
+    org.assertj.core.api.Assertions.assertThat(second).isNotEqualTo(first);
+    answerLines(page, "Made-up AG", "15.000,00");
+    button(page, "Nein").click();
+    answerField(page, "");
+
+    assertThat(page.locator("[data-question=wageCertificateDocument] strong"))
+        .hasText("made-up-first.pdf");
+    assertThat(page.locator("[data-question=employer2-wageCertificateDocument] strong"))
+        .hasText("made-up-second.pdf");
+
+    // The form tab shows each certificate beside the fields of its employer.
+    tab(page, "Anlage N").click();
+    Locator groups = page.locator("#answers .field-group");
+    assertThat(groups.nth(0).locator("iframe.certificate-view")).hasAttribute("src", first);
+    assertThat(groups.nth(1).locator("iframe.certificate-view")).hasAttribute("src", second);
+    assertThat(groups.nth(2).locator("iframe.certificate-view")).hasCount(0);
+    assertThat(groups.nth(0)).containsText("Zeile 3 Bruttoarbeitslohn");
+    assertBeside(groups.nth(0).locator(".fields"), groups.nth(0).locator("iframe.certificate-view"));
+    tab(page, "Anlage Vorsorgeaufwand").click();
+    assertThat(page.locator("#answers iframe.certificate-view").first())
+        .hasAttribute("src", first);
+    tab(page, "Übersicht").click();
+    assertThat(page.locator("main")).containsText("die Zeile der Lohnsteuerbescheinigung");
+
+    // A document that the return has can be chosen again.
+    tab(page, "Fragen").click();
+    page.navigate(page.url().replaceAll("/interview.*", "/interview/questions/wageCertificateDocument"));
+    page.getByLabel("Vorhandene Lohnsteuerbescheinigung")
+        .selectOption(new SelectOption().setLabel("made-up-second.pdf"));
+    button(page, "Weiter").click();
+    assertThat(page.locator("iframe.certificate-view")).hasAttribute("src", second);
+  }
+
+  @Test
+  void aFileOverTheLimitShowsItsErrorOnTheDocumentQuestion() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+    button(page, "Ja").click();
+
+    byte[] large = new byte[26 * 1024 * 1024];
+    page.locator("#question")
+        .getByLabel("Neue Datei")
+        .setInputFiles(new FilePayload("large.pdf", "application/pdf", large));
+    button(page, "Weiter").click();
+
+    assertThat(page.locator("#question .error")).containsText("größer als 20 MB");
+    assertThat(page.locator("#question h2")).containsText("Laden Sie die Lohnsteuerbescheinigung");
   }
 
   @Test
@@ -541,8 +626,34 @@ class InterviewBrowserTest {
     button(page, "Weiter").click();
   }
 
-  /** Answers the lines of one certificate: the name and the gross wage, the rest empty. */
+  /** Answers one employer without a certificate: the name and the gross wage, the rest empty. */
   private static void answerEmployer(Page page, String name, String grossWage) {
+    button(page, "Nein").click();
+    answerLines(page, name, grossWage);
+  }
+
+  private static void uploadCertificate(Page page, String fileName) {
+    page.locator("#question")
+        .getByLabel("Neue Datei")
+        .setInputFiles(new FilePayload(fileName, "application/pdf", MADE_UP_PDF));
+    button(page, "Weiter").click();
+  }
+
+  private static void assertBeside(Locator fields, Locator view) {
+    assertThat(view).isVisible();
+    var left = fields.boundingBox();
+    org.assertj.core.api.Assertions.assertThat(view.boundingBox().x)
+        .isGreaterThanOrEqualTo(left.x + left.width);
+  }
+
+  private static String certificateSrc(Page page) {
+    Locator view = page.locator("iframe.certificate-view");
+    assertThat(view).hasAttribute("src", Pattern.compile("/documents/\\d+$"));
+    return view.getAttribute("src");
+  }
+
+  /** The lines of one certificate: the name and the gross wage, the rest empty. */
+  private static void answerLines(Page page, String name, String grossWage) {
     answerField(page, name);
     for (int line = 0; line < 3; line++) {
       answerField(page, "");

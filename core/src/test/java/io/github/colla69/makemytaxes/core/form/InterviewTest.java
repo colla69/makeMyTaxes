@@ -56,6 +56,7 @@ class InterviewTest {
         .containsExactly(
             Interview.PERSONAL_DETAILS,
             "employed",
+            "wageCertificate",
             "employerName",
             "employedFrom",
             "employedTo",
@@ -74,7 +75,52 @@ class InterviewTest {
         assertThat(anlageN.field(question.id())).isPresent();
       }
     }
-    assertThat(Interview.find(employed, "grossWage").orElseThrow().text()).contains("Nr. 3");
+    assertThat(Interview.find(employed, "grossWage").orElseThrow().text()).contains("Zeile 3");
+  }
+
+  @Test
+  void aYesToTheCertificateAsksForItsDocumentBeforeTheLines() {
+    Answers answers =
+        new Answers(Map.of("employed", Interview.YES, "wageCertificate", Interview.YES));
+
+    List<String> ids = ids(Interview.questionsOf(answers, Topic.JOB));
+    assertThat(ids.subList(ids.indexOf("wageCertificate"), ids.indexOf("wageCertificate") + 3))
+        .containsExactly("wageCertificate", "wageCertificateDocument", "employerName");
+    assertThat(Interview.find(answers, "wageCertificate").orElseThrow().text())
+        .contains("Hast du deine Lohnsteuerbescheinigung?");
+    assertThat(Interview.find(answers, "wageCertificateDocument").orElseThrow().type())
+        .isEqualTo(Type.DOCUMENT);
+  }
+
+  @Test
+  void aFieldOnTheCertificateComesFromTheDocumentOfItsOwnEmployer() {
+    Answers answers =
+        new Answers(
+            Map.of(
+                "wageCertificate", Interview.YES,
+                "wageCertificateDocument", "7",
+                "employer2-wageCertificate", Interview.YES,
+                "employer2-wageCertificateDocument", "9"));
+
+    assertThat(Interview.certificateDocument(answers, "grossWage")).hasValue(7);
+    assertThat(Interview.certificateDocument(answers, "healthEmployee")).hasValue(7);
+    assertThat(Interview.certificateDocument(answers, "employerName")).hasValue(7);
+    assertThat(Interview.certificateDocument(answers, "employer2-grossWage")).hasValue(9);
+    assertThat(Interview.certificateDocument(answers, "commuteKm")).isEmpty();
+    assertThat(Interview.certificateDocument(answers, "employer3-grossWage")).isEmpty();
+  }
+
+  @Test
+  void aNoToTheCertificateIgnoresADocumentFromAnEarlierAnswer() {
+    Answers answers =
+        new Answers(
+            Map.of(
+                "employed", Interview.YES,
+                "wageCertificate", Interview.NO,
+                "wageCertificateDocument", "7"));
+
+    assertThat(Interview.certificateDocument(answers, "grossWage")).isEmpty();
+    assertThat(ids(Interview.questions(answers))).doesNotContain("wageCertificateDocument");
   }
 
   @Test
@@ -99,7 +145,7 @@ class InterviewTest {
     Question another = Interview.find(twoEmployers, "anotherEmployer").orElseThrow();
     assertThat(Interview.nextInTopic(twoEmployers, another))
         .map(Question::id)
-        .hasValue("employer2-employerName");
+        .hasValue("employer2-wageCertificate");
   }
 
   @Test
@@ -261,7 +307,7 @@ class InterviewTest {
             "medical");
     assertFieldsExist(insurance);
     Question health = Interview.find(answers, "employer2-healthEmployee").orElseThrow();
-    assertThat(health.text()).startsWith("Arbeitgeber 2:").contains("Nr. 25");
+    assertThat(health.text()).startsWith("Arbeitgeber 2:").contains("Zeile 25");
     assertThat(health.hintId()).isEqualTo("healthEmployee");
   }
 

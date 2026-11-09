@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 /**
  * The questionnaire: questions by life topic, one at a time. A yes/no question tells the user
@@ -49,7 +50,8 @@ public final class Interview {
     YES_NO,
     CHOICE,
     FIELD,
-    CONFIRM
+    CONFIRM,
+    DOCUMENT
   }
 
   /** A page of the app: a form, or the expense page with one category. */
@@ -105,6 +107,10 @@ public final class Interview {
       return new Question(id, topic, Type.CONFIRM, text, null, null, List.of());
     }
 
+    static Question document(String id, Topic topic, String text) {
+      return new Question(id, topic, Type.DOCUMENT, text, null, null, List.of());
+    }
+
     /** True if the answer is one of the buttons of this question. */
     public boolean allows(String answer) {
       return options.stream().anyMatch(option -> option.value().equals(answer));
@@ -138,6 +144,12 @@ public final class Interview {
   /** The question after the values of one employer. A no ends the employers. */
   public static final String ANOTHER_EMPLOYER = "anotherEmployer";
 
+  /** The question at the start of each employer: does the user have the certificate? */
+  public static final String WAGE_CERTIFICATE = "wageCertificate";
+
+  /** The question after a yes. Its answer is the ID of the document of the certificate. */
+  public static final String WAGE_CERTIFICATE_DOCUMENT = "wageCertificateDocument";
+
   /** The question that decides which lines of the certificates the interview asks. */
   public static final String HEALTH_INSURANCE = "healthInsurance";
 
@@ -159,30 +171,38 @@ public final class Interview {
 
   private record EmployerQuestion(String fieldId, String text) {}
 
+  private static EmployerQuestion amountQuestion(String fieldId, String name) {
+    return new EmployerQuestion(
+        fieldId,
+        "Welcher Betrag steht in %s, %s?".formatted(WageTaxCertificate2022.line(fieldId), name));
+  }
+
   /** One question for each line of the Lohnsteuerbescheinigung, in the order of the form. */
   private static final List<EmployerQuestion> EMPLOYER_QUESTIONS =
       List.of(
           new EmployerQuestion("employerName", "Wie heißt der Arbeitgeber?"),
           new EmployerQuestion(
-              "employedFrom", "Nr. 1 der Lohnsteuerbescheinigung: Ab welchem Tag dauerte das"
-                  + " Dienstverhältnis?"),
+              "employedFrom",
+              WageTaxCertificate2022.line("employedFrom")
+                  + " der Lohnsteuerbescheinigung: Ab welchem Tag dauerte das Dienstverhältnis?"),
           new EmployerQuestion(
-              "employedTo", "Nr. 1 der Lohnsteuerbescheinigung: Bis zu welchem Tag dauerte das"
+              "employedTo",
+              WageTaxCertificate2022.line("employedTo")
+                  + " der Lohnsteuerbescheinigung: Bis zu welchem Tag dauerte das"
                   + " Dienstverhältnis?"),
           new EmployerQuestion(
               "taxClass", "Welche Steuerklasse steht auf der Lohnsteuerbescheinigung?"),
-          new EmployerQuestion(
-              "grossWage", "Welcher Betrag steht in Nr. 3, Bruttoarbeitslohn?"),
-          new EmployerQuestion("wageTax", "Welcher Betrag steht in Nr. 4, Lohnsteuer?"),
-          new EmployerQuestion(
-              "solidarity", "Welcher Betrag steht in Nr. 5, Solidaritätszuschlag?"),
-          new EmployerQuestion(
-              "churchTax", "Welcher Betrag steht in Nr. 6, Kirchensteuer des Arbeitnehmers?"),
-          new EmployerQuestion(
-              "shortTimeWork", "Welcher Betrag steht in Nr. 15, Kurzarbeitergeld?"),
+          amountQuestion("grossWage", "Bruttoarbeitslohn"),
+          amountQuestion("wageTax", "Lohnsteuer"),
+          amountQuestion("solidarity", "Solidaritätszuschlag"),
+          amountQuestion("churchTax", "Kirchensteuer des Arbeitnehmers"),
+          amountQuestion(
+              "shortTimeWork",
+              "Kurzarbeitergeld, Zuschuss zum Mutterschaftsgeld, Verdienstausfallentschädigung,"
+                  + " Aufstockungsbetrag"),
           new EmployerQuestion(
               "employerCommute",
-              "Wie hoch ist die Summe von Nr. 17 und Nr. 18, Arbeitgeberleistungen für Fahrten"
+              "Wie hoch ist die Summe von Zeile 17 und Zeile 18, Arbeitgeberleistungen für Fahrten"
                   + " zur Arbeit?"));
 
   private static final List<Question> JOB_AND_COMMUTE =
@@ -307,7 +327,7 @@ public final class Interview {
     List<Question> questions = new ArrayList<>(START);
     int employers = employerCount(answers);
     for (int employer = 1; employer <= employers; employer++) {
-      questions.addAll(employerQuestions(employer));
+      questions.addAll(employerQuestions(answers, employer));
     }
     questions.addAll(JOB_AND_COMMUTE);
     questions.add(HEALTH_INSURANCE_QUESTION);
@@ -406,6 +426,20 @@ public final class Interview {
     return questions;
   }
 
+  /**
+   * The document that a field comes from: the certificate that the user named for the employer of
+   * the field. There is none for a field that is not on the certificate, or after a no.
+   */
+  public static OptionalLong certificateDocument(Answers answers, String fieldId) {
+    int employer = AnlageN.employerOf(fieldId);
+    String document = answers.text(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE_DOCUMENT));
+    boolean fromCertificate =
+        WageTaxCertificate2022.isOnCertificate(fieldId.substring(fieldId.indexOf('-') + 1))
+            && YES.equals(answers.text(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE)))
+            && !document.isEmpty();
+    return fromCertificate ? OptionalLong.of(Long.parseLong(document)) : OptionalLong.empty();
+  }
+
   /** The ID of the question after invoice {@code entry} of a category. */
   public static String anotherEntryId(Category category, int entry) {
     return category.fieldId(entry, ANOTHER_ENTRY);
@@ -416,15 +450,27 @@ public final class Interview {
     return AnlageN.employerFieldId(employer, ANOTHER_EMPLOYER);
   }
 
-  private static List<Question> employerQuestions(int employer) {
+  private static List<Question> employerQuestions(Answers answers, int employer) {
     List<Question> questions = new ArrayList<>();
+    String prefix = "Arbeitgeber " + employer + ": ";
+    String certificateId = AnlageN.employerFieldId(employer, WAGE_CERTIFICATE);
+    questions.add(
+        Question.yesNo(
+            certificateId, Topic.JOB, prefix + "Hast du deine Lohnsteuerbescheinigung?", null));
+    if (YES.equals(answers.text(certificateId))) {
+      questions.add(
+          Question.document(
+              AnlageN.employerFieldId(employer, WAGE_CERTIFICATE_DOCUMENT),
+              Topic.JOB,
+              prefix + "Laden Sie die Lohnsteuerbescheinigung hoch, oder wählen Sie sie aus."));
+    }
     for (EmployerQuestion question : EMPLOYER_QUESTIONS) {
       questions.add(
           Question.field(
               AnlageN.ID,
               AnlageN.employerFieldId(employer, question.fieldId()),
               Topic.JOB,
-              "Arbeitgeber " + employer + ": " + question.text()));
+              prefix + question.text()));
     }
     questions.add(
         Question.yesNo(
@@ -490,7 +536,7 @@ public final class Interview {
     return switch (question.type()) {
       case YES_NO -> YES.equals(answers.text(question.id()));
       case CHOICE -> question.allows(answers.text(question.id()));
-      case FIELD, CONFIRM -> false;
+      case FIELD, CONFIRM, DOCUMENT -> false;
     };
   }
 

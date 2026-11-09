@@ -144,16 +144,16 @@ class AnlageNTest {
   }
 
   @Test
-  void eachLabelOfTheCertificateNamesItsNumber() {
+  void eachLabelOfTheCertificateNamesItsLine() {
     assertThat(form.field("employer3-grossWage"))
         .hasValueSatisfying(
             field -> {
-              assertThat(field.label()).startsWith("Nr. 3 ");
+              assertThat(field.label()).startsWith("Zeile 3 ");
               assertThat(field.section()).isEqualTo("Arbeitgeber 3");
               assertThat(field.hintId()).isEqualTo("grossWage");
             });
-    assertThat(form.field("wageTax").orElseThrow().label()).startsWith("Nr. 4 ");
-    assertThat(form.field("employedFrom").orElseThrow().label()).startsWith("Nr. 1 ");
+    assertThat(form.field("wageTax").orElseThrow().label()).startsWith("Zeile 4 ");
+    assertThat(form.field("employedFrom").orElseThrow().label()).startsWith("Zeile 1 ");
   }
 
   @Test

@@ -7,6 +7,8 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.FilePayload;
+import com.microsoft.playwright.options.SelectOption;
 import java.nio.file.Path;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -21,6 +23,9 @@ import org.springframework.test.context.DynamicPropertySource;
 /** Uses a real browser, because only a browser can prove that the htmx swap works. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ExpenseBrowserTest {
+
+  /** The app reads the type of a file from these first bytes. */
+  private static final byte[] MADE_UP_PNG = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
 
   @TempDir static Path databaseFolder;
 
@@ -112,6 +117,93 @@ class ExpenseBrowserTest {
     assertThat(page.getByLabel("Kategorie")).hasValue("WORK_TRAINING");
     assertThat(page.getByLabel("Beschreibung")).hasValue("Next made-up course");
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
+  }
+
+  @Test
+  void uploadsANewDocumentInTheSameStepAndLinksIt() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    String returnUrl = page.url();
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Neue Datei")
+        .setInputFiles(new FilePayload("made-up-receipt.png", "image/png", MADE_UP_PNG));
+    addExpense(page, "10,00", "Made-up cable");
+
+    Locator row = page.locator("#expenses tbody tr");
+    assertThat(row).hasCount(1);
+    assertThat(row.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("made-up-receipt.png")))
+        .isVisible();
+    assertThat(row).not().containsText("Beleg fehlt");
+    assertThat(page.locator("#panel")).not().containsText("ohne Beleg");
+
+    page.navigate(returnUrl + "/documents");
+    assertThat(page.locator("#documents tbody tr")).containsText("Rechnung/Quittung");
+  }
+
+  @Test
+  void choosesADocumentOfTheReturn() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    String returnUrl = page.url();
+    uploadDocument(page, returnUrl, "made-up-invoice.png");
+    page.navigate(returnUrl);
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Dokument").selectOption(new SelectOption().setLabel("made-up-invoice.png"));
+    addExpense(page, "10,00", "Made-up cable");
+
+    Locator row = page.locator("#expenses tbody tr");
+    assertThat(row.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("made-up-invoice.png")))
+        .isVisible();
+    assertThat(row).not().containsText("Beleg fehlt");
+  }
+
+  @Test
+  void showsThatTheReceiptIsMissingInTheListAndOnTheReview() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    String returnUrl = page.url();
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    addExpense(page, "10,00", "Made-up cable");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    addExpense(page, "20,00", "Made-up doctor");
+    assertThat(page.locator("#expenses tbody tr .warning")).hasCount(2);
+    assertThat(page.locator("#expenses tbody tr").first()).containsText("Beleg fehlt");
+
+    page.navigate(returnUrl + "/review");
+
+    assertThat(
+            page.locator(".review-form tr")
+                .filter(new Locator.FilterOptions().setHasText("Made-up cable")))
+        .containsText("Beleg fehlt");
+    assertThat(page.locator("#without-form")).containsText("Beleg fehlt");
+  }
+
+  @Test
+  void showsAnErrorForAFileOverTheLimitOfTheServer() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    byte[] large = new byte[30 * 1024 * 1024];
+    large[0] = '%';
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Neue Datei")
+        .setInputFiles(new FilePayload("large.pdf", "application/pdf", large));
+    page.getByLabel("Betrag (EUR)").fill("10,00");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Beschreibung").press("Enter");
+
+    assertThat(page.locator(".error")).containsText("größer als 20 MB");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+  }
+
+  private static void uploadDocument(Page page, String returnUrl, String fileName) {
+    page.navigate(returnUrl + "/documents");
+    page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", MADE_UP_PNG));
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
   }
 
   private void openANewReturnFor2022(Page page) {

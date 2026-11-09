@@ -1,10 +1,12 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore.StoredExpense;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -12,14 +14,23 @@ import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.expense.Payment;
 import io.github.colla69.makemytaxes.core.expense.Purpose;
 import io.github.colla69.makemytaxes.core.form.Forms;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
+import org.apache.tomcat.util.http.InvalidParameterException;
+import org.apache.tomcat.util.http.fileupload.impl.SizeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Controller
@@ -27,15 +38,20 @@ class ExpenseController {
 
   /** What the user typed, kept as text so that a rejected form can show it again. */
   record ExpenseForm(
-      String paidOn, String amount, ExpenseTopic topic, String description, String receipt) {
+      String paidOn,
+      String amount,
+      ExpenseTopic topic,
+      String description,
+      String receipt,
+      Long documentId) {
 
     static ExpenseForm empty() {
-      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "");
+      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null);
     }
 
     /** The next entry often shares a date and topic with this entry, so those two stay. */
     ExpenseForm forNextEntry() {
-      return new ExpenseForm(paidOn, "", topic, "", "");
+      return new ExpenseForm(paidOn, "", topic, "", "", null);
     }
 
     Expense toExpense(TaxYear taxYear) {
@@ -51,7 +67,7 @@ class ExpenseController {
   }
 
   record ExpenseRow(long id, String paidOn, String amount, String topic, String description,
-      String receipt) {
+      String receipt, Long documentId, String documentName) {
 
     static ExpenseRow of(StoredExpense stored) {
       Expense expense = stored.expense();
@@ -61,7 +77,9 @@ class ExpenseController {
           GermanFormats.format(expense.payment().amount()),
           expense.purpose().topic().label(),
           expense.purpose().description(),
-          expense.receiptReference());
+          expense.receiptReference(),
+          stored.documentId(),
+          expense.documentName());
     }
   }
 
@@ -69,10 +87,12 @@ class ExpenseController {
 
   private final HouseholdStore household;
   private final ExpenseStore expenses;
+  private final DocumentStore documents;
 
-  ExpenseController(HouseholdStore household, ExpenseStore expenses) {
+  ExpenseController(HouseholdStore household, ExpenseStore expenses, DocumentStore documents) {
     this.household = household;
     this.expenses = expenses;
+    this.documents = documents;
   }
 
   @GetMapping("/returns/{returnId}")
@@ -82,15 +102,62 @@ class ExpenseController {
   }
 
   @PostMapping("/returns/{returnId}/expenses")
-  String add(@PathVariable long returnId, @ModelAttribute ExpenseForm form, Model model) {
+  String add(
+      @PathVariable long returnId,
+      @ModelAttribute ExpenseForm form,
+      @RequestParam(required = false) MultipartFile file,
+      Model model)
+      throws IOException {
     try {
-      expenses.add(returnId, form.toExpense(taxYearOf(returnId)));
+      store(returnId, form, file);
       fillPanel(returnId, form.forNextEntry(), model);
     } catch (IllegalArgumentException e) {
       model.addAttribute("error", e.getMessage());
       fillPanel(returnId, form, model);
     }
     return "return :: panel";
+  }
+
+  /** The server stops a file over its own limit before the add method runs. */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  String tooLarge(HttpServletRequest request, Model model) {
+    model.addAttribute("error", DocumentController.TOO_LARGE);
+    fillPanel(DocumentController.returnIdOf(request), ExpenseForm.empty(), model);
+    return "return :: panel";
+  }
+
+  /** The text fields of this form are read first, so Tomcat reports the size in its own way. */
+  @ExceptionHandler(InvalidParameterException.class)
+  String tooLargeForTheForm(InvalidParameterException e, HttpServletRequest request, Model model) {
+    if (!(e.getCause() instanceof SizeException)) {
+      throw e;
+    }
+    return tooLarge(request, model);
+  }
+
+  /** Every check runs before the first write, so a rejected form stores nothing. */
+  private void store(long returnId, ExpenseForm form, MultipartFile file) throws IOException {
+    Expense expense = form.toExpense(taxYearOf(returnId));
+    // A browser sends an empty part with no name if the user chose no file.
+    if (file == null || !StringUtils.hasText(file.getOriginalFilename())) {
+      expenses.add(returnId, expense, checkedDocumentId(returnId, form.documentId()));
+      return;
+    }
+    if (form.documentId() != null) {
+      throw new IllegalArgumentException(
+          "Bitte entweder ein Dokument wählen oder eine neue Datei hochladen.");
+    }
+    expenses.addWithNewDocument(
+        returnId,
+        expense,
+        DocumentController.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file));
+  }
+
+  private Long checkedDocumentId(long returnId, Long documentId) {
+    if (documentId != null && documents.find(returnId, documentId).isEmpty()) {
+      throw new IllegalArgumentException("Dieses Dokument gehört nicht zu dieser Erklärung.");
+    }
+    return documentId;
   }
 
   @PostMapping("/returns/{returnId}/expenses/{expenseId}/delete")
@@ -123,9 +190,16 @@ class ExpenseController {
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);
     model.addAttribute("topics", topicOptions());
+    model.addAttribute("documentOptions", documentOptions(returnId));
     model.addAttribute("rows", stored.stream().map(ExpenseRow::of).toList());
     model.addAttribute("totals", totalsOf(summary));
     model.addAttribute("withoutReceipt", summary.expensesWithoutEvidence());
+  }
+
+  private List<Kind.Option> documentOptions(long returnId) {
+    return documents.documentsOf(returnId).stream()
+        .map(document -> new Kind.Option(String.valueOf(document.id()), document.fileName()))
+        .toList();
   }
 
   private static List<Kind.Option> topicOptions() {

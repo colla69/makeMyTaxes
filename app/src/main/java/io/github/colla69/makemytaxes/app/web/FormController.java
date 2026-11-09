@@ -83,7 +83,7 @@ class FormController {
     }
   }
 
-  record WithoutFormView(String topic, String description, String amount) {}
+  record WithoutFormView(String topic, String description, String amount, String evidence) {}
 
   record SectionView(String title, List<ReviewLine> lines) {}
 
@@ -211,7 +211,8 @@ class FormController {
                 new WithoutFormView(
                     expense.purpose().topic().label(),
                     expense.purpose().description(),
-                    GermanFormats.format(expense.payment().amount())))
+                    GermanFormats.format(expense.payment().amount()),
+                    expense.hasEvidence() ? "Beleg: " + expense.documentName() : "Beleg fehlt"))
         .toList();
   }
 

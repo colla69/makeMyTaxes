@@ -37,7 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 class DocumentController {
 
   static final long MAX_BYTES = 20L * 1024 * 1024;
-  private static final String TOO_LARGE = "Die Datei ist größer als 20 MB.";
+  static final String TOO_LARGE = "Die Datei ist größer als 20 MB.";
 
   record DocumentRow(long id, String kind, String fileName, String size, String uploadedOn) {
 
@@ -113,14 +113,18 @@ class DocumentController {
    */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
+    model.addAttribute("error", TOO_LARGE);
+    fillPage(returnIdOf(request), model);
+    return "documents";
+  }
+
+  /** An exception handler cannot take a path variable, so it reads the id from the request. */
+  static long returnIdOf(HttpServletRequest request) {
     @SuppressWarnings("unchecked")
     var path =
         (Map<String, String>)
             request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-    long returnId = Long.parseLong(path.get("returnId"));
-    model.addAttribute("error", TOO_LARGE);
-    fillPage(returnId, model);
-    return "documents";
+    return Long.parseLong(path.get("returnId"));
   }
 
   /** The type comes from the first bytes of the file, not from the name or from the browser. */

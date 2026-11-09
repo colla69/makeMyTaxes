@@ -257,8 +257,11 @@ public final class AnlageN implements FormModule {
 
   private static String evidenceOf(Expense expense) {
     String paid = "Bezahlt am " + GermanFormats.format(expense.payment().paidOn());
-    return expense.hasEvidence()
-        ? paid + ", Beleg: " + expense.receiptReference()
-        : paid + ", ohne Beleg";
+    if (expense.hasEvidence()) {
+      return paid + ", Beleg: " + expense.documentName();
+    }
+    return expense.hasReceiptNote()
+        ? paid + ", Hinweis: " + expense.receiptReference() + ", Beleg fehlt"
+        : paid + ", Beleg fehlt";
   }
 }

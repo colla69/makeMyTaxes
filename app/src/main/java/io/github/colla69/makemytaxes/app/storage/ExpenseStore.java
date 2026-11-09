@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.app.storage;
 
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
+import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.expense.Money;
@@ -32,8 +33,8 @@ public class ExpenseStore {
             """
             insert into expense(
               tax_return_id, paid_on, amount_cents, topic, description, receipt_reference,
-              document_id)
-            values (?, ?, ?, ?, ?, ?, ?)
+              document_id, stated_basis)
+            values (?, ?, ?, ?, ?, ?, ?, ?)
             """)
         .params(
             returnId,
@@ -41,8 +42,9 @@ public class ExpenseStore {
             expense.payment().amount().cents(),
             expense.purpose().topic().name(),
             expense.purpose().description(),
-            expense.receiptReference(),
-            documentId)
+            expense.evidence().receiptNote(),
+            documentId,
+            expense.evidence().statedBasis())
         .update();
   }
 
@@ -56,7 +58,7 @@ public class ExpenseStore {
     return jdbc.sql(
             """
             select e.id, e.paid_on, e.amount_cents, e.topic, e.description, e.receipt_reference,
-              e.document_id, d.file_name
+              e.document_id, e.stated_basis, d.file_name
             from expense e left join document d on d.id = e.document_id
             where e.tax_return_id = ? order by e.paid_on desc, e.id desc
             """)
@@ -71,8 +73,12 @@ public class ExpenseStore {
                   new Purpose(
                       ExpenseTopic.valueOf(row.getString("topic")), row.getString("description"));
               String documentName = row.getString("file_name");
-              var expense =
-                  new Expense(payment, purpose, row.getString("receipt_reference"), documentName);
+              var evidence =
+                  new Evidence(
+                      row.getString("receipt_reference"),
+                      documentName,
+                      row.getString("stated_basis"));
+              var expense = new Expense(payment, purpose, evidence);
               Long documentId = documentName == null ? null : row.getLong("document_id");
               return new StoredExpense(row.getLong("id"), expense, documentId);
             })

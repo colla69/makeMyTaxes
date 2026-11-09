@@ -35,14 +35,16 @@ class ExpenseSummaryTest {
   }
 
   @Test
-  void countsTheExpensesWithoutADocument() {
+  void countsTheExpensesWithoutEvidence() {
     var payment = new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(100));
-    var withDocument =
-        new Expense(payment, new Purpose(ExpenseTopic.WORK_OTHER, "Made-up cost"), "", "a.pdf");
+    var purpose = new Purpose(ExpenseTopic.WORK_OTHER, "Made-up cost");
+    var withDocument = new Expense(payment, purpose, new Evidence("", "a.pdf", ""));
+    var withBasis = new Expense(payment, purpose, new Evidence("", null, "Made-up 12 days"));
     var summary =
         ExpenseSummary.of(
             List.of(
                 withDocument,
+                withBasis,
                 expense(ExpenseTopic.WORK_OTHER, 100, "only-a-note.pdf"),
                 expense(ExpenseTopic.MEDICAL, 100, "")));
 

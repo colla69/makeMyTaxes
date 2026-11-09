@@ -15,8 +15,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -33,6 +35,7 @@ class ExpenseBrowserTest {
   private static Browser browser;
 
   @LocalServerPort private int port;
+  @Autowired private JdbcClient jdbcClient;
 
   @DynamicPropertySource
   static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -59,20 +62,21 @@ class ExpenseBrowserTest {
     openANewReturnFor2022(page);
 
     page.getByLabel("Datum").fill("03.02.2022");
-    addExpense(page, "1.234,56", "Made-up laptop");
+    addExpenseWithBasis(page, "1.234,56", "Made-up laptop");
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
     assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
     assertThat(page.getByLabel("Betrag (EUR)")).isFocused();
+    assertThat(page.getByLabel("Grundlage")).hasValue("");
     // The link is outside the panel, so it stays only if htmx swapped the panel in place.
     assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Zurück")))
         .isVisible();
 
-    addExpense(page, "10,00", "Made-up cable");
+    addExpenseWithBasis(page, "10,00", "Made-up cable");
 
     assertThat(page.locator("#expenses tbody tr")).hasCount(2);
     assertThat(page.locator("#panel")).containsText("1.244,56");
-    assertThat(page.locator("#panel")).containsText("2 ohne Beleg");
+    assertThat(page.locator("#panel")).not().containsText("ohne Beleg");
   }
 
   @Test
@@ -81,11 +85,12 @@ class ExpenseBrowserTest {
     openANewReturnFor2022(page);
 
     page.getByLabel("Datum").fill("03.02.2023");
-    addExpense(page, "10,00", "Made-up cable");
+    addExpenseWithBasis(page, "10,00", "Made-up cable");
 
     assertThat(page.locator(".error")).containsText("03.02.2023");
     assertThat(page.locator("#expenses tbody tr")).hasCount(0);
     assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up cable");
+    assertThat(page.getByLabel("Grundlage")).hasValue("Made-up 12 days");
   }
 
   @Test
@@ -93,7 +98,7 @@ class ExpenseBrowserTest {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
     page.getByLabel("Datum").fill("03.02.2022");
-    addExpense(page, "10,00", "Made-up cable");
+    addExpenseWithBasis(page, "10,00", "Made-up cable");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
     page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Löschen")).click();
@@ -107,7 +112,7 @@ class ExpenseBrowserTest {
     openANewReturnFor2022(page);
     page.getByLabel("Datum").fill("03.02.2022");
     page.getByLabel("Kategorie").selectOption("WORK_TRAINING");
-    addExpense(page, "10,00", "Made-up course");
+    addExpenseWithBasis(page, "10,00", "Made-up course");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
 
     page.getByLabel("Beschreibung").fill("Next made-up course");
@@ -160,15 +165,14 @@ class ExpenseBrowserTest {
   }
 
   @Test
-  void showsThatTheReceiptIsMissingInTheListAndOnTheReview() {
+  void anOldExpenseWithoutEvidenceShowsThatTheReceiptIsMissingInTheListAndOnTheReview() {
     Page page = browser.newPage();
     openANewReturnFor2022(page);
     String returnUrl = page.url();
 
-    page.getByLabel("Datum").fill("03.02.2022");
-    addExpense(page, "10,00", "Made-up cable");
-    page.getByLabel("Kategorie").selectOption("MEDICAL");
-    addExpense(page, "20,00", "Made-up doctor");
+    insertOldExpense(returnUrl, "WORK_OTHER", "Made-up cable");
+    insertOldExpense(returnUrl, "MEDICAL", "Made-up doctor");
+    page.navigate(returnUrl);
     assertThat(page.locator("#expenses tbody tr .warning")).hasCount(2);
     assertThat(page.locator("#expenses tbody tr").first()).containsText("Beleg fehlt");
 
@@ -179,6 +183,39 @@ class ExpenseBrowserTest {
                 .filter(new Locator.FilterOptions().setHasText("Made-up cable")))
         .containsText("Beleg fehlt");
     assertThat(page.locator("#without-form")).containsText("Beleg fehlt");
+  }
+
+  @Test
+  void aStatedBasisIsEvidenceInTheListAndOnTheReview() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    String returnUrl = page.url();
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    addExpenseWithBasis(page, "10,00", "Made-up doctor");
+
+    Locator row = page.locator("#expenses tbody tr");
+    assertThat(row).containsText("Grundlage: Made-up 12 days");
+    assertThat(row).not().containsText("Beleg fehlt");
+
+    page.navigate(returnUrl + "/review");
+
+    assertThat(page.locator("#without-form")).containsText("Grundlage: Made-up 12 days");
+    assertThat(page.locator("#without-form")).not().containsText("Beleg fehlt");
+  }
+
+  @Test
+  void anExpenseWithNeitherADocumentNorAStatedBasisCannotBeSaved() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    addExpense(page, "10,00", "Made-up cable");
+
+    assertThat(page.locator(".error")).containsText("die Grundlage angeben");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+    assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up cable");
   }
 
   @Test
@@ -221,6 +258,25 @@ class ExpenseBrowserTest {
         .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2022"))
         .click();
     assertThat(page.getByLabel("Datum")).isVisible();
+  }
+
+  /** Writes the row directly, because the form no longer accepts an expense without evidence. */
+  private void insertOldExpense(String returnUrl, String topic, String description) {
+    long returnId = Long.parseLong(returnUrl.substring(returnUrl.lastIndexOf('/') + 1));
+    jdbcClient
+        .sql(
+            """
+            insert into expense(
+              tax_return_id, paid_on, amount_cents, topic, description, receipt_reference)
+            values (?, '2022-02-03', 1000, ?, ?, '')
+            """)
+        .params(returnId, topic, description)
+        .update();
+  }
+
+  private static void addExpenseWithBasis(Page page, String amount, String description) {
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
+    addExpense(page, amount, description);
   }
 
   private static void addExpense(Page page, String amount, String description) {

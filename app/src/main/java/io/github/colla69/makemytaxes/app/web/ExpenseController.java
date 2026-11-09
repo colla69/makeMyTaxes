@@ -7,6 +7,7 @@ import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -43,15 +44,16 @@ class ExpenseController {
       ExpenseTopic topic,
       String description,
       String receipt,
-      Long documentId) {
+      Long documentId,
+      String statedBasis) {
 
     static ExpenseForm empty() {
-      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null);
+      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null, "");
     }
 
     /** The next entry often shares a date and topic with this entry, so those two stay. */
     ExpenseForm forNextEntry() {
-      return new ExpenseForm(paidOn, "", topic, "", "", null);
+      return new ExpenseForm(paidOn, "", topic, "", "", null, "");
     }
 
     Expense toExpense(TaxYear taxYear) {
@@ -62,12 +64,13 @@ class ExpenseController {
                     + " Jahr der Zahlung.")
                 .formatted(taxYear.value(), GermanFormats.format(payment.paidOn())));
       }
-      return new Expense(payment, new Purpose(topic, description.strip()), receipt.strip());
+      var evidence = new Evidence(receipt.strip(), null, statedBasis.strip());
+      return new Expense(payment, new Purpose(topic, description.strip()), evidence);
     }
   }
 
   record ExpenseRow(long id, String paidOn, String amount, String topic, String description,
-      String receipt, Long documentId, String documentName) {
+      String receipt, Long documentId, String documentName, String statedBasis) {
 
     static ExpenseRow of(StoredExpense stored) {
       Expense expense = stored.expense();
@@ -77,9 +80,14 @@ class ExpenseController {
           GermanFormats.format(expense.payment().amount()),
           expense.purpose().topic().label(),
           expense.purpose().description(),
-          expense.receiptReference(),
+          expense.evidence().receiptNote(),
           stored.documentId(),
-          expense.documentName());
+          expense.evidence().documentName(),
+          expense.evidence().statedBasis());
+    }
+
+    public boolean evidenceMissing() {
+      return documentId == null && !StringUtils.hasText(statedBasis);
     }
   }
 
@@ -140,7 +148,12 @@ class ExpenseController {
     Expense expense = form.toExpense(taxYearOf(returnId));
     // A browser sends an empty part with no name if the user chose no file.
     if (file == null || !StringUtils.hasText(file.getOriginalFilename())) {
-      expenses.add(returnId, expense, checkedDocumentId(returnId, form.documentId()));
+      Long documentId = checkedDocumentId(returnId, form.documentId());
+      if (documentId == null && !expense.evidence().hasStatedBasis()) {
+        throw new IllegalArgumentException(
+            "Bitte ein Dokument wählen, eine Datei hochladen oder die Grundlage angeben.");
+      }
+      expenses.add(returnId, expense, documentId);
       return;
     }
     if (form.documentId() != null) {

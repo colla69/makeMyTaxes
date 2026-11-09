@@ -109,6 +109,22 @@ class InterviewTest {
   }
 
   @Test
+  void theCommuteTopicAsksTheAnlageNFieldsWithTheTransportBeforeTheDays() {
+    assertThat(Interview.questionsOf(NONE, Topic.COMMUTE).stream().map(Question::id))
+        .containsExactly(
+            "commuteKm",
+            "commuteTransport",
+            "commuteDays",
+            "homeOfficeDays",
+            "workEquipment",
+            "workTraining");
+    for (String id : new String[] {"commuteTransport", "commuteDays", "homeOfficeDays"}) {
+      assertThat(Interview.find(NONE, id).orElseThrow().formId()).isEqualTo(AnlageN.ID);
+      assertThat(new AnlageN(null).fields()).anyMatch(field -> field.id().equals(id));
+    }
+  }
+
+  @Test
   void backAndNextStayInTheTopicAndThenMoveToTheNeighbourTopic() {
     Question first = Interview.questionsOf(NONE, Topic.COMMUTE).getFirst();
     assertThat(Interview.previousInTopic(NONE, first)).isEmpty();

@@ -21,8 +21,16 @@
         <tr><td>Homeoffice</td><td class="amount" th:text="${estimate.homeOffice}">0,00</td></tr>
         <tr><td>Erfasste Ausgaben</td><td class="amount" th:text="${estimate.listed}">0,00</td></tr>
         <tr><th>Summe</th><th class="amount" th:text="${estimate.total}">0,00</th></tr>
-        <tr><td>Arbeitnehmer-Pauschbetrag (§ 9a EStG)</td><td class="amount" th:text="${estimate.lumpSum}">0,00</td></tr>
+        <tr><td>Arbeitnehmer-Pauschbetrag (§ 9a Satz 1 Nr. 1 Buchstabe a EStG)</td><td class="amount" th:text="${estimate.lumpSum}">0,00</td></tr>
       </table>
+      <!-- Each rate and limit of the estimate, with its legal source. -->
+      <ul id="limits" class="help">
+        <li id="limit-commute" th:with="l=${estimate.limits}"
+            th:text="'Wege zur Arbeit: ' + ${l.perKmFirst20} + ' EUR je vollen Kilometer bis 20 km, ' + ${l.perKmFrom21} + ' EUR ab dem 21. Kilometer, für jeden Tag an der ersten Tätigkeitsstätte. Ohne eigenen oder überlassenen Kraftwagen höchstens ' + ${l.commuteLimit} + ' EUR im Jahr. Quelle: § 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG. Arbeitgeberleistungen mindern den Betrag: § 9 Abs. 1 Satz 3 Nr. 4 Satz 5, § 3 Nr. 15 Satz 3 und § 40 Abs. 2 Satz 2 Nr. 1 EStG.'">Wege zur Arbeit</li>
+        <li id="limit-home-office" th:with="l=${estimate.limits}"
+            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR für jeden Tag nur zu Hause, höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: § 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG mit § 9 Abs. 5 EStG.'">Homeoffice</li>
+        <li>Erfasste Ausgaben: die Summe der Beträge, die Sie als Werbungskosten erfasst haben. Die App verteilt keine Kosten über mehrere Jahre (Absetzung für Abnutzung, § 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG). Prüfen Sie das bei teuren Arbeitsmitteln selbst.</li>
+      </ul>
       <p th:if="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen über dem Pauschbetrag. Sie zählen daher in voller Höhe.</p>
       <p th:unless="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen nicht über dem Pauschbetrag. Das Finanzamt setzt daher den Pauschbetrag an.</p>
       <p class="help">Dies ist eine Schätzung. Das Finanzamt berechnet die Beträge.</p>

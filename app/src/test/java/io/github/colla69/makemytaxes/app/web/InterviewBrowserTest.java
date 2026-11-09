@@ -25,7 +25,7 @@ import org.springframework.test.context.DynamicPropertySource;
 class InterviewBrowserTest {
 
   /** The questions without an employer and with a statutory health insurance. */
-  private static final int QUESTIONS = 15;
+  private static final int QUESTIONS = 18;
 
   /** The lines of one certificate and the question for another employer. */
   private static final int QUESTIONS_PER_EMPLOYER = 11;
@@ -85,9 +85,17 @@ class InterviewBrowserTest {
 
     assertTopic(page, "Arbeitsweg und Arbeit");
     answerField(page, "12");
+    answerField(page, "CAR");
+    answerField(page, "180");
+    answerField(page, "40");
+    button(page, "Ja").click();
     button(page, "Nein").click();
-    button(page, "Nein").click();
-    assertThat(page.locator("#summary")).containsText("12");
+    Locator commute = page.locator("#summary");
+    assertThat(commute.locator("[data-question=commuteKm] strong")).hasText("12");
+    assertThat(commute.locator("[data-question=commuteTransport] strong"))
+        .hasText("Eigener oder zur Nutzung überlassener Kraftwagen");
+    assertThat(commute.locator("[data-question=commuteDays] strong")).hasText("180");
+    assertThat(commute.locator("[data-question=homeOfficeDays] strong")).hasText("40");
     forward(page).click();
 
     // Insurance: a statutory insurance asks the social insurance lines of the certificate.
@@ -136,16 +144,21 @@ class InterviewBrowserTest {
               "Abgabepflicht",
               "Hauptvordruck",
               "Anlage N",
+              "Ausgaben",
               "Anlage Vorsorgeaufwand",
               "Ausgaben",
               "Haushaltsnahe Aufwendungen"
             });
+    assertThat(page.locator("#steps")).containsText("Arbeitsmittel");
     assertThat(tab(page, "Fragen")).hasClass(Pattern.compile("\\bdone\\b"));
 
     tab(page, "Hauptvordruck").click();
     assertThat(page.locator("#answers [name=occupation]")).hasValue("Made-up job");
     tab(page, "Anlage N").click();
     assertThat(page.locator("#answers [name=commuteKm]")).hasValue("12");
+    assertThat(page.locator("#answers [name=commuteTransport]")).hasValue("CAR");
+    assertThat(page.locator("#answers [name=commuteDays]")).hasValue("180");
+    assertThat(page.locator("#answers [name=homeOfficeDays]")).hasValue("40");
     tab(page, "Anlage Vorsorgeaufwand").click();
     assertThat(page.locator("#answers [name=pensionEmployee]")).hasValue("2.790,00");
     assertThat(page.locator("#answers [name=healthEmployee]")).hasValue("2.400,00");
@@ -204,6 +217,22 @@ class InterviewBrowserTest {
   }
 
   @Test
+  void officeDaysWithoutTheTransportShowWhyTheTransportIsNeeded() {
+    Page page = browser.newPage();
+    openInterview(page);
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Nein").click();
+    answerField(page, "");
+    forward(page).click();
+    answerField(page, "12");
+    answerField(page, "");
+
+    answerField(page, "180");
+    assertThat(page.locator("#question .error")).containsText("Höchstbetrag");
+    assertThat(fieldAnswer(page)).hasValue("180");
+  }
+
+  @Test
   void aPrivateInsuranceAsksTheLinesOfEachCertificateAndTheCertificateOfTheInsurer() {
     Page page = browser.newPage();
     openInterview(page);
@@ -215,6 +244,9 @@ class InterviewBrowserTest {
     button(page, "Nein").click();
     answerField(page, "");
     forward(page).click();
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
     answerField(page, "");
     button(page, "Nein").click();
     button(page, "Nein").click();
@@ -278,6 +310,9 @@ class InterviewBrowserTest {
     button(page, "Nein").click();
     answerField(page, "");
     forward(page).click();
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "");
     answerField(page, "");
     button(page, "Nein").click();
     button(page, "Nein").click();
@@ -495,8 +530,14 @@ class InterviewBrowserTest {
     assertThat(page.locator("#question .topic")).containsText(topic);
   }
 
+  /** Types the value, or picks it when the field is a choice. */
   private static void answerField(Page page, String value) {
-    fieldAnswer(page).fill(value);
+    Locator answer = fieldAnswer(page);
+    if ("select".equals(answer.evaluate("element => element.localName"))) {
+      answer.selectOption(value);
+    } else {
+      answer.fill(value);
+    }
     button(page, "Weiter").click();
   }
 
@@ -522,7 +563,7 @@ class InterviewBrowserTest {
   }
 
   private static Locator fieldAnswer(Page page) {
-    return page.locator("#question input[name=answer]");
+    return page.locator("#question .fields [name=answer]");
   }
 
   private static Locator button(Page page, String name) {

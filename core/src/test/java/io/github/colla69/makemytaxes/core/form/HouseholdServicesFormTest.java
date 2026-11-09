@@ -54,6 +54,16 @@ class HouseholdServicesFormTest {
   }
 
   @Test
+  void thePaymentOptionsFollowTheWordingOfTheLaw() {
+    // § 35a(5) sentence 3 EStG: "Zahlung auf das Konto des Erbringers der Leistung". A direct
+    // debit to that account also counts, a payment to another account does not.
+    assertThat(Kind.PAYMENT.options())
+        .extracting(Kind.Option::label)
+        .containsExactly("Zahlung auf das Konto des Leistenden", "Bar oder anders");
+    assertThat(form.field("cleaning1-payment").orElseThrow().help()).contains("Lastschrift");
+  }
+
+  @Test
   void anAmountNeedsAnInvoice() {
     // § 35a(5) sentence 3 EStG: the taxpayer must have received an invoice.
     Answers noInvoice =

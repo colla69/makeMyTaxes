@@ -120,7 +120,7 @@ class InterviewBrowserTest {
     button(page, "Nein").click();
     button(page, "Nein").click();
     assertThat(page.locator("#summary")).containsText("Haushalt");
-    assertThat(page.locator("#summary")).containsText("Überweisung auf ein Konto");
+    assertThat(page.locator("#summary")).containsText("Zahlung auf das Konto des Leistenden");
     forward(page).click();
 
     assertThat(progress)

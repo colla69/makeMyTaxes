@@ -34,7 +34,9 @@ public enum Kind {
               new Option(CAR, "Eigener oder zur Nutzung überlassener Kraftwagen"),
               new Option(OTHER_TRANSPORT, "Öffentliche Verkehrsmittel, Fahrrad, zu Fuß oder Carsharing"));
       case PAYMENT ->
-          List.of(new Option(TRANSFER, "Überweisung auf ein Konto"), new Option(CASH, "Bar"));
+          List.of(
+              new Option(TRANSFER, "Zahlung auf das Konto des Leistenden"),
+              new Option(CASH, "Bar oder anders"));
       default -> List.of();
     };
   }

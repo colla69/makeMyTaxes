@@ -42,7 +42,9 @@ public final class HouseholdServicesForm implements FormModule {
 
   private static final Field PAYMENT_FIELD =
       optional(PAYMENT, "", "§ 35a Abs. 5 Satz 3 EStG", "Zahlungsweg", Kind.PAYMENT)
-          .withHelp("Nur eine Zahlung auf das Konto des Leistenden zählt, keine Barzahlung.");
+          .withHelp(
+              "Nur eine Zahlung auf das Konto des Leistenden zählt, zum Beispiel eine Überweisung"
+                  + " oder eine Lastschrift. Eine Barzahlung zählt nicht.");
 
   private static List<Field> invoiceFields(String line) {
     return List.of(
@@ -212,8 +214,8 @@ public final class HouseholdServicesForm implements FormModule {
     if (Kind.CASH.equals(payment)) {
       return List.of(
           name
-              + "Eine Barzahlung zählt nicht. Die Zahlung muss auf das Konto des Leistenden gehen"
-              + " (§ 35a Abs. 5 Satz 3 EStG). Erfassen Sie diese Rechnung nicht.");
+              + "Eine Barzahlung oder eine Zahlung an eine andere Person zählt nicht. Die Zahlung"
+              + " muss auf das Konto des Leistenden gehen (§ 35a Abs. 5 Satz 3 EStG). Erfassen Sie diese Rechnung nicht.");
     }
     boolean hasAmounts =
         answers.has(category.fieldId(entry, PAID)) || answers.has(category.fieldId(entry, LABOUR));
@@ -230,8 +232,8 @@ public final class HouseholdServicesForm implements FormModule {
     if (!Kind.TRANSFER.equals(payment)) {
       messages.add(
           name
-              + "Wählen Sie den Zahlungsweg. Nur eine Überweisung auf das Konto des Leistenden"
-              + " zählt (§ 35a Abs. 5 Satz 3 EStG).");
+              + "Wählen Sie den Zahlungsweg. Nur eine Zahlung auf das Konto des Leistenden zählt,"
+              + " zum Beispiel eine Überweisung oder eine Lastschrift (§ 35a Abs. 5 Satz 3 EStG).");
     }
     return messages;
   }

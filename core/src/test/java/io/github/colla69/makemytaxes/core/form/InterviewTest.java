@@ -159,6 +159,111 @@ class InterviewTest {
             new Step(FilingCheckForm.ID, null), new Step("main", null), new Step(AnlageN.ID, null));
   }
 
+  @Test
+  void aStatutoryInsuranceAsksTheSocialInsuranceLinesOfEachCertificate() {
+    Answers answers =
+        new Answers(
+            Map.of(
+                "employed", Interview.YES,
+                "anotherEmployer", Interview.YES,
+                "employer2-anotherEmployer", Interview.NO,
+                Interview.HEALTH_INSURANCE, Interview.STATUTORY));
+
+    List<Question> insurance = Interview.questionsOf(answers, Topic.INSURANCE);
+    assertThat(ids(insurance))
+        .containsExactly(
+            Interview.HEALTH_INSURANCE,
+            "pensionEmployer",
+            "pensionEmployee",
+            "healthAllowanceStatutory",
+            "careAllowance",
+            "healthEmployee",
+            "careEmployee",
+            "unemploymentEmployee",
+            "employer2-pensionEmployer",
+            "employer2-pensionEmployee",
+            "employer2-healthAllowanceStatutory",
+            "employer2-careAllowance",
+            "employer2-healthEmployee",
+            "employer2-careEmployee",
+            "employer2-unemploymentEmployee",
+            "insurance",
+            "medical");
+    assertFieldsExist(insurance);
+    Question health = Interview.find(answers, "employer2-healthEmployee").orElseThrow();
+    assertThat(health.text()).startsWith("Arbeitgeber 2:").contains("Nr. 25");
+    assertThat(health.hintId()).isEqualTo("healthEmployee");
+  }
+
+  @Test
+  void aPrivateInsuranceAsksItsCertificateLinesAndThenTheCertificateOfTheInsurer() {
+    Answers answers =
+        new Answers(
+            Map.of("employed", Interview.YES, Interview.HEALTH_INSURANCE, Interview.PRIVATE));
+
+    List<Question> insurance = Interview.questionsOf(answers, Topic.INSURANCE);
+    assertThat(ids(insurance))
+        .containsExactly(
+            Interview.HEALTH_INSURANCE,
+            "pensionEmployer",
+            "pensionEmployee",
+            "healthAllowancePrivate",
+            "unemploymentEmployee",
+            "privateHealthBasic",
+            "privateCare",
+            "privateRefunds",
+            "insurance",
+            "medical");
+    assertFieldsExist(insurance);
+  }
+
+  @Test
+  void withoutEmploymentAPrivateInsuranceAsksOnlyTheInsurer() {
+    Answers answers =
+        new Answers(Map.of("employed", Interview.NO, Interview.HEALTH_INSURANCE, Interview.PRIVATE));
+    assertThat(ids(Interview.questionsOf(answers, Topic.INSURANCE)))
+        .containsExactly(
+            Interview.HEALTH_INSURANCE,
+            "privateHealthBasic",
+            "privateCare",
+            "privateRefunds",
+            "insurance",
+            "medical");
+  }
+
+  @Test
+  void beforeTheAnswerToTheHealthInsuranceThereAreNoCertificateLines() {
+    Answers answers = new Answers(Map.of("employed", Interview.YES));
+    assertThat(ids(Interview.questionsOf(answers, Topic.INSURANCE)))
+        .containsExactly(Interview.HEALTH_INSURANCE, "insurance", "medical");
+    Question health = Interview.find(answers, Interview.HEALTH_INSURANCE).orElseThrow();
+    assertThat(health.type()).isEqualTo(Type.CHOICE);
+    assertThat(health.allows(Interview.STATUTORY)).isTrue();
+    assertThat(health.allows(Interview.YES)).isFalse();
+    assertThat(health.labelOf(Interview.PRIVATE)).isEqualTo("Privat");
+  }
+
+  @Test
+  void eachAnswerToTheHealthInsuranceAddsAnlageVorsorgeaufwand() {
+    for (String kind : List.of(Interview.STATUTORY, Interview.PRIVATE)) {
+      assertThat(Interview.steps(new Answers(Map.of(Interview.HEALTH_INSURANCE, kind))))
+          .containsExactly(
+              new Step(FilingCheckForm.ID, null),
+              new Step("main", null),
+              new Step(AnlageVorsorgeaufwand.ID, null));
+    }
+  }
+
+  private static void assertFieldsExist(List<Question> questions) {
+    AnlageVorsorgeaufwand form = new AnlageVorsorgeaufwand();
+    for (Question question : questions) {
+      if (question.type() == Type.FIELD) {
+        assertThat(question.formId()).isEqualTo(AnlageVorsorgeaufwand.ID);
+        assertThat(form.field(question.id())).as(question.id()).isPresent();
+      }
+    }
+  }
+
   private static List<String> ids(List<Question> questions) {
     return questions.stream().map(Question::id).toList();
   }

@@ -27,10 +27,11 @@
       <!-- data-autosave: fields.js saves the field of a field question when the user leaves it. -->
       <form method="post" th:action="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${question.id})}"
             th:data-autosave="${question.type.name() == 'FIELD'} ? @{/returns/{r}/interview/questions/{q}/field(r=${returnId},q=${question.id})} : null">
-        <th:block th:if="${question.type.name() == 'YES_NO'}">
+        <!-- A yes/no question or a choice: one button for each answer. -->
+        <th:block th:unless="${question.options.isEmpty()}">
           <p class="form-buttons">
-            <button name="answer" value="YES" th:attr="aria-pressed=${current == 'YES'}">Ja</button>
-            <button name="answer" value="NO" th:attr="aria-pressed=${current == 'NO'}">Nein</button>
+            <button th:each="option : ${question.options}" name="answer" th:value="${option.value}"
+                    th:attr="aria-pressed=${current == option.value}" th:text="${option.label}">Ja</button>
           </p>
         </th:block>
 

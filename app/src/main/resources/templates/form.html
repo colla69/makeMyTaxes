@@ -12,11 +12,13 @@
     <main class="panel">
     <h1 th:text="${form.title} + ' ' + ${taxYear}">Vordruck</h1>
     <p class="saved" th:if="${saved}">Gespeichert.</p>
-    <p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p>
-    <p class="error" th:unless="${#maps.isEmpty(errors)}">Nichts wurde gespeichert. Korrigieren Sie die markierten Felder.</p>
+    <!-- After each save of a field, fields.js writes the checks of several fields here. -->
+    <div id="form-messages"><p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p></div>
+    <p class="error" th:unless="${#maps.isEmpty(errors)}">Die markierten Felder sind nicht gespeichert. Korrigieren Sie sie.</p>
 
-    <!-- data-remember: fields.js keeps the input of this form while the user switches tabs. -->
-    <form id="answers" method="post" data-remember
+    <!-- data-autosave: fields.js saves each field to this address when the user leaves it. -->
+    <form id="answers" method="post"
+          th:data-autosave="@{/returns/{r}/forms/{f}/field(r=${returnId},f=${form.id})}"
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
         <h2 th:text="${group.title}">Abschnitt</h2>

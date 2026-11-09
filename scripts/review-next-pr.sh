@@ -8,7 +8,7 @@ set -euo pipefail
 
 EFFORT=${REVIEWER_EFFORT:-high}
 BUDGET=${REVIEWER_BUDGET_USD:-10}
-MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-3}
+MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-10}
 
 # A change here can weaken the guards or send data off the machine, so the owner reviews it.
 OWNER_ONLY='^(\.github/|\.githooks/|\.claude/|scripts/|pom\.xml$|.*/pom\.xml$|app/src/main/resources/application\.properties$|.*/LocalRequestFilter\.java$|.*/storage/(EncryptedDatabase|DatabaseConfiguration)\.java$)'
@@ -63,10 +63,14 @@ if [[ "$(gh pr view "$number" --repo "$REPO" --json mergeable --jq .mergeable)" 
   send_back "This pull request has a merge conflict with dev. Merge dev into the branch."
 fi
 
-rounds=$(gh pr view "$number" --repo "$REPO" --json reviews \
-  --jq '[.reviews[] | select(.body | startswith("Automatic review"))] | length')
+# The comment "Keep going" from the owner starts a new count of rounds.
+rounds=$(OWNER=$OWNER gh pr view "$number" --repo "$REPO" --json reviews,comments --jq '
+  ([.comments[] | select(.author.login == env.OWNER)
+    | select(.body | ascii_downcase | test("^\\s*keep going\\W*$")) | .createdAt] | max // "") as $since
+  | [.reviews[] | select(.body | startswith("Automatic review")) | select(.submittedAt > $since)]
+  | length')
 if ((rounds >= MAX_ROUNDS)); then
-  hand_to_owner "$MAX_ROUNDS review rounds did not end in an approval."
+  hand_to_owner "$MAX_ROUNDS review rounds did not end in an approval. For $MAX_ROUNDS more rounds, comment \`Keep going\` and add the label \`needs-review\`."
 fi
 
 changed=$(gh pr diff "$number" --repo "$REPO" --name-only | grep -E "$OWNER_ONLY" || true)

@@ -15,6 +15,7 @@ import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
+import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
 import io.github.colla69.makemytaxes.core.form.WorkExpenseEstimate;
 import io.github.colla69.makemytaxes.core.year.YearPack;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -89,7 +91,8 @@ class FormController {
 
   record FormReview(String title, List<SectionView> sections, List<Field> missing) {}
 
-  record FieldGroup(String title, List<Field> fields) {}
+  /** The fields of one section. {@code documentHref} is the certificate beside them, or null. */
+  record FieldGroup(String title, List<Field> fields, String documentHref) {}
 
   private final HouseholdStore household;
   private final ExpenseStore expenses;
@@ -229,7 +232,7 @@ class FormController {
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
-    model.addAttribute("fieldGroups", fieldGroups(form.fields(new Answers(values))));
+    model.addAttribute("fieldGroups", fieldGroups(returnId, form.fields(new Answers(values))));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
     model.addAttribute("formErrors", formErrors);
@@ -252,14 +255,27 @@ class FormController {
         .toList();
   }
 
-  private static List<FieldGroup> fieldGroups(List<Field> fields) {
+  private List<FieldGroup> fieldGroups(long returnId, List<Field> fields) {
+    Answers interview = forms.answers(returnId, Interview.ID);
     Map<String, List<Field>> bySection = new LinkedHashMap<>();
     for (Field field : fields) {
       bySection.computeIfAbsent(field.section(), section -> new ArrayList<>()).add(field);
     }
     return bySection.entrySet().stream()
-        .map(entry -> new FieldGroup(entry.getKey(), entry.getValue()))
+        .map(
+            entry ->
+                new FieldGroup(
+                    entry.getKey(),
+                    entry.getValue(),
+                    documentHref(returnId, interview, entry.getValue().getFirst())))
         .toList();
+  }
+
+  private static String documentHref(long returnId, Answers interview, Field field) {
+    OptionalLong document = Interview.certificateDocument(interview, field.id());
+    return document.isPresent()
+        ? "/returns/" + returnId + "/documents/" + document.getAsLong()
+        : null;
   }
 
   private FormModule formOf(long returnId, String formId) {

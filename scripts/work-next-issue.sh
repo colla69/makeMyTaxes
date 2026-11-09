@@ -34,7 +34,8 @@ git -C "$worktree" switch -q -C "$branch"
 
 gh issue edit "$issue" --repo "$REPO" --add-label in-progress >/dev/null
 
-# Only the listed tools run, so the worker cannot merge, or fetch and send data from the web.
+# Only the listed tools run, so the worker cannot merge.
+# WebSearch and WebFetch are listed, so the worker can send search text and URLs off the machine.
 status=0
 (
   cd "$worktree"
@@ -42,7 +43,7 @@ status=0
     --effort "$EFFORT" \
     --max-budget-usd "$BUDGET" \
     --permission-mode acceptEdits \
-    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Agent" "Skill" \
+    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Agent" "Skill" "WebSearch" "WebFetch" \
     "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \

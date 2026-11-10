@@ -107,6 +107,22 @@ public class FormStore {
         .update();
   }
 
+  /**
+   * The document of each saved answer of the form that comes from a document. An answer that is
+   * not in the map is the user's own statement.
+   */
+  public Map<String, Long> answerDocuments(long returnId, String formId) {
+    Map<String, Long> documents = new LinkedHashMap<>();
+    jdbc.sql(
+            "select field_id, document_id from form_answer"
+                + " where tax_return_id = ? and form_id = ? and document_id is not null")
+        .params(returnId, formId)
+        .query(row -> {
+          documents.put(row.getString("field_id"), row.getLong("document_id"));
+        });
+    return documents;
+  }
+
   /** The personal details of the person of the return. Only the main form has them. */
   private Map<String, String> personalDetails(long returnId, String formId) {
     Map<String, String> details = new LinkedHashMap<>();

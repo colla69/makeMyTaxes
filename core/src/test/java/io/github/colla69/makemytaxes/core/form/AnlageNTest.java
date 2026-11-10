@@ -3,6 +3,7 @@ package io.github.colla69.makemytaxes.core.form;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -27,14 +28,26 @@ class AnlageNTest {
         new Expense(
             new Payment(LocalDate.of(2022, 2, 3), Money.ofCents(123_45)),
             new Purpose(ExpenseTopic.WORK_EQUIPMENT, "Made-up laptop"),
-            new Evidence("", "made-up.pdf", ""));
+            new Evidence("", new DocumentRef(7, "made-up.pdf"), ""));
 
     List<ReviewLine> lines = form.review(answers, List.of(laptop));
 
     assertThat(lines).extracting(ReviewLine::line).containsExactly("6", "42", "42", "45");
     assertThat(lines.get(1).value()).isEqualTo("123,45");
-    assertThat(lines.get(1).evidence()).isEqualTo("Bezahlt am 03.02.2022, Beleg: made-up.pdf");
+    assertThat(lines.get(1).label()).isEqualTo("Made-up laptop, bezahlt am 03.02.2022");
+    assertThat(lines.get(1).source())
+        .isEqualTo(new Source.FromDocument(new DocumentRef(7, "made-up.pdf")));
+    assertThat(lines.get(1).source().label()).isEqualTo("Beleg: made-up.pdf");
     assertThat(lines.get(2).label()).isEqualTo("Aufwendungen für Arbeitsmittel: Summe");
+    assertThat(lines.get(2).source()).isEqualTo(new Source.Sum());
+  }
+
+  @Test
+  void aValueOfTheFormNamesItsFieldAsTheSource() {
+    var answers = new Answers(Map.of("grossWage", "1.000,00"));
+
+    assertThat(form.review(answers, List.of()).getFirst().source())
+        .isEqualTo(new Source.Answer("grossWage"));
   }
 
   @Test
@@ -45,8 +58,8 @@ class AnlageNTest {
             new Purpose(ExpenseTopic.WORK_OTHER, "Made-up fee"),
             "");
 
-    assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
-        .isEqualTo("Bezahlt am 03.02.2022, Beleg fehlt");
+    assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).source().label())
+        .isEqualTo("Beleg fehlt");
   }
 
   @Test
@@ -57,8 +70,8 @@ class AnlageNTest {
             new Purpose(ExpenseTopic.WORK_OTHER, "Made-up fee"),
             "made-up-folder");
 
-    assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).evidence())
-        .isEqualTo("Bezahlt am 03.02.2022, Hinweis: made-up-folder, Beleg fehlt");
+    assertThat(form.review(new Answers(Map.of()), List.of(cable)).get(0).source().label())
+        .isEqualTo("Hinweis: made-up-folder, Beleg fehlt");
   }
 
   @Test
@@ -69,8 +82,8 @@ class AnlageNTest {
             new Purpose(ExpenseTopic.WORK_OTHER, "Made-up fee"),
             new Evidence("", null, "Made-up 12 days"));
 
-    assertThat(form.review(new Answers(Map.of()), List.of(fee)).get(0).evidence())
-        .isEqualTo("Bezahlt am 03.02.2022, Grundlage: Made-up 12 days");
+    assertThat(form.review(new Answers(Map.of()), List.of(fee)).get(0).source().label())
+        .isEqualTo("Grundlage: Made-up 12 days");
   }
 
   @Test

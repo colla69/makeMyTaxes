@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.core.expense;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class ExpenseSummaryTest {
   void countsTheExpensesWithoutEvidence() {
     var payment = new Payment(LocalDate.of(2022, 3, 1), Money.ofCents(100));
     var purpose = new Purpose(ExpenseTopic.WORK_OTHER, "Made-up cost");
-    var withDocument = new Expense(payment, purpose, new Evidence("", "a.pdf", ""));
+    var withDocument = new Expense(payment, purpose, new Evidence("", new DocumentRef(1, "a.pdf"), ""));
     var withBasis = new Expense(payment, purpose, new Evidence("", null, "Made-up 12 days"));
     var summary =
         ExpenseSummary.of(

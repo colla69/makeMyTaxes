@@ -108,6 +108,8 @@ class FormController {
           GermanFormats.format(pack.homeOfficeLimit()),
           mostlyAtHome
               ? "für jeden Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte"
+                  + " (Anlage N Zeile 58; Tage ohne dauerhaft anderen Arbeitsplatz gehören in"
+                  + " Zeile 59, die die App nicht abdeckt)"
               : "für jeden Tag nur zu Hause",
           mostlyAtHome ? "§ 4 Abs. 5 Satz 1 Nr. 6c EStG" : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG");
     }

@@ -97,12 +97,19 @@ public final class Sections {
 
   /**
    * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and
-   * 31.12.2025. The work is done mostly at home, and the first place of work is not visited.
+   * 31.12.2025. The work is done mostly at home, and the first place of work is not visited. The
+   * days of sentence 2, for a person with no other permanent place of work, go on line 59, which
+   * the app does not cover. Sentence 3 rules out the day allowance next to a deduction under no. 6b.
    */
   public static final Section WORK_2025 =
       work(
           "Tage, an denen Sie überwiegend zu Hause gearbeitet und Ihre erste Tätigkeitsstätte nicht"
-              + " aufgesucht haben. Das Finanzamt berechnet den Betrag.");
+              + " aufgesucht haben (Anlage N Zeile 58). Das Finanzamt berechnet den Betrag. Steht"
+              + " Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gehören die Tage in"
+              + " Zeile 59, auch wenn Sie am selben Tag auswärts oder an der ersten"
+              + " Tätigkeitsstätte gearbeitet haben. Zeile 59 deckt die App nicht ab. Ziehen Sie"
+              + " ein häusliches Arbeitszimmer ab (Zeile 57), gibt es für denselben Zeitraum keine"
+              + " Tagespauschale.");
 
   private static Section work(String homeOfficeHelp) {
     return Section.once(

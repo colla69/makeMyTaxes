@@ -89,6 +89,20 @@ class Definition2025Test {
   }
 
   @Test
+  @DisplayName(
+      "Anlage N 2025, line 59, and § 4(5) sentence 1 no. 6c sentences 2 and 3 EStG, versions"
+          + " 30.06.2025 and 31.12.2025: the days with no other permanent workplace and the study")
+  void theHomeOfficeHelpNamesLine59AndTheStudy() {
+    FormModule anlageN = Forms.find(new TaxYear(2025), AnlageN.ID).orElseThrow();
+
+    assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
+        .contains(
+            "dauerhaft kein anderer Arbeitsplatz",
+            "Zeile 59 deckt die App nicht ab",
+            "häusliches Arbeitszimmer");
+  }
+
+  @Test
   void theReviewOf2025FollowsTheLinesOf2025() {
     FormModule anlageN = Forms.find(new TaxYear(2025), AnlageN.ID).orElseThrow();
     var answers =

@@ -486,6 +486,8 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-home-office")).containsText("6,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    assertThat(estimate.locator("#limit-home-office"))
+        .containsText("Zeile 59, die die App nicht abdeckt");
     assertThat(estimate).containsText("1.230,00");
   }
 

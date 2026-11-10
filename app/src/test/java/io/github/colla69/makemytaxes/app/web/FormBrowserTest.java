@@ -446,6 +446,51 @@ class FormBrowserTest {
     assertThat(page.getByText(NO_RULES)).hasCount(0);
   }
 
+  /** The lines come from Anlage N 2025, which {@code Definition2025Test} names. */
+  @Test
+  void aReturnFor2025ShowsAllTabsAndAFilledAnlageNReachesTheReview() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2025");
+
+    assertThat(page.getByText(NO_RULES)).hasCount(0);
+    for (String form : FORM_TABS) {
+      assertThat(link(page, form)).hasCount(1);
+    }
+    assertThat(link(page, "Übersicht")).hasCount(1);
+
+    link(page, "Anlage N").click();
+    fill(page, "employerName", "Made-up GmbH");
+    fill(page, "taxClass", "1");
+    fill(page, "grossWage", "40.000,00");
+    fill(page, "wageTax", "5.000,00");
+    fill(page, "commuteDays", "10");
+    fill(page, "commuteKm", "30");
+    field(page, "commuteTransport").selectOption("CAR");
+    fill(page, "homeOfficeDays", "20");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator("#form-year")).hasText("2025");
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN).not().containsText("Es fehlt");
+    assertThat(anlageN).containsText("Made-up GmbH");
+    assertThat(anlageN.locator("tbody tr td:first-child"))
+        .hasText(new String[] {"", "4", "5", "6", "29", "30", "31 bis 33", "58"});
+
+    // Home office 20 x 6,00 = 120,00 under § 4(5) no. 6c EStG.
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("120,00");
+    assertThat(estimate.locator("#limit-home-office")).containsText("6,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    assertThat(estimate.locator("#limit-home-office"))
+        .containsText("Zeile 59, die die App nicht abdeckt");
+    assertThat(estimate).containsText("1.230,00");
+  }
+
   @Test
   void everyFieldOnEveryPageHasTheSameLook() {
     Page page = browser.newPage();

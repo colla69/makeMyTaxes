@@ -229,7 +229,8 @@ public final class Interview {
               AnlageN.ID,
               "homeOfficeDays",
               Topic.COMMUTE,
-              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"),
+              "An wie vielen Tagen haben Sie zu Hause gearbeitet? Der Hinweis nennt, welche"
+                  + " Tage zählen."),
           Question.yesNo(
               "workEquipment",
               Topic.COMMUTE,

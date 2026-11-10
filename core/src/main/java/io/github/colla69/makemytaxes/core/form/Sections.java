@@ -3,12 +3,17 @@ package io.github.colla69.makemytaxes.core.form;
 import static io.github.colla69.makemytaxes.core.form.Field.optional;
 import static io.github.colla69.makemytaxes.core.form.Field.required;
 
+import io.github.colla69.makemytaxes.core.GermanFormats;
+import io.github.colla69.makemytaxes.core.year.YearPack;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
  * The sections of the forms. A section holds what does not depend on the year: the fields, their
- * labels and their kinds. A {@link YearDefinition} picks the sections of each form and gives the
+ * labels, their kinds and their rules. A {@link YearDefinition} picks the sections of each form and gives the
  * lines.
  */
 public final class Sections {
@@ -67,52 +72,59 @@ public final class Sections {
    */
   public static final Section EMPLOYER =
       Section.perEmployer(
-          required("employerName", "", "", "Name des Arbeitgebers", Kind.TEXT),
-          optional("employedFrom", "", "", "Dauer des Dienstverhältnisses: vom", Kind.DATE),
-          optional("employedTo", "", "", "Dauer des Dienstverhältnisses: bis", Kind.DATE),
-          required("taxClass", "", "", "Steuerklasse", Kind.WHOLE_NUMBER),
-          required("grossWage", "", "", "Bruttoarbeitslohn (EUR)", Kind.MONEY),
-          required("wageTax", "", "", "Lohnsteuer (EUR)", Kind.MONEY),
-          optional("solidarity", "", "", "Solidaritätszuschlag (EUR)", Kind.MONEY),
-          optional("churchTax", "", "", "Kirchensteuer des Arbeitnehmers (EUR)", Kind.MONEY),
-          optional(
-              "shortTimeWork",
-              "",
-              "",
-              "Kurzarbeitergeld, Zuschuss zum Mutterschaftsgeld, Verdienstausfallentschädigung,"
-                  + " Aufstockungsbetrag (EUR)",
-              Kind.MONEY),
-          optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-              .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."));
+              required("employerName", "", "", "Name des Arbeitgebers", Kind.TEXT),
+              optional("employedFrom", "", "", "Dauer des Dienstverhältnisses: vom", Kind.DATE),
+              optional("employedTo", "", "", "Dauer des Dienstverhältnisses: bis", Kind.DATE),
+              required("taxClass", "", "", "Steuerklasse", Kind.WHOLE_NUMBER),
+              required("grossWage", "", "", "Bruttoarbeitslohn (EUR)", Kind.MONEY),
+              required("wageTax", "", "", "Lohnsteuer (EUR)", Kind.MONEY),
+              optional("solidarity", "", "", "Solidaritätszuschlag (EUR)", Kind.MONEY),
+              optional("churchTax", "", "", "Kirchensteuer des Arbeitnehmers (EUR)", Kind.MONEY),
+              optional(
+                  "shortTimeWork",
+                  "",
+                  "",
+                  "Kurzarbeitergeld, Zuschuss zum Mutterschaftsgeld, Verdienstausfallentschädigung,"
+                      + " Aufstockungsbetrag (EUR)",
+                  Kind.MONEY),
+              optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
+                  .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
+          .withCheck(Sections::checkPeriod);
 
   /** Anlage N: the workplace, the way to work and the home office. */
   public static final Section WORK =
       Section.once(
-          optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
-              .withHelp("Postleitzahl, Ort und Straße."),
-          optional(
-              "commuteDays",
-              WORK_TITLE,
-              "",
-              "Wege zur Arbeit: aufgesucht an Tagen",
-              Kind.WHOLE_NUMBER),
-          optional(
-                  "commuteKm",
+              optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
+                  .withHelp("Postleitzahl, Ort und Straße."),
+              optional(
+                  "commuteDays",
                   WORK_TITLE,
                   "",
-                  "Wege zur Arbeit: einfache Entfernung (km)",
-                  Kind.WHOLE_NUMBER)
-              .withHelp("Auf volle Kilometer abgerundet."),
-          optional(
-              "commuteTransport",
-              WORK_TITLE,
-              "",
-              "Wege zur Arbeit: zurückgelegt mit",
-              Kind.COMMUTE_TRANSPORT),
-          optional("homeOfficeDays", WORK_TITLE, "", "Homeoffice: Kalendertage", Kind.WHOLE_NUMBER)
-              .withHelp(
-                  "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den"
-                      + " Betrag."));
+                  "Wege zur Arbeit: aufgesucht an Tagen",
+                  Kind.WHOLE_NUMBER),
+              optional(
+                      "commuteKm",
+                      WORK_TITLE,
+                      "",
+                      "Wege zur Arbeit: einfache Entfernung (km)",
+                      Kind.WHOLE_NUMBER)
+                  .withHelp("Auf volle Kilometer abgerundet."),
+              optional(
+                  "commuteTransport",
+                  WORK_TITLE,
+                  "",
+                  "Wege zur Arbeit: zurückgelegt mit",
+                  Kind.COMMUTE_TRANSPORT),
+              optional(
+                      "homeOfficeDays",
+                      WORK_TITLE,
+                      "",
+                      "Homeoffice: Kalendertage",
+                      Kind.WHOLE_NUMBER)
+                  .withHelp(
+                      "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet"
+                          + " den Betrag."))
+          .withCheck(Sections::checkWork);
 
   /**
    * Anlage Vorsorgeaufwand: the social insurance values of one Lohnsteuerbescheinigung, in the
@@ -166,11 +178,62 @@ public final class Sections {
 
   private Sections() {}
 
-  /** True if the value of this field comes from the Lohnsteuerbescheinigung. */
+  /**
+   * True if the value of this field comes from the Lohnsteuerbescheinigung. A test checks that
+   * these IDs are exactly the fields of the certificate of each year.
+   */
   public static boolean isOnCertificate(String fieldId) {
+    return certificateFieldIds().contains(fieldId);
+  }
+
+  /** The IDs of the fields whose value comes from the Lohnsteuerbescheinigung. */
+  static List<String> certificateFieldIds() {
     return Stream.of(EMPLOYER, SOCIAL_INSURANCE)
         .flatMap(section -> section.fields().stream())
-        .anyMatch(field -> field.id().equals(fieldId));
+        .map(Field::id)
+        .toList();
+  }
+
+  /** The certificate of a year covers days of that year only, and the start comes first. */
+  private static List<String> checkPeriod(Answers answers, int employer, YearPack pack) {
+    Optional<LocalDate> from = dateOf(answers, AnlageN.employerFieldId(employer, "employedFrom"));
+    Optional<LocalDate> to = dateOf(answers, AnlageN.employerFieldId(employer, "employedTo"));
+    int year = pack.taxYear().value();
+    for (Optional<LocalDate> date : List.of(from, to)) {
+      if (date.isPresent() && date.get().getYear() != year) {
+        return List.of(
+            "Arbeitgeber %d: Die Dauer des Dienstverhältnisses muss in %d liegen."
+                .formatted(employer, year));
+      }
+    }
+    if (from.isPresent() && to.isPresent() && from.get().isAfter(to.get())) {
+      return List.of(
+          "Arbeitgeber %d: Das Ende des Dienstverhältnisses liegt vor dem Beginn."
+              .formatted(employer));
+    }
+    return List.of();
+  }
+
+  /** A day cannot be both, because the home office amount excludes days at the workplace. */
+  private static List<String> checkWork(Answers answers, int employer, YearPack pack) {
+    List<String> messages = new ArrayList<>();
+    long days = answers.wholeNumber("commuteDays") + answers.wholeNumber("homeOfficeDays");
+    if (days > pack.daysInYear()) {
+      messages.add(
+          "Tage mit Wegen zur Arbeit und Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
+              .formatted(days, pack.taxYear().value(), pack.daysInYear()));
+    }
+    // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
+    if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
+      messages.add("Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
+    }
+    return messages;
+  }
+
+  private static Optional<LocalDate> dateOf(Answers answers, String fieldId) {
+    return answers.has(fieldId)
+        ? Optional.of(GermanFormats.parseDate(answers.text(fieldId)))
+        : Optional.empty();
   }
 
   /** The fields of the general section that belong to these IDs, in the order of the section. */

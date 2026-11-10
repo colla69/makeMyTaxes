@@ -66,7 +66,7 @@ class WageTaxCertificate2022Test {
           + " have no numbered line")
   void theTaxClassAndTheEmployerAreOnTheCertificateWithoutALine() {
     for (String fieldId : new String[] {"taxClass", "employerName"}) {
-      assertThat(CERTIFICATE.isOnCertificate(fieldId)).isTrue();
+      assertThat(CERTIFICATE.fieldIds()).contains(fieldId);
       assertThat(CERTIFICATE.lineOf(fieldId)).isEmpty();
       assertThat(anlageN.field(fieldId).orElseThrow().label()).doesNotContain("Zeile");
     }
@@ -74,15 +74,13 @@ class WageTaxCertificate2022Test {
 
   @Test
   void aFieldFromAnotherSourceIsNotOnTheCertificate() {
-    assertThat(CERTIFICATE.isOnCertificate("commuteKm")).isFalse();
-    assertThat(CERTIFICATE.isOnCertificate("privateHealthBasic")).isFalse();
+    assertThat(CERTIFICATE.fieldIds()).doesNotContain("commuteKm", "privateHealthBasic");
+    assertThat(Sections.isOnCertificate("commuteKm")).isFalse();
   }
 
   @Test
   void theSectionsHoldExactlyTheFieldsOfTheCertificate() {
-    for (String fieldId : CERTIFICATE.fieldIds()) {
-      assertThat(Sections.isOnCertificate(fieldId)).as(fieldId).isTrue();
-    }
-    assertThat(Sections.isOnCertificate("commuteKm")).isFalse();
+    assertThat(Sections.certificateFieldIds())
+        .containsExactlyInAnyOrderElementsOf(CERTIFICATE.fieldIds());
   }
 }

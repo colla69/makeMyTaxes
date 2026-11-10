@@ -6,7 +6,6 @@ import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.expense.Money;
 import io.github.colla69.makemytaxes.core.year.YearPack;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -108,52 +107,10 @@ public final class AnlageN implements FormModule {
     return layout.field(fieldId);
   }
 
-  /** A day cannot be both, because the home office amount excludes days at the workplace. */
+  /** The rules of the employer section for each employer, then the rules of the work section. */
   @Override
   public List<String> check(Answers answers) {
-    List<String> messages = new ArrayList<>();
-    for (int employer = 1; employer <= employerCount(answers); employer++) {
-      messages.addAll(checkPeriod(answers, employer));
-    }
-    long days = answers.wholeNumber("commuteDays") + answers.wholeNumber("homeOfficeDays");
-    if (days > pack.daysInYear()) {
-      messages.add(
-          "Tage mit Wegen zur Arbeit und Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
-              .formatted(days, pack.taxYear().value(), pack.daysInYear()));
-    }
-    // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
-    if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
-      messages.add("Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
-    }
-    return messages;
-  }
-
-  /** The certificate of a year covers days of that year only, and the start comes first. */
-  private List<String> checkPeriod(Answers answers, int employer) {
-    List<String> messages = new ArrayList<>();
-    Optional<LocalDate> from = dateOf(answers, employerFieldId(employer, "employedFrom"));
-    Optional<LocalDate> to = dateOf(answers, employerFieldId(employer, "employedTo"));
-    int year = pack.taxYear().value();
-    for (Optional<LocalDate> date : List.of(from, to)) {
-      if (date.isPresent() && date.get().getYear() != year) {
-        messages.add(
-            "Arbeitgeber %d: Die Dauer des Dienstverhältnisses muss in %d liegen."
-                .formatted(employer, year));
-        return messages;
-      }
-    }
-    if (from.isPresent() && to.isPresent() && from.get().isAfter(to.get())) {
-      messages.add(
-          "Arbeitgeber %d: Das Ende des Dienstverhältnisses liegt vor dem Beginn."
-              .formatted(employer));
-    }
-    return messages;
-  }
-
-  private static Optional<LocalDate> dateOf(Answers answers, String fieldId) {
-    return answers.has(fieldId)
-        ? Optional.of(GermanFormats.parseDate(answers.text(fieldId)))
-        : Optional.empty();
+    return layout.check(answers, pack);
   }
 
   /** One block for each employer in the order of the form, then the work expenses by line. */

@@ -24,11 +24,6 @@ public record WageTaxCertificate(
     return Optional.ofNullable(lines.get(fieldId)).map(line -> "Zeile " + line);
   }
 
-  /** True if the value of this field comes from the certificate. */
-  public boolean isOnCertificate(String fieldId) {
-    return lines.containsKey(fieldId) || withoutLine.contains(fieldId);
-  }
-
   /** The IDs of all fields whose value comes from the certificate. */
   public Set<String> fieldIds() {
     Set<String> ids = new TreeSet<>(lines.keySet());

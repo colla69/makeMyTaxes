@@ -1,11 +1,10 @@
 package io.github.colla69.makemytaxes.core.form;
 
+import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * One form in one year: its sections in the order of the form, and the line of each field.
@@ -17,8 +16,6 @@ import java.util.regex.Pattern;
  */
 public record FormLayout(
     List<Section> sections, Map<String, String> lines, WageTaxCertificate certificate) {
-
-  private static final Pattern EMPLOYER_ID = Pattern.compile("employer(\\d+)-(.+)");
 
   /** The line of a field or an expense topic, or an empty text if it has none. */
   public String line(String key) {
@@ -42,9 +39,20 @@ public record FormLayout(
 
   /** The field with this ID, also in an employer block that has no answer yet. */
   public Optional<Field> field(String fieldId) {
-    Matcher matcher = EMPLOYER_ID.matcher(fieldId);
-    int employers = matcher.matches() ? Integer.parseInt(matcher.group(1)) : 1;
+    int employers = AnlageN.employerOf(fieldId);
     return fields(employers).stream().filter(field -> field.id().equals(fieldId)).findFirst();
+  }
+
+  /** The messages of the rules of each section. A section per employer checks each employer. */
+  public List<String> check(Answers answers, YearPack pack) {
+    List<String> messages = new ArrayList<>();
+    for (Section section : sections) {
+      int employers = section.perEmployer() ? AnlageN.employerCount(answers) : 1;
+      for (int employer = 1; employer <= employers; employer++) {
+        messages.addAll(section.check().messages(answers, employer, pack));
+      }
+    }
+    return messages;
   }
 
   private List<Field> employerFields(Section section, int employer) {

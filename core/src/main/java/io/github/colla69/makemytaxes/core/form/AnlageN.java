@@ -124,7 +124,8 @@ public final class AnlageN implements FormModule {
     for (ExpenseLine expenseLine : EXPENSE_LINES) {
       work.addAll(expenseLines(expenseLine, expenses));
     }
-    work.sort(Comparator.comparingInt(line -> Integer.parseInt(line.line())));
+    // A line such as "31 bis 33" sorts by its first line.
+    work.sort(Comparator.comparingInt(line -> Integer.parseInt(line.line().split(" ")[0])));
     employers.addAll(work);
     return employers;
   }

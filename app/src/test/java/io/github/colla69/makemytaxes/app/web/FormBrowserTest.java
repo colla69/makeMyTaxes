@@ -478,7 +478,7 @@ class FormBrowserTest {
     assertThat(anlageN).not().containsText("Es fehlt");
     assertThat(anlageN).containsText("Made-up GmbH");
     assertThat(anlageN.locator("tbody tr td:first-child"))
-        .hasText(new String[] {"", "4", "5", "6", "29", "30", "31", "58"});
+        .hasText(new String[] {"", "4", "5", "6", "29", "30", "31 bis 33", "58"});
 
     // Home office 20 x 6,00 = 120,00 under § 4(5) no. 6c EStG.
     Locator estimate = page.locator("#estimate");

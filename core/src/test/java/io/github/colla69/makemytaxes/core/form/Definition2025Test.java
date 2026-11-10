@@ -65,7 +65,7 @@ class Definition2025Test {
     "workplace, 27",
     "commuteDays, 29",
     "commuteKm, 30",
-    "commuteTransport, 31",
+    "commuteTransport, 31 bis 33",
     "employerCommute, 51",
     "WORK_ASSOCIATIONS, 53",
     "WORK_EQUIPMENT, 54",
@@ -75,6 +75,29 @@ class Definition2025Test {
   })
   void eachFieldOfAnlageNIsOnItsLine(String key, String line) {
     assertThat(definition.layouts().get(AnlageN.ID).line(key)).isEqualTo(line);
+  }
+
+  @ParameterizedTest(name = "{0} goes on line {1}")
+  @DisplayName(
+      "Anlage N 2025, mark 2025AnlN032NET, lines 31 to 33: the km line of each means of transport")
+  @CsvSource({
+    "Kraftwagen, Anlage N Zeile 31",
+    "öffentlichen Verkehrsmitteln, Zeile 33",
+  })
+  void theTransportHelpNamesTheLineOfEachChoice(String transport, String line) {
+    FormModule anlageN = Forms.find(new TaxYear(2025), AnlageN.ID).orElseThrow();
+    String help = anlageN.field("commuteTransport").orElseThrow().help();
+
+    assertThat(help).containsPattern(transport + "[^.:]*" + line);
+  }
+
+  @Test
+  @DisplayName("The interview of 2025 does not ask for the home office days of 2022 only at home")
+  void theHomeOfficeQuestionOf2025DoesNotStateTheRuleOf2022() {
+    Interview.Question question =
+        definition.interview().find(new Answers(Map.of()), "homeOfficeDays").orElseThrow();
+
+    assertThat(question.text()).doesNotContain("nur zu Hause");
   }
 
   @Test

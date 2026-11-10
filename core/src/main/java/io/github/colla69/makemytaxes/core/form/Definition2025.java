@@ -29,8 +29,8 @@ final class Definition2025 {
           Map.entry("notes", "37"));
 
   /**
-   * The name and the period of the employment have no line on Anlage N. The way of transport is on
-   * the first of lines 31 to 33, which split the distance by the means of transport.
+   * The name and the period of the employment have no line on Anlage N. Lines 31 to 33 split the
+   * distance by the means of transport. The help of the field names the line for each choice.
    */
   private static final Map<String, String> ANLAGE_N_LINES =
       Map.ofEntries(
@@ -43,7 +43,7 @@ final class Definition2025 {
           Map.entry("workplace", "27"),
           Map.entry("commuteDays", "29"),
           Map.entry("commuteKm", "30"),
-          Map.entry("commuteTransport", "31"),
+          Map.entry("commuteTransport", "31 bis 33"),
           Map.entry("employerCommute", "51"),
           Map.entry("WORK_ASSOCIATIONS", "53"),
           Map.entry("WORK_EQUIPMENT", "54"),

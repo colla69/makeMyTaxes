@@ -71,7 +71,7 @@ final class Definition2024 {
                 certificate),
             AnlageN.ID,
             new FormLayout(
-                List.of(Sections.EMPLOYER, Sections.WORK_FROM_2023), ANLAGE_N_LINES, certificate),
+                List.of(Sections.EMPLOYER, Sections.WORK_2024), ANLAGE_N_LINES, certificate),
             AnlageVorsorgeaufwand.ID,
             new FormLayout(
                 List.of(Sections.SOCIAL_INSURANCE, Sections.PRIVATE_HEALTH),

@@ -125,11 +125,16 @@ public final class Sections {
    * Anlage N from 2023: the home office days of § 4(5) sentence 1 no. 6c sentence 1 EStG, versions
    * 30.06.2024 and 31.12.2024. A day counts if the work was mostly at home and the first place of
    * work was not visited. The exception of sentence 2, for a person who permanently has no other
-   * workplace, is line 62 of Anlage N 2024, which the app does not have yet.
+   * workplace, is line 62 of Anlage N 2024, which the app does not have yet. Lines 34 to 36 split
+   * the distance by the means of transport (2024AnlN032NET).
    */
-  public static final Section WORK_FROM_2023 =
+  public static final Section WORK_2024 =
       work(
-          "",
+          "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder"
+              + " überlassenem Kraftwagen in Anlage N Zeile 34, mit einer Sammelbeförderung des"
+              + " Arbeitgebers in Zeile 35, mit öffentlichen Verkehrsmitteln, Fahrrad, zu Fuß oder"
+              + " Carsharing in Zeile 36. Haben Sie mehrere Verkehrsmittel genutzt, teilen Sie die"
+              + " Kilometer auf diese Zeilen auf.",
           "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61): Tage, an"
               + " denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
               + " Tätigkeitsstätte aufgesucht haben. Steht Ihnen dauerhaft kein anderer"

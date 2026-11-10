@@ -90,6 +90,20 @@ class Definition2024Test {
     assertThat(anlageNLayout.line(topic)).isEqualTo(line);
   }
 
+  @ParameterizedTest(name = "{0} goes on line {1}")
+  @DisplayName(
+      "Anlage N 2024, mark 2024AnlN032NET, lines 34 to 36: the km line of each means of transport")
+  @CsvSource({
+    "Kraftwagen, Anlage N Zeile 34",
+    "Sammelbeförderung des Arbeitgebers, Zeile 35",
+    "öffentlichen Verkehrsmitteln, Zeile 36",
+  })
+  void theTransportHelpNamesTheLineOfEachChoice(String transport, String line) {
+    String help = anlageN.field("commuteTransport").orElseThrow().help();
+
+    assertThat(help).containsPattern(transport + "[^.:]*" + line);
+  }
+
   @Test
   @DisplayName(
       "§ 4(5) sentence 1 no. 6c sentence 1 EStG, versions 30.06.2024 and 31.12.2024: a day worked"

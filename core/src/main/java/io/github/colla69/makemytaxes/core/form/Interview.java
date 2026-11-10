@@ -205,6 +205,18 @@ public final class Interview {
                   + " zur Arbeit?"));
   }
 
+  /** § 4(5) sentence 1 no. 6b sentence 4 EStG, version 30.06.2022: days of work only at home. */
+  public static final String HOME_OFFICE_UNTIL_2022 =
+      "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?";
+
+  /**
+   * § 4(5) sentence 1 no. 6c sentence 1 EStG, versions 30.06.2024 and 31.12.2024: days of work
+   * wholly or mostly at home, without a visit to the first place of work.
+   */
+  public static final String HOME_OFFICE_FROM_2023 =
+      "An wie vielen Tagen haben Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
+          + " Tätigkeitsstätte aufgesucht?";
+
   private static final List<Question> JOB_AND_COMMUTE =
       List.of(
           Question.field(MainForm.ID, "occupation", Topic.JOB, "Welchen Beruf üben Sie aus?"),
@@ -229,7 +241,7 @@ public final class Interview {
               AnlageN.ID,
               "homeOfficeDays",
               Topic.COMMUTE,
-              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"),
+              HOME_OFFICE_UNTIL_2022),
           Question.yesNo(
               "workEquipment",
               Topic.COMMUTE,
@@ -317,10 +329,20 @@ public final class Interview {
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
   private final WageTaxCertificate certificate;
+  private final String homeOfficeQuestion;
 
-  /** The interview of a year. The questions name the lines of the certificate of that year. */
+  /** The interview of 2022. The questions name the lines of the certificate of that year. */
   public Interview(WageTaxCertificate certificate) {
+    this(certificate, HOME_OFFICE_UNTIL_2022);
+  }
+
+  /**
+   * The interview of a year. The questions name the lines of the certificate of that year, and the
+   * home office question follows the rule of that year.
+   */
+  public Interview(WageTaxCertificate certificate, String homeOfficeQuestion) {
     this.certificate = certificate;
+    this.homeOfficeQuestion = homeOfficeQuestion;
   }
 
   /**
@@ -334,7 +356,12 @@ public final class Interview {
     for (int employer = 1; employer <= employers; employer++) {
       questions.addAll(employerQuestions(answers, employer));
     }
-    questions.addAll(JOB_AND_COMMUTE);
+    for (Question question : JOB_AND_COMMUTE) {
+      questions.add(
+          question.id().equals("homeOfficeDays")
+              ? Question.field(AnlageN.ID, "homeOfficeDays", Topic.COMMUTE, homeOfficeQuestion)
+              : question);
+    }
     questions.add(HEALTH_INSURANCE_QUESTION);
     questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
     questions.addAll(INSURANCE_REST);

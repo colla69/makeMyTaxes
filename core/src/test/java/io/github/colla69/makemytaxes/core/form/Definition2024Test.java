@@ -107,9 +107,11 @@ class Definition2024Test {
   void homeOfficeHelpAndQuestionNameTheConditionOfLine61() {
     assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
         .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61)")
-        .contains("Zeile 62, die die App noch nicht unterstützt");
+        .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gilt Zeile 62")
+        .contains("die App noch nicht unterstützt");
     assertThat(homeOfficeQuestion(YEAR))
         .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht")
+        .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung")
         .contains("unterstützt die App diese Tage noch nicht");
   }
 

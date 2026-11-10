@@ -422,6 +422,13 @@ class FormBrowserTest {
     fill(page, "homeOfficeDays", "20");
     save(page);
     assertThat(page.locator(".saved")).isVisible();
+    // The Italian hint must not state the 2022 rule (days only at home) for 2024.
+    Locator homeOfficeHint =
+        page.locator(".field")
+            .filter(new Locator.FilterOptions().setHas(page.locator("[name=homeOfficeDays]")))
+            .locator(".hint-text");
+    assertThat(homeOfficeHint).not().containsText("solo da casa");
+    assertThat(homeOfficeHint).containsText("dipende dall'anno");
 
     link(page, "Übersicht").click();
 

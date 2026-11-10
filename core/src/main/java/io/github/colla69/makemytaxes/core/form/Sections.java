@@ -124,15 +124,16 @@ public final class Sections {
   /**
    * Anlage N from 2023: the home office days of § 4(5) sentence 1 no. 6c sentence 1 EStG, versions
    * 30.06.2024 and 31.12.2024. A day counts if the work was mostly at home and the first place of
-   * work was not visited. The exception of sentence 2, for a person without another workplace, is
-   * line 62 of Anlage N 2024, which the app does not have yet.
+   * work was not visited. The exception of sentence 2, for a person who permanently has no other
+   * workplace, is line 62 of Anlage N 2024, which the app does not have yet.
    */
   public static final Section WORK_FROM_2023 =
       work(
           "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61): Tage, an"
               + " denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
-              + " Tätigkeitsstätte aufgesucht haben. Ohne anderen Arbeitsplatz gilt Zeile 62,"
-              + " die die App noch nicht unterstützt. Das Finanzamt berechnet den Betrag.");
+              + " Tätigkeitsstätte aufgesucht haben. Steht Ihnen dauerhaft kein anderer"
+              + " Arbeitsplatz zur Verfügung, gilt Zeile 62, die die App noch nicht unterstützt."
+              + " Das Finanzamt berechnet den Betrag.");
 
   private static Section work(String homeOfficeHelp) {
     return Section.once(

@@ -212,13 +212,14 @@ public final class Interview {
   /**
    * § 4(5) sentence 1 no. 6c sentence 1 EStG, versions 30.06.2024 and 31.12.2024: days of work
    * wholly or mostly at home, without a visit to the first place of work. These days go on line 61
-   * of Anlage N 2024 only if another workplace is available. Sentence 2, for a person without
-   * another workplace, is line 62, which the app does not have yet.
+   * of Anlage N 2024 only if another workplace is available. Sentence 2, for a person who
+   * permanently has no other workplace, is line 62, which the app does not have yet.
    */
   public static final String HOME_OFFICE_FROM_2023 =
       "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht: An wie vielen Tagen haben Sie"
           + " ganz oder überwiegend zu Hause gearbeitet und keine erste Tätigkeitsstätte"
-          + " aufgesucht? Ohne anderen Arbeitsplatz unterstützt die App diese Tage noch nicht.";
+          + " aufgesucht? Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung,"
+          + " unterstützt die App diese Tage noch nicht.";
 
   private static final List<Question> JOB_AND_COMMUTE =
       List.of(

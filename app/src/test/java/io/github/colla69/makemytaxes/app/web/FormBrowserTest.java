@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -440,6 +441,10 @@ class FormBrowserTest {
       // A form line is a number. A legal source such as "§ 35a Abs. 2 EStG" can stand there too.
       for (String line : page.locator("#answers .line").allTextContents()) {
         assertTrue(line.startsWith("§"), "A line number on the 2026 form " + form + ": " + line);
+      }
+      // The hints have no year, so they must not name a certificate line ("punto 3").
+      for (String hint : page.locator(".field .hint-text").allTextContents()) {
+        assertFalse(hint.contains("punt"), "A certificate line in a hint on " + form + ": " + hint);
       }
     }
     assertThat(page.locator("#answers")).containsText("mit mehr als 410,00 Euro erstattet");

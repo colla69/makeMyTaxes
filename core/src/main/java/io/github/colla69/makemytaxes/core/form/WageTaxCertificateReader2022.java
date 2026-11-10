@@ -46,6 +46,9 @@ public final class WageTaxCertificateReader2022 {
   /** Marks an amount that the reader must not use, such as a negative one. */
   private static final String UNUSABLE = "";
 
+  /** Line 15a of the sample for 2025: "(Saison-)Kurzarbeitergeld in 15. enthalten". */
+  private static final Pattern LINE_15A = Pattern.compile("(?:^|\\s)15a\\.\\s");
+
   private WageTaxCertificateReader2022() {}
 
   /** Reads a certificate for 2022. */
@@ -61,7 +64,12 @@ public final class WageTaxCertificateReader2022 {
     return text -> read(text, year);
   }
 
-  private static CertificateValues read(CertificateText text, int year) {
+  /**
+   * Reads a certificate for the given year. The sample for 2025 has the same numbered lines for
+   * the fields of {@link WageTaxCertificate2025}, and adds line 15a, which the reader keeps apart
+   * from line 15.
+   */
+  public static CertificateValues read(CertificateText text, int year) {
     Map<String, String> found = new HashMap<>();
     if (yearOf(text.page()).filter(printed -> printed == year).isEmpty()) {
       return new CertificateValues(found);
@@ -110,6 +118,9 @@ public final class WageTaxCertificateReader2022 {
       Matcher partMatcher = PART.matcher(text);
       if (line >= 22 && line <= 24 && partMatcher.find()) {
         part = partMatcher.group(1);
+      }
+      if (line == 15 && LINE_15A.matcher(text).find()) {
+        part = "a";
       }
       if (line == 1) {
         Matcher period = PERIOD.matcher(text);

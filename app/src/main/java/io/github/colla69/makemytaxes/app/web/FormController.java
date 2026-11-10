@@ -96,7 +96,7 @@ class FormController {
   /** The rates and limits of the year pack that the estimate uses. The page names their source. */
   record LimitsView(
       String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
-      String homeOfficeLimit, String homeOfficeSource) {
+      String homeOfficeLimit, String homeOfficeDay, String homeOfficeSource) {
 
     static LimitsView of(YearPack pack) {
       return new LimitsView(
@@ -105,7 +105,27 @@ class FormController {
           GermanFormats.format(pack.commuteLimitWithoutCar()),
           GermanFormats.format(pack.homeOfficePerDay()),
           GermanFormats.format(pack.homeOfficeLimit()),
+          homeOfficeDay(pack),
           pack.homeOfficeProvision());
+    }
+
+    /**
+     * The home office day of the year, with the lines of Anlage N for that year: lines 61 and 62
+     * of Anlage N 2024, lines 58 and 59 of Anlage N 2025.
+     */
+    private static String homeOfficeDay(YearPack pack) {
+      if (!pack.homeOfficeDayIsMostlyAtHome()) {
+        return "für jeden Tag nur zu Hause";
+      }
+      String lines =
+          switch (pack.taxYear().value()) {
+            case 2024 -> " (Anlage N Zeile 61; Tage ohne dauerhaft anderen Arbeitsplatz gehören in"
+                + " Zeile 62, die die App nicht abdeckt)";
+            case 2025 -> " (Anlage N Zeile 58; Tage ohne dauerhaft anderen Arbeitsplatz gehören in"
+                + " Zeile 59, die die App nicht abdeckt)";
+            default -> "";
+          };
+      return "für jeden Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte" + lines;
     }
   }
 

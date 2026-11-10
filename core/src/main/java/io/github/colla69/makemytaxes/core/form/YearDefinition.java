@@ -16,7 +16,7 @@ public record YearDefinition(
     YearPack pack, WageTaxCertificate certificate, Map<String, FormLayout> layouts) {
 
   private static final Map<Integer, Function<YearPack, YearDefinition>> DEFINITIONS =
-      Map.of(2022, Definition2022::of, 2024, Definition2024::of);
+      Map.of(2022, Definition2022::of, 2024, Definition2024::of, 2025, Definition2025::of);
 
   public static Optional<YearDefinition> of(TaxYear taxYear) {
     return Optional.ofNullable(DEFINITIONS.get(taxYear.value()))
@@ -36,8 +36,8 @@ public record YearDefinition(
   public Interview interview() {
     return new Interview(
         certificate,
-        pack.taxYear().value() <= 2022
-            ? Interview.HOME_OFFICE_UNTIL_2022
-            : Interview.HOME_OFFICE_FROM_2023);
+        pack.homeOfficeDayIsMostlyAtHome()
+            ? Interview.HOME_OFFICE_FROM_2023
+            : Interview.HOME_OFFICE_UNTIL_2022);
   }
 }

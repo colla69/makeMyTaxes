@@ -36,11 +36,6 @@ public record WageTaxCertificate(
     return lineOf(fieldId).map(line -> line + " " + text).orElse(text);
   }
 
-  /** The line of a field that has one. */
-  String line(String fieldId) {
-    return lineOf(fieldId).orElseThrow();
-  }
-
   public CertificateValues read(CertificateText text) {
     return reader.apply(text);
   }

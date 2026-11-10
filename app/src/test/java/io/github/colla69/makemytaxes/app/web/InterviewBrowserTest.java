@@ -269,7 +269,7 @@ class InterviewBrowserTest {
     answerField(page, "1.200,00");
     answerField(page, "");
     assertThat(page.locator("#question h2")).containsText("Arbeitgeber 2: ");
-    assertThat(page.locator("#question h2 .hint-text")).containsText("punto 22a");
+    assertThat(page.locator("#question h2 .hint-text")).containsText("quota del datore di lavoro per la pensione");
     for (int line = 0; line < 2; line++) {
       answerField(page, "");
     }

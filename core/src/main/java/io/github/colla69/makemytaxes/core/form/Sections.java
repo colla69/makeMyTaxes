@@ -88,14 +88,19 @@ public final class Sections {
                       + " Aufstockungsbetrag (EUR)",
                   Kind.MONEY),
               optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-                  .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
+                  .withHelp(
+                      "Die Summe der steuerfreien und der pauschal besteuerten"
+                          + " Arbeitgeberleistungen für Fahrten zur Arbeit."))
           .withCheck(Sections::checkPeriod);
 
-  /** Anlage N: the workplace, the way to work and the home office. */
-  public static final Section WORK =
-      work(
-          "",
-          "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den Betrag.");
+  /** Anlage N of 2022: the workplace, the way to work and the home office. */
+  public static final Section WORK = work("", HomeOfficeDay.help(2022));
+
+  /**
+   * Anlage N from 2023, for a year without known lines: the same fields, with the home office days
+   * of § 4(5) no. 6c EStG.
+   */
+  public static final Section WORK_FROM_2023 = work("", HomeOfficeDay.help(2023));
 
   /**
    * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and

@@ -12,6 +12,7 @@
     <nav th:replace="~{nav :: nav}"></nav>
     <main class="panel">
     <h1 th:text="${form.title} + ' ' + ${taxYear}">Vordruck</h1>
+    <th:block th:unless="${linesKnown}"><p th:replace="~{lines-unknown :: notice}"></p></th:block>
     <p class="saved" th:if="${saved}">Gespeichert.</p>
     <!-- After each save of a field, fields.js writes the checks of several fields here. -->
     <div id="form-messages"><p class="error" th:each="message : ${formErrors}" th:text="${message}">Fehler</p></div>

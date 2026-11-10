@@ -16,7 +16,8 @@
       <a id="export" th:href="@{/returns/{id}/review/export(id=${returnId})}" download>Übersicht mit Belegen exportieren</a>
       <span class="help">Eine ZIP-Datei mit dieser Übersicht und allen verknüpften Belegen, als Nachweis der Abgabe.</span>
     </p>
-    <p>Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken <span id="form-year" th:text="${taxYear}">2022</span>. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
+    <p th:if="${linesKnown}">Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken <span id="form-year" th:text="${taxYear}">2022</span>. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
+    <th:block th:unless="${linesKnown}"><p th:replace="~{lines-unknown :: notice}"></p></th:block>
 
     <section th:replace="~{filing-result :: result}"></section>
 
@@ -32,13 +33,14 @@
       <!-- Each rate and limit of the estimate, with its legal source. -->
       <ul id="limits" class="help">
         <li id="limit-commute" th:with="l=${estimate.limits}"
-            th:text="'Wege zur Arbeit: ' + ${l.perKmFirst20} + ' EUR je vollen Kilometer bis 20 km, ' + ${l.perKmFrom21} + ' EUR ab dem 21. Kilometer, für jeden Tag an der ersten Tätigkeitsstätte. Ohne eigenen oder überlassenen Kraftwagen höchstens ' + ${l.commuteLimit} + ' EUR im Jahr. Quelle: § 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG. Arbeitgeberleistungen mindern den Betrag: § 9 Abs. 1 Satz 3 Nr. 4 Satz 5, § 3 Nr. 15 Satz 3 und § 40 Abs. 2 Satz 2 Nr. 1 EStG.'">Wege zur Arbeit</li>
+            th:text="'Wege zur Arbeit: ' + (${l.sources.commute.oneRate} ? ${l.perKmFirst20} + ' EUR je vollen Kilometer' : ${l.perKmFirst20} + ' EUR je vollen Kilometer bis 20 km, ' + ${l.perKmFrom21} + ' EUR ab dem 21. Kilometer') + ', für jeden Tag an der ersten Tätigkeitsstätte. Ohne eigenen oder überlassenen Kraftwagen höchstens ' + ${l.commuteLimit} + ' EUR im Jahr. Quelle: ' + ${l.sources.commute.source} + '. Arbeitgeberleistungen mindern den Betrag: § 9 Abs. 1 Satz 3 Nr. 4 Satz 5, § 3 Nr. 15 Satz 3 und § 40 Abs. 2 Satz 2 Nr. 1 EStG.'">Wege zur Arbeit</li>
         <li id="limit-home-office" th:with="l=${estimate.limits}"
-            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR ' + ${l.homeOfficeDay} + ', höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: ' + ${l.homeOfficeSource} + ' mit § 9 Abs. 5 EStG.'">Homeoffice</li>
+            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR für jeden ' + ${l.sources.homeOfficeDays} + ', höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: ' + ${l.sources.homeOffice} + ' mit § 9 Abs. 5 EStG.'">Homeoffice</li>
         <li>Erfasste Ausgaben: die Summe der Beträge, die Sie als Werbungskosten erfasst haben. Die App verteilt keine Kosten über mehrere Jahre (Absetzung für Abnutzung, § 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG). Prüfen Sie das bei teuren Arbeitsmitteln selbst.</li>
       </ul>
       <p th:if="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen über dem Pauschbetrag. Sie zählen daher in voller Höhe.</p>
       <p th:unless="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen nicht über dem Pauschbetrag. Das Finanzamt setzt daher den Pauschbetrag an.</p>
+      <p id="union-fees" th:if="${estimate.limits.sources.unionFeesBesideLumpSum}">Beiträge an Gewerkschaften zählen neben dem Pauschbetrag (§ 9a Satz 3 EStG). Tragen Sie sie daher auch dann ein, wenn Ihre Werbungskosten nicht über dem Pauschbetrag liegen.</p>
       <p class="help">Dies ist eine Schätzung. Das Finanzamt berechnet die Beträge.</p>
     </section>
 

@@ -128,6 +128,17 @@ class Year2026Test {
     assertThat(HomeOfficeDay.reviewText(2022)).isEqualTo("Tag nur zu Hause");
   }
 
+  @Test
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentences 1 and 2 EStG with § 52(6) sentence 13 EStG, versions"
+          + " 30.06.2025 and 31.12.2025: a day of work mainly at home counts in 2025")
+  void theHomeOfficeDaysOf2025FollowNo6c() {
+    assertThat(HomeOfficeDay.help(2025))
+        .contains("überwiegend zu Hause", "dauerhaft kein anderer")
+        .doesNotContain("nur zu Hause");
+    assertThat(HomeOfficeDay.reviewText(2025)).contains("überwiegend zu Hause");
+  }
+
   private static String healthQuestion(TaxYear year) {
     return filingQuestion(year, "healthAllowance");
   }

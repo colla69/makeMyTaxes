@@ -87,16 +87,6 @@ public record YearPack(
     return LocalDate.of(taxYear.value() + 4, 12, 31);
   }
 
-  /**
-   * True if a home office day is a day of work mostly at home without a visit to the first place
-   * of work, under § 4(5) no. 6c EStG. § 52(6) sentence 13 EStG applies that rule, in the version
-   * of the law of 16.12.2022, to work at home after 31.12.2022. Before, a day of work only at home
-   * counted, under § 4(5) no. 6b sentence 4 EStG.
-   */
-  public boolean homeOfficeDayIsMostlyAtHome() {
-    return taxYear.value() >= 2023;
-  }
-
   public int daysInYear() {
     return Year.of(taxYear.value()).length();
   }

@@ -94,12 +94,36 @@ public final class Sections {
           .withCheck(Sections::checkPeriod);
 
   /** Anlage N of 2022: the workplace, the way to work and the home office. */
-  public static final Section WORK = work(2022);
+  public static final Section WORK = work("", HomeOfficeDay.help(2022));
 
-  /** Anlage N from 2023: the same fields, with the home office days of § 4(5) no. 6c EStG. */
-  public static final Section WORK_FROM_2023 = work(2023);
+  /**
+   * Anlage N from 2023, for a year without known lines: the same fields, with the home office days
+   * of § 4(5) no. 6c EStG.
+   */
+  public static final Section WORK_FROM_2023 = work("", HomeOfficeDay.help(2023));
 
-  private static Section work(int year) {
+  /**
+   * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and
+   * 31.12.2025. The work is done mostly at home, and the first place of work is not visited. The
+   * days of sentence 2, for a person with no other permanent place of work, go on line 59, which
+   * the app does not cover. Sentence 3 rules out the day allowance next to a deduction under no. 6b.
+   * Lines 31 to 33 split the distance by the means of transport (2025AnlN032NET).
+   */
+  public static final Section WORK_2025 =
+      work(
+          "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder"
+              + " überlassenem Kraftwagen in Anlage N Zeile 31, mit öffentlichen Verkehrsmitteln,"
+              + " Fahrrad, zu Fuß oder Carsharing in Zeile 33. Haben Sie mehrere Verkehrsmittel"
+              + " genutzt, teilen Sie die Kilometer auf diese Zeilen auf.",
+          "Tage, an denen Sie überwiegend zu Hause gearbeitet und Ihre erste Tätigkeitsstätte nicht"
+              + " aufgesucht haben (Anlage N Zeile 58). Das Finanzamt berechnet den Betrag. Steht"
+              + " Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gehören die Tage in"
+              + " Zeile 59, auch wenn Sie am selben Tag auswärts oder an der ersten"
+              + " Tätigkeitsstätte gearbeitet haben. Zeile 59 deckt die App nicht ab. Ziehen Sie"
+              + " ein häusliches Arbeitszimmer ab (Zeile 57), gibt es für denselben Zeitraum keine"
+              + " Tagespauschale.");
+
+  private static Section work(String transportHelp, String homeOfficeHelp) {
     return Section.once(
               optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
                   .withHelp("Postleitzahl, Ort und Straße."),
@@ -117,18 +141,19 @@ public final class Sections {
                       Kind.WHOLE_NUMBER)
                   .withHelp("Auf volle Kilometer abgerundet."),
               optional(
-                  "commuteTransport",
-                  WORK_TITLE,
-                  "",
-                  "Wege zur Arbeit: zurückgelegt mit",
-                  Kind.COMMUTE_TRANSPORT),
+                      "commuteTransport",
+                      WORK_TITLE,
+                      "",
+                      "Wege zur Arbeit: zurückgelegt mit",
+                      Kind.COMMUTE_TRANSPORT)
+                  .withHelp(transportHelp),
               optional(
                       "homeOfficeDays",
                       WORK_TITLE,
                       "",
                       "Homeoffice: Kalendertage",
                       Kind.WHOLE_NUMBER)
-                  .withHelp(HomeOfficeDay.help(year)))
+                  .withHelp(homeOfficeHelp))
         .withCheck(Sections::checkWork);
   }
 

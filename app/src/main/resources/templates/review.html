@@ -16,7 +16,7 @@
       <a id="export" th:href="@{/returns/{id}/review/export(id=${returnId})}" download>Übersicht mit Belegen exportieren</a>
       <span class="help">Eine ZIP-Datei mit dieser Übersicht und allen verknüpften Belegen, als Nachweis der Abgabe.</span>
     </p>
-    <p th:if="${linesKnown}" th:text="'Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken ' + ${taxYear} + '. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.'">Tragen Sie diese Werte in Mein ELSTER ein.</p>
+    <p th:if="${linesKnown}">Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken <span id="form-year" th:text="${taxYear}">2022</span>. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
     <th:block th:unless="${linesKnown}"><p th:replace="~{lines-unknown :: notice}"></p></th:block>
 
     <section th:replace="~{filing-result :: result}"></section>

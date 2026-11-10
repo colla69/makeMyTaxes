@@ -121,7 +121,19 @@ class FormController {
             year >= 2023
                 ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 und 2 EStG"
                 : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
-        return new Sources(commute, homeOffice, HomeOfficeDay.reviewText(year), year >= 2026);
+        return new Sources(commute, homeOffice, homeOfficeDays(year), year >= 2026);
+      }
+
+      /**
+       * The forms of 2025 put the days of no. 6c sentence 1 on Anlage N line 58 and the days of
+       * sentence 2 on line 59, which the app does not cover. Other years have no such lines here.
+       */
+      private static String homeOfficeDays(int year) {
+        return year == 2025
+            ? "Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte (Anlage N Zeile 58;"
+                + " Tage ohne dauerhaft anderen Arbeitsplatz gehören in Zeile 59, die die App nicht"
+                + " abdeckt)"
+            : HomeOfficeDay.reviewText(year);
       }
     }
 

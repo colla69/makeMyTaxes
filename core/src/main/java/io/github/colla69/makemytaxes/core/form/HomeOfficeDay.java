@@ -23,8 +23,15 @@ public final class HomeOfficeDay {
         : "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den Betrag.";
   }
 
-  /** The question of the interview. */
+  /**
+   * The question of the interview. In 2025 the help of the field names line 58 for the days of
+   * sentence 1 and line 59 for the days of sentence 2, so the question names no rule.
+   */
   public static String question(int year) {
+    if (year == 2025) {
+      return "An wie vielen Tagen haben Sie zu Hause gearbeitet? Der Hinweis nennt, welche Tage"
+          + " zählen.";
+    }
     return year >= FIRST_YEAR_OF_6C
         ? "An wie vielen Tagen haben Sie überwiegend zu Hause gearbeitet, ohne die erste"
             + " Tätigkeitsstätte aufzusuchen?"

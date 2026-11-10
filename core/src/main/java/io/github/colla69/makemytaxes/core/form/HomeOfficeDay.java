@@ -24,17 +24,13 @@ public final class HomeOfficeDay {
   }
 
   /**
-   * The question of the interview. In 2025 the help of the field names line 58 for the days of
-   * sentence 1 and line 59 for the days of sentence 2, so the question names no rule.
+   * The question of the interview. From 2023 the days of sentence 1 and of sentence 2 count, so the
+   * question names no rule and points to the help of the field.
    */
   public static String question(int year) {
-    if (year == 2025) {
-      return "An wie vielen Tagen haben Sie zu Hause gearbeitet? Der Hinweis nennt, welche Tage"
-          + " zählen.";
-    }
     return year >= FIRST_YEAR_OF_6C
-        ? "An wie vielen Tagen haben Sie überwiegend zu Hause gearbeitet, ohne die erste"
-            + " Tätigkeitsstätte aufzusuchen?"
+        ? "An wie vielen Tagen haben Sie zu Hause gearbeitet? Der Hinweis nennt, welche Tage"
+            + " zählen."
         : "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?";
   }
 

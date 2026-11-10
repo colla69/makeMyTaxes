@@ -41,7 +41,7 @@ class Year2026Test {
   @Test
   void theCertificateKeepsTheFieldIdsButHasNoLine() {
     WageTaxCertificate certificate = DEFINITION.certificate();
-    assertThat(certificate.fieldIds()).isEqualTo(WageTaxCertificate2022.LAYOUT.fieldIds());
+    assertThat(certificate.fieldIds()).isEqualTo(WageTaxCertificate2025.LAYOUT.fieldIds());
     assertThat(certificate.lineOf("grossWage")).isEmpty();
     assertThat(certificate.read(new CertificateText("Lohnsteuerbescheinigung für 2026", "", "3. Bruttoarbeitslohn 40.000,00")).found())
         .isEmpty();
@@ -108,9 +108,11 @@ class Year2026Test {
         .contains("überwiegend zu Hause", "erste Tätigkeitsstätte nicht", "dauerhaft kein anderer")
         .doesNotContain("nur zu Hause");
     Answers employed = new Answers(Map.of("employed", Interview.YES));
+    // Sentence 2 counts a day with work at home and elsewhere, so the question must not ask only
+    // for the days of sentence 1. It points to the help, which names both.
     assertThat(DEFINITION.interview().find(employed, "homeOfficeDays").orElseThrow().text())
-        .contains("überwiegend zu Hause")
-        .doesNotContain("nur zu Hause");
+        .contains("zu Hause gearbeitet", "Der Hinweis nennt, welche Tage zählen")
+        .doesNotContain("überwiegend", "ohne die erste Tätigkeitsstätte", "nur zu Hause");
     assertThat(HomeOfficeDay.reviewText(2026)).contains("überwiegend zu Hause");
   }
 

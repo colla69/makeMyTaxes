@@ -138,6 +138,22 @@ td {
   color: #8a5a00;
 }
 
+/* The check of the values of a certificate, a modal dialog. */
+.document-check {
+  max-width: 60rem;
+  width: 90vw;
+}
+
+.document-check tr.differs {
+  background: #fdecee;
+}
+
+.document-check tr.differs .mark,
+.certificate-check.differs .mark {
+  color: #b00020;
+  font-weight: bold;
+}
+
 nav {
   display: flex;
   flex-direction: column;

@@ -6,6 +6,7 @@
     <title th:text="'Fragen ' + ${taxYear}">Fragen</title>
     <link rel="stylesheet" th:href="@{/app.css}">
     <script th:src="@{/fields.js}" defer></script>
+    <script th:src="@{/document-check.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
@@ -40,6 +41,13 @@
           <div class="fields">
             <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.hintId())}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
           </div>
+          <!-- document-check.js marks an answer that differs from the value read from the certificate. -->
+          <p class="certificate-check" th:if="${certificateRead != null}"
+             th:data-read="${certificateRead}" th:data-kind="${field.kind.name()}">
+            Gelesen von der Lohnsteuerbescheinigung:
+            <span class="read" th:text="${#strings.isEmpty(certificateRead)} ? 'nicht gefunden' : ${certificateRead}">1,00</span>
+            <span class="mark"></span>
+          </p>
           <p class="form-buttons"><button>Weiter</button></p>
         </th:block>
 

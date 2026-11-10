@@ -98,16 +98,20 @@ public final class FilingCheckForm implements FormModule {
   }
 
   /**
-   * § 46(2) no. 5 EStG. Until the version of 31.12.2024, it also names a one-off payment that the
-   * employer taxed at the reduced rate of § 34. From the version of 30.06.2025, it names only the
-   * 20 percent of § 39c(3), and § 52 has no own rule for it, so § 52(1) applies it from 2025.
+   * § 46(2) no. 5 EStG. The versions of 30.06.2022 and 31.12.2022, up to 31.12.2024, name two
+   * cases: a one-off payment of § 34 taxed by § 39b(3) sentence 9, and a one-off payment taxed by
+   * § 39c(3). From the version of 30.06.2025, it names only § 39c(3), and § 52 has no own rule for
+   * it, so § 52(1) applies it from 2025.
    */
   private String specialPaymentQuestion() {
     if (pack.taxYear().value() >= FIRST_YEAR_WITHOUT_REDUCED_PAYROLL_RATE) {
       return "Hat ein Dritter, der Ihnen Arbeitslohn zahlt (§ 38 Abs. 3a EStG), die Lohnsteuer"
           + " für eine Einmalzahlung mit 20 Prozent ermittelt (§ 39c Abs. 3 EStG)?";
     }
-    return "Hat Ihr Arbeitgeber eine Einmalzahlung, etwa eine Abfindung, ermäßigt besteuert?";
+    return "Hat Ihr Arbeitgeber eine Einmalzahlung, etwa eine Abfindung, ermäßigt besteuert (§ 39b"
+        + " Abs. 3 Satz 9 EStG), oder hat ein Dritter, der Ihnen Arbeitslohn zahlt (§ 38 Abs. 3a"
+        + " EStG), die Lohnsteuer für eine Einmalzahlung mit 20 Prozent ermittelt (§ 39c Abs. 3"
+        + " EStG)?";
   }
 
   private static Field question(String id, String source, String label) {

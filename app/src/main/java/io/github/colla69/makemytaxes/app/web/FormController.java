@@ -107,16 +107,19 @@ class FormController {
      * addition to the employee lump sum.
      */
     record Sources(
-        String commute, String homeOffice, String homeOfficeDays, boolean unionFeesBesideLumpSum) {
+        Commute commute, String homeOffice, String homeOfficeDays, boolean unionFeesBesideLumpSum) {
+
+      /** The source of the commute rates, and whether one rate applies from the first km. */
+      record Commute(String source, boolean oneRate) {}
 
       static Sources of(int year) {
-        String commute =
+        Commute commute =
             year >= 2026
-                ? "§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG"
-                : "§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG";
+                ? new Commute("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG", true)
+                : new Commute("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG", false);
         String homeOffice =
             year >= 2023
-                ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 EStG"
+                ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 und 2 EStG"
                 : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
         return new Sources(commute, homeOffice, HomeOfficeDay.reviewText(year), year >= 2026);
       }

@@ -76,13 +76,21 @@ class Year2026Test {
 
   @Test
   @DisplayName(
-      "§ 46(2) no. 5 EStG, versions 31.12.2022 and 30.06.2026 and 05.11.2026, with § 52(1) EStG:"
+      "§ 46(2) no. 5 EStG, versions 30.06.2026 and 05.11.2026, with § 52(1) EStG:"
           + " from 2025 only the 20 percent of § 39c(3)")
   void theFilingQuestionOfNo5NamesOnlyTheThirdPartyFrom2026() {
     assertThat(filingQuestion(YEAR, "specialPayment"))
         .contains("§ 39c Abs. 3 EStG", "20 Prozent")
         .doesNotContain("ermäßigt");
-    assertThat(filingQuestion(new TaxYear(2022), "specialPayment")).contains("ermäßigt");
+  }
+
+  @Test
+  @DisplayName(
+      "§ 46(2) no. 5 EStG, versions 30.06.2022 and 31.12.2022: the reduced rate of § 39b(3)"
+          + " sentence 9 or the 20 percent of § 39c(3)")
+  void theFilingQuestionOfNo5NamesBothCasesIn2022() {
+    assertThat(filingQuestion(new TaxYear(2022), "specialPayment"))
+        .contains("ermäßigt", "§ 39b Abs. 3 Satz 9 EStG", "§ 39c Abs. 3 EStG", "20 Prozent");
   }
 
   @Test
@@ -107,7 +115,9 @@ class Year2026Test {
   }
 
   @Test
-  @DisplayName("§ 4(5) sentence 1 no. 6b sentence 4 EStG, version 31.12.2022: only at home in 2022")
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6b sentence 4 EStG, version 30.06.2022, with § 52(6) sentence 16 EStG,"
+          + " version 31.12.2022: only at home in 2022")
   void theHomeOfficeDaysOf2022StayOnlyAtHome() {
     TaxYear year2022 = new TaxYear(2022);
     Answers employed = new Answers(Map.of("employed", Interview.YES));

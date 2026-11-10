@@ -470,6 +470,11 @@ class FormBrowserTest {
     assertThat(estimate).containsText("120,00");
     assertThat(estimate).containsText("1.230,00");
     assertThat(estimate.locator("#limit-commute")).containsText("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG.");
+    // § 9(1) sentence 3 no. 4 sentence 2 EStG, versions 30.06.2026 and 05.11.2026: one rate.
+    assertThat(estimate.locator("#limit-commute"))
+        .containsText("Wege zur Arbeit: 0,38 EUR je vollen Kilometer, für jeden Tag");
+    assertThat(estimate.locator("#limit-commute")).not().containsText("21. Kilometer");
+    assertThat(estimate.locator("#limit-home-office")).containsText("Nr. 6c Satz 1 und 2 EStG");
     assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
     // § 4(5) no. 6c sentences 1 and 2 and § 9a sentence 3 EStG, versions 30.06.2026 and 05.11.2026.

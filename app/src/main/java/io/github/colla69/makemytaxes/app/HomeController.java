@@ -24,6 +24,9 @@ class HomeController {
 
   private static final List<Field> PERSONAL_FIELDS = new MainForm().personalFields();
 
+  /** The years that the start page offers as a button for each person. */
+  private static final List<Integer> YEARS = List.of(2022, 2023, 2024, 2025, 2026);
+
   private final HouseholdStore household;
 
   HomeController(HouseholdStore household) {
@@ -120,16 +123,18 @@ class HomeController {
     if (!household.hasPerson(personId)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
+    long returnId;
     try {
-      household.addReturn(personId, new TaxYear(taxYear));
+      returnId = household.addReturn(personId, new TaxYear(taxYear));
     } catch (IllegalArgumentException e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
     }
-    return "redirect:/";
+    return "redirect:/returns/" + returnId;
   }
 
   private void fillHome(Model model, Map<String, String> values, Map<String, String> errors) {
     model.addAttribute("persons", household.persons());
+    model.addAttribute("years", YEARS);
     model.addAttribute("personalFields", PERSONAL_FIELDS);
     model.addAttribute("requiredFields", MainForm.NAME_FIELDS);
     model.addAttribute("values", values);

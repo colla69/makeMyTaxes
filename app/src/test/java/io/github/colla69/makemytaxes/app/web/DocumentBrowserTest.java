@@ -116,10 +116,8 @@ class DocumentBrowserTest {
     page.locator("#new-person [name=lastName]").fill(lastName);
     page.locator("#new-person [name=lastName]").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
-    section.getByLabel("Steuerjahr").fill("2022");
-    section.getByLabel("Steuerjahr").press("Enter");
     section
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2022"))
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022"))
         .click();
     page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Belege")).click();
     assertThat(page.getByLabel("Datei")).isVisible();

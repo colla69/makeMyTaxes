@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.file.Path;
@@ -92,15 +93,6 @@ class ExpenseFlowTest {
   }
 
   @Test
-  void showsThePersonAndTheReturnOnTheHomePage() throws Exception {
-    mockMvc
-        .perform(get("/"))
-        .andExpect(status().isOk())
-        .andExpect(content().string(containsString("2022")))
-        .andExpect(content().string(containsString("/returns/" + returnId)));
-  }
-
-  @Test
   void aTaxYearCanHaveOnlyOneReturnForAPerson() throws Exception {
     long personId =
         jdbcClient
@@ -111,7 +103,7 @@ class ExpenseFlowTest {
 
     mockMvc
         .perform(post("/persons/" + personId + "/returns").param("taxYear", "2022"))
-        .andExpect(status().is3xxRedirection());
+        .andExpect(redirectedUrl("/returns/" + returnId));
 
     Integer returns =
         jdbcClient

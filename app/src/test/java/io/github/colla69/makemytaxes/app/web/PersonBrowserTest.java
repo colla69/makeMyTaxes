@@ -1,17 +1,22 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.BoundingBox;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -57,7 +62,6 @@ class PersonBrowserTest {
   void theDetailsOfANewPersonFillTheMainForm() {
     Page page = browser.newPage();
     String name = addPerson(page, "01.02.1990", "Musterweg");
-    addReturn(page, name, "2022");
 
     openMainForm(page, name, "2022");
     assertThat(mainField(page, "birthDate")).hasValue("01.02.1990");
@@ -68,7 +72,6 @@ class PersonBrowserTest {
   void theNamesOfANewPersonFillTheMainForm() {
     Page page = browser.newPage();
     String name = addPerson(page, "01.02.1990", "Musterweg");
-    addReturn(page, name, "2022");
 
     openMainForm(page, name, "2022");
     assertThat(mainField(page, "firstName")).hasValue("Made-up");
@@ -111,7 +114,6 @@ class PersonBrowserTest {
   void changedDetailsReachASavedMainForm() {
     Page page = browser.newPage();
     String name = addPerson(page, "01.02.1990", "Musterweg");
-    addReturn(page, name, "2022");
     openMainForm(page, name, "2022");
     saveMainForm(page);
 
@@ -126,7 +128,6 @@ class PersonBrowserTest {
   void aValueThatTheUserChangedInTheMainFormStaysWhenTheDetailsChange() {
     Page page = browser.newPage();
     String name = addPerson(page, "01.02.1990", "Musterweg");
-    addReturn(page, name, "2022");
     openMainForm(page, name, "2022");
     mainField(page, "street").fill("Alte Gasse");
     saveMainForm(page);
@@ -194,6 +195,65 @@ class PersonBrowserTest {
     assertThat(page.locator("h2").filter(new Locator.FilterOptions().setHasText(lastName))).hasCount(0);
   }
 
+  @Test
+  void aYearButtonCreatesTheReturnOnceAndThenOpensIt() {
+    Page page = browser.newPage();
+    String name = addPerson(page, "01.02.1990", "Musterweg");
+    assertThat(section(page, name).locator(".year-buttons button"))
+        .hasText(
+            new String[] {
+              "Steuererklärung 2022",
+              "Steuererklärung 2023",
+              "Steuererklärung 2024",
+              "Steuererklärung 2025",
+              "Steuererklärung 2026"
+            });
+    assertThat(section(page, name).getByLabel("Steuerjahr")).hasCount(0);
+    assertThat(section(page, name).getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung")))
+        .hasCount(0);
+
+    yearButton(page, name, "2024").click();
+    assertThat(page).hasURL(Pattern.compile("/returns/\\d+$"));
+    assertThat(page.locator("h1")).containsText("2024");
+    String firstUrl = page.url();
+
+    page.navigate(home());
+    yearButton(page, name, "2024").click();
+    assertThat(page).hasURL(firstUrl);
+    assertThat(page.locator("h1")).containsText("2024");
+  }
+
+  @Test
+  void aReturnOutsideTheYearButtonsKeepsItsLink() {
+    Page page = browser.newPage();
+    String name = addPerson(page, "01.02.1990", "Musterweg");
+    long personId =
+        household.persons().stream().filter(person -> person.name().equals(name)).findFirst().orElseThrow().id();
+    household.addReturn(personId, new TaxYear(2019));
+
+    page.navigate(home());
+    section(page, name)
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2019"))
+        .click();
+    assertThat(page.locator("h1")).containsText("2019");
+  }
+
+  @Test
+  void theEditLinkStandsOnTheLineOfTheName() {
+    Page page = browser.newPage();
+    String name = addPerson(page, "01.02.1990", "Musterweg");
+    BoundingBox heading = section(page, name).locator("h2").boundingBox();
+    BoundingBox link =
+        section(page, name)
+            .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Persönliche Angaben ändern"))
+            .boundingBox();
+    BoundingBox section = section(page, name).boundingBox();
+
+    assertTrue(link.y < heading.y + heading.height && heading.y < link.y + link.height, "same line");
+    assertTrue(link.x > heading.x + heading.width, "right of the name");
+    assertEquals(section.x + section.width, link.x + link.width, 1.0, "aligned right");
+  }
+
   private String addPerson(Page page, String birthDate, String street) {
     page.navigate(home());
     String lastName = UUID.randomUUID().toString();
@@ -208,23 +268,18 @@ class PersonBrowserTest {
     return name;
   }
 
-  private void addReturn(Page page, String name, String year) {
-    page.navigate(home());
-    section(page, name).getByLabel("Steuerjahr").fill(year);
-    section(page, name).getByLabel("Steuerjahr").press("Enter");
-    assertThat(returnLink(page, name, year)).isVisible();
-  }
-
   private void openMainForm(Page page, String name, String year) {
     page.navigate(home());
-    returnLink(page, name, year).click();
+    yearButton(page, name, year).click();
     page.locator("nav").getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Hauptvordruck")).click();
     assertThat(page.locator("h1")).containsText(year);
   }
 
-  private static Locator returnLink(Page page, String name, String year) {
+  private static Locator yearButton(Page page, String name, String year) {
     return section(page, name)
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung " + year));
+        .getByRole(
+            AriaRole.BUTTON,
+            new Locator.GetByRoleOptions().setName("Steuererklärung " + year).setExact(true));
   }
 
   private static Locator section(Page page, String name) {

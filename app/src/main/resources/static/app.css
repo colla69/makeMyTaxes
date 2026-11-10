@@ -55,6 +55,20 @@ body {
   padding: 0 0.5rem;
 }
 
+/* The name of a person on the start page, with the edit link at the right end of the same line. */
+.person-head {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.year-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .form-buttons {
   display: flex;
   gap: 0.5rem;

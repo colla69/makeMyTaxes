@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,7 @@ class ExpenseTest {
     assertThat(new Expense(payment, WORK_LAPTOP, "  ").hasEvidence()).isFalse();
     assertThat(new Expense(payment, WORK_LAPTOP, "laptop.pdf").hasEvidence()).isFalse();
     assertThat(
-            new Expense(payment, WORK_LAPTOP, new Evidence("", "laptop.pdf", "")).hasEvidence())
+            new Expense(payment, WORK_LAPTOP, new Evidence("", new DocumentRef(1, "laptop.pdf"), "")).hasEvidence())
         .isTrue();
     assertThat(new Expense(payment, WORK_LAPTOP, new Evidence("", null, "12 days")).hasEvidence())
         .isTrue();

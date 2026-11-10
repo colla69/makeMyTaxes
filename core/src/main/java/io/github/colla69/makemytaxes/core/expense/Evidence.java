@@ -1,18 +1,20 @@
 package io.github.colla69.makemytaxes.core.expense;
 
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
+
 /**
  * What proves an expense. A linked document or a stated basis is evidence. A stated basis says
  * where the amount comes from when no receipt exists by nature, for example a day count or a
  * distance. The receipt note only says where a receipt is, so it is not evidence.
  *
  * @param receiptNote a note such as a file name or a folder
- * @param documentName the name of the linked document, or null if the expense has no document
+ * @param document the linked document, or null if the expense has no document
  * @param statedBasis the stated basis, or an empty text
  */
-public record Evidence(String receiptNote, String documentName, String statedBasis) {
+public record Evidence(String receiptNote, DocumentRef document, String statedBasis) {
 
   public boolean isPresent() {
-    return documentName != null || hasStatedBasis();
+    return document != null || hasStatedBasis();
   }
 
   public boolean hasStatedBasis() {
@@ -23,11 +25,8 @@ public record Evidence(String receiptNote, String documentName, String statedBas
     return receiptNote != null && !receiptNote.isBlank();
   }
 
-  /** A document comes first, because it is the stronger proof of the two. */
-  public String label() {
-    if (documentName != null) {
-      return "Beleg: " + documentName;
-    }
-    return hasStatedBasis() ? "Grundlage: " + statedBasis : "Beleg fehlt";
+  /** The file name of the linked document, or null. */
+  public String documentName() {
+    return document == null ? null : document.fileName();
   }
 }

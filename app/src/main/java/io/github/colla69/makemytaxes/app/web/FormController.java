@@ -2,12 +2,14 @@ package io.github.colla69.makemytaxes.app.web;
 
 import io.github.colla69.makemytaxes.app.document.CertificatePdfReader;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore.StoredExpense;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.filing.FilingCheck;
@@ -20,16 +22,30 @@ import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
+import io.github.colla69.makemytaxes.core.form.Source;
 import io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022;
 import io.github.colla69.makemytaxes.core.form.WorkExpenseEstimate;
 import io.github.colla69.makemytaxes.core.year.YearPack;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -39,6 +55,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
+import org.thymeleaf.ITemplateEngine;
+import org.thymeleaf.context.Context;
 
 @Controller
 class FormController {
@@ -89,9 +107,14 @@ class FormController {
     }
   }
 
-  record WithoutFormView(String topic, String description, String amount, String evidence) {}
+  /** The source of a line as the page shows it. {@code href} is null for a source with no file. */
+  record SourceView(String label, String href) {}
 
-  record SectionView(String title, List<ReviewLine> lines) {}
+  record WithoutFormView(String topic, String description, String amount, SourceView source) {}
+
+  record LineView(String line, String label, String value, SourceView source) {}
+
+  record SectionView(String title, List<LineView> lines) {}
 
   record FormReview(String title, List<SectionView> sections, List<Field> missing) {}
 
@@ -110,17 +133,26 @@ class FormController {
       String fieldId, String label, String certificateLine, String kind, String read,
       String input) {}
 
+  /** The folder of the documents in the exported ZIP file. */
+  private static final String EXPORT_FOLDER = "belege/";
+
   private final HouseholdStore household;
   private final ExpenseStore expenses;
   private final FormStore forms;
   private final DocumentStore documents;
+  private final ITemplateEngine templates;
 
   FormController(
-      HouseholdStore household, ExpenseStore expenses, FormStore forms, DocumentStore documents) {
+      HouseholdStore household,
+      ExpenseStore expenses,
+      FormStore forms,
+      DocumentStore documents,
+      ITemplateEngine templates) {
     this.household = household;
     this.expenses = expenses;
     this.forms = forms;
     this.documents = documents;
+    this.templates = templates;
   }
 
   @GetMapping("/returns/{returnId}/forms/{formId}")
@@ -237,35 +269,125 @@ class FormController {
 
   @GetMapping("/returns/{returnId}/review")
   String review(@PathVariable long returnId, Model model) {
+    fillReview(
+        returnId,
+        document -> "/returns/" + returnId + "/documents/" + document.id(),
+        model.asMap());
+    model.addAttribute("export", false);
+    return "review";
+  }
+
+  /**
+   * One ZIP file with the review as a web page and each document that a line of the review links
+   * to. The links of the page point to the files in the ZIP file, so the record works offline.
+   */
+  @GetMapping("/returns/{returnId}/review/export")
+  ResponseEntity<byte[]> export(@PathVariable long returnId) throws IOException {
+    Map<String, Object> attributes = new HashMap<>();
+    Set<DocumentRef> linked =
+        fillReview(returnId, document -> EXPORT_FOLDER + entryName(document), attributes);
+    attributes.put("export", true);
+    attributes.put("exportedOn", GermanFormats.format(LocalDate.now()));
+    String page = templates.process("review", new Context(Locale.GERMANY, attributes));
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (ZipOutputStream zip = new ZipOutputStream(bytes, StandardCharsets.UTF_8)) {
+      zip.putNextEntry(new ZipEntry("uebersicht.html"));
+      zip.write(page.getBytes(StandardCharsets.UTF_8));
+      for (DocumentRef document : linked) {
+        zip.putNextEntry(new ZipEntry(EXPORT_FOLDER + entryName(document)));
+        zip.write(documents.content(document.id()));
+      }
+    }
+    String fileName = "nachweise-" + attributes.get("taxYear") + ".zip";
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType("application/zip"))
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(fileName).build().toString())
+        .body(bytes.toByteArray());
+  }
+
+  /** The ID keeps two documents with the same name apart. The name keeps only safe characters. */
+  static String entryName(DocumentRef document) {
+    return document.id() + "-" + document.fileName().replaceAll("[^A-Za-z0-9._-]", "_");
+  }
+
+  /**
+   * Fills the attributes of the review page. {@code link} gives the address of a document.
+   * Returns the documents that the page links to, in the order of the page.
+   */
+  private Set<DocumentRef> fillReview(
+      long returnId, Function<DocumentRef, String> link, Map<String, Object> attributes) {
     TaxYear taxYear = taxYearOf(returnId);
     YearPack pack = packOf(taxYear);
     List<Expense> stored = expenses.expensesOf(returnId).stream().map(StoredExpense::expense).toList();
+    Map<Long, DocumentRef> byId = new HashMap<>();
+    for (StoredDocument document : documents.documentsOf(returnId)) {
+      byId.put(document.id(), new DocumentRef(document.id(), document.fileName()));
+    }
+    Set<DocumentRef> linked = new LinkedHashSet<>();
+    Function<Source, SourceView> view =
+        source -> {
+          if (source.document() == null) {
+            return new SourceView(source.label(), null);
+          }
+          linked.add(source.document());
+          return new SourceView(source.label(), link.apply(source.document()));
+        };
     List<FormReview> reviews = new ArrayList<>();
     for (FormModule form : Forms.of(taxYear)) {
       if (!form.id().equals(FilingCheckForm.ID)) {
         Answers answers = forms.answers(returnId, form.id());
-        reviews.add(
-            new FormReview(
-                form.title(), sections(form.review(answers, stored)), form.missing(answers)));
+        Map<String, Long> answerDocuments = forms.answerDocuments(returnId, form.id());
+        Map<String, List<LineView>> bySection = new LinkedHashMap<>();
+        for (ReviewLine line : form.review(answers, stored)) {
+          bySection
+              .computeIfAbsent(line.section(), section -> new ArrayList<>())
+              .add(
+                  new LineView(
+                      line.line(),
+                      line.label(),
+                      line.value(),
+                      view.apply(resolve(line.source(), answerDocuments, byId))));
+        }
+        List<SectionView> sections =
+            bySection.entrySet().stream()
+                .map(entry -> new SectionView(entry.getKey(), entry.getValue()))
+                .toList();
+        reviews.add(new FormReview(form.title(), sections, form.missing(answers)));
       }
     }
-    model.addAttribute("returnId", returnId);
-    model.addAttribute("tab", "review");
-    model.addAttribute("taxYear", taxYear.value());
-    model.addAttribute("forms", Forms.of(taxYear));
-    model.addAttribute("filing", filingOf(returnId, pack));
-    model.addAttribute("reviews", reviews);
-    model.addAttribute(
+    attributes.put("returnId", returnId);
+    attributes.put("tab", "review");
+    attributes.put("taxYear", taxYear.value());
+    attributes.put("forms", Forms.of(taxYear));
+    attributes.put("filing", filingOf(returnId, pack));
+    attributes.put("reviews", reviews);
+    attributes.put(
         "estimate",
         EstimateView.of(
             WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored), pack));
-    model.addAttribute("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
-    model.addAttribute("withoutForm", withoutForm(stored));
-    return "review";
+    attributes.put("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
+    attributes.put("withoutForm", withoutForm(stored, view));
+    return linked;
+  }
+
+  /**
+   * The source of a saved answer is its document, if the storage has one. Otherwise the user
+   * stated the value, as for a personal detail of the main form.
+   */
+  private static Source resolve(
+      Source source, Map<String, Long> answerDocuments, Map<Long, DocumentRef> byId) {
+    if (!(source instanceof Source.Answer answer)) {
+      return source;
+    }
+    DocumentRef document = byId.get(answerDocuments.get(answer.fieldId()));
+    return document == null ? new Source.OwnStatement() : new Source.FromDocument(document);
   }
 
   /** A cost that no form shows yet must stay visible, or its deduction is lost in silence. */
-  private static List<WithoutFormView> withoutForm(List<Expense> stored) {
+  private static List<WithoutFormView> withoutForm(
+      List<Expense> stored, Function<Source, SourceView> view) {
     return stored.stream()
         .filter(expense -> !expense.purpose().topic().isWorkExpense())
         .map(
@@ -274,7 +396,7 @@ class FormController {
                     expense.purpose().topic().label(),
                     expense.purpose().description(),
                     GermanFormats.format(expense.payment().amount()),
-                    expense.evidence().label()))
+                    view.apply(Source.of(expense.evidence()))))
         .toList();
   }
 
@@ -302,16 +424,6 @@ class FormController {
 
   private FilingView filingOf(long returnId, YearPack pack) {
     return FilingView.of(FilingCheck.of(pack, forms.answers(returnId, FilingCheckForm.ID)));
-  }
-
-  private static List<SectionView> sections(List<ReviewLine> lines) {
-    Map<String, List<ReviewLine>> bySection = new LinkedHashMap<>();
-    for (ReviewLine line : lines) {
-      bySection.computeIfAbsent(line.section(), section -> new ArrayList<>()).add(line);
-    }
-    return bySection.entrySet().stream()
-        .map(entry -> new SectionView(entry.getKey(), entry.getValue()))
-        .toList();
   }
 
   private List<FieldGroup> fieldGroups(long returnId, List<Field> fields) {

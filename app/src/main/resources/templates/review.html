@@ -4,12 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="'Übersicht ' + ${taxYear}">Übersicht</title>
-    <link rel="stylesheet" th:href="@{/app.css}">
+    <link rel="stylesheet" th:unless="${export}" th:href="@{/app.css}">
   </head>
   <body>
-    <nav th:replace="~{nav :: nav}"></nav>
+    <!-- The export renders this page without a request, so it leaves out the parts that need one. -->
+    <th:block th:unless="${export}"><nav th:replace="~{nav :: nav}"></nav></th:block>
     <main class="panel">
     <h1 th:text="'Übersicht ' + ${taxYear}">Übersicht</h1>
+    <p id="exported-on" th:if="${export}" th:text="'Exportiert am ' + ${exportedOn} + '. Die Belege liegen im Ordner „belege“ neben dieser Datei.'">Exportiert am</p>
+    <p th:unless="${export}">
+      <a id="export" th:href="@{/returns/{id}/review/export(id=${returnId})}" download>Übersicht mit Belegen exportieren</a>
+      <span class="help">Eine ZIP-Datei mit dieser Übersicht und allen verknüpften Belegen, als Nachweis der Abgabe.</span>
+    </p>
     <p>Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken 2022. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
 
     <section th:replace="~{filing-result :: result}"></section>
@@ -46,7 +52,10 @@
           <td th:text="${cost.topic}">Kategorie</td>
           <td th:text="${cost.description}">Beschreibung</td>
           <td class="amount" th:text="${cost.amount}">0,00</td>
-          <td th:text="${cost.evidence}">Beleg fehlt</td>
+          <td class="source" th:with="source=${cost.source}">
+            <a th:if="${source.href != null}" th:href="${source.href}" target="_blank" th:text="${source.label}">Beleg</a>
+            <span th:unless="${source.href != null}" th:text="${source.label}">Beleg fehlt</span>
+          </td>
         </tr>
       </table>
     </section>
@@ -60,13 +69,16 @@
       <th:block th:each="section : ${review.sections}">
         <h3 th:text="${section.title}">Abschnitt</h3>
         <table>
-          <thead><tr><th>Zeile</th><th>Feld</th><th>Wert</th><th>Nachweis</th></tr></thead>
+          <thead><tr><th>Zeile</th><th>Feld</th><th>Wert</th><th>Quelle</th></tr></thead>
           <tbody>
             <tr th:each="line : ${section.lines}">
               <td th:text="${line.line}">1</td>
               <td th:text="${line.label}">Bezeichnung</td>
               <td class="amount" th:text="${line.value}">Wert</td>
-              <td th:text="${line.evidence}">Nachweis</td>
+              <td class="source" th:with="source=${line.source}">
+                <a th:if="${source.href != null}" th:href="${source.href}" target="_blank" th:text="${source.label}">Beleg</a>
+                <span th:unless="${source.href != null}" th:text="${source.label}">eigene Angabe</span>
+              </td>
             </tr>
           </tbody>
         </table>

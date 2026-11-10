@@ -39,7 +39,7 @@ public interface FormModule {
                     field.line(),
                     field.label(),
                     field.kind().display(answers.text(field.id())),
-                    ""))
+                    new Source.Answer(field.id())))
         .toList();
   }
 

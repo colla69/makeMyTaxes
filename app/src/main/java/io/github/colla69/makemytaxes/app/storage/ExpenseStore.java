@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.app.storage;
 
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
+import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -73,13 +74,13 @@ public class ExpenseStore {
                   new Purpose(
                       ExpenseTopic.valueOf(row.getString("topic")), row.getString("description"));
               String documentName = row.getString("file_name");
+              Long documentId = documentName == null ? null : row.getLong("document_id");
               var evidence =
                   new Evidence(
                       row.getString("receipt_reference"),
-                      documentName,
+                      documentId == null ? null : new DocumentRef(documentId, documentName),
                       row.getString("stated_basis"));
               var expense = new Expense(payment, purpose, evidence);
-              Long documentId = documentName == null ? null : row.getLong("document_id");
               return new StoredExpense(row.getLong("id"), expense, documentId);
             })
         .list();

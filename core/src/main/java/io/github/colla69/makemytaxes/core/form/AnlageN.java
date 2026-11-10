@@ -5,7 +5,6 @@ import static io.github.colla69.makemytaxes.core.form.Field.required;
 import static io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022.label;
 
 import io.github.colla69.makemytaxes.core.GermanFormats;
-import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
@@ -273,9 +272,11 @@ public final class AnlageN implements FormModule {
           new ReviewLine(
               WORK,
               line.line(),
-              expense.purpose().description(),
+              expense.purpose().description()
+                  + ", bezahlt am "
+                  + GermanFormats.format(expense.payment().paidOn()),
               GermanFormats.format(expense.payment().amount()),
-              evidenceOf(expense)));
+              Source.of(expense.evidence())));
     }
     lines.add(
         new ReviewLine(
@@ -283,15 +284,7 @@ public final class AnlageN implements FormModule {
             line.line(),
             line.label() + ": Summe",
             GermanFormats.format(ExpenseSummary.of(matching).totalFor(line.topic())),
-            ""));
+            new Source.Sum()));
     return lines;
-  }
-
-  private static String evidenceOf(Expense expense) {
-    String paid = "Bezahlt am " + GermanFormats.format(expense.payment().paidOn());
-    Evidence evidence = expense.evidence();
-    return evidence.isPresent() || !evidence.hasReceiptNote()
-        ? paid + ", " + evidence.label()
-        : paid + ", Hinweis: " + evidence.receiptNote() + ", " + evidence.label();
   }
 }

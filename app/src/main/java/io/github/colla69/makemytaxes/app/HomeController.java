@@ -22,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 class HomeController {
 
-  private static final List<Field> PERSONAL_FIELDS = new MainForm().personalFields();
+  private static final List<Field> PERSONAL_FIELDS = MainForm.personalFields();
 
   private final HouseholdStore household;
 

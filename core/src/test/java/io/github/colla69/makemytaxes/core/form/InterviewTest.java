@@ -8,7 +8,6 @@ import io.github.colla69.makemytaxes.core.form.Interview.Question;
 import io.github.colla69.makemytaxes.core.form.Interview.Step;
 import io.github.colla69.makemytaxes.core.form.Interview.Topic;
 import io.github.colla69.makemytaxes.core.form.Interview.Type;
-import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,14 +16,20 @@ import org.junit.jupiter.api.Test;
 class InterviewTest {
 
   private static final Answers NONE = new Answers(Map.of());
+  private static final TaxYear YEAR = new TaxYear(2022);
+  private static final Interview INTERVIEW = YearDefinition.of(YEAR).orElseThrow().interview();
+
+  private static FormModule form(String formId) {
+    return Forms.find(YEAR, formId).orElseThrow();
+  }
 
   @Test
   void theQuestionsComeOneAtATimeInOrder() {
-    assertThat(Interview.next(NONE))
+    assertThat(INTERVIEW.next(NONE))
         .map(Interview.Question::id)
         .hasValue(Interview.PERSONAL_DETAILS);
     assertThat(
-            Interview.next(
+            INTERVIEW.next(
                 new Answers(
                     Map.of(Interview.PERSONAL_DETAILS, Interview.DONE, "employed", Interview.NO))))
         .map(Interview.Question::id)
@@ -33,26 +38,26 @@ class InterviewTest {
 
   @Test
   void theTopicsComeInTheOrderJobCommuteInsuranceHousehold() {
-    assertThat(Interview.questions(NONE).stream().map(Question::topic).distinct())
+    assertThat(INTERVIEW.questions(NONE).stream().map(Question::topic).distinct())
         .containsExactly(Topic.JOB, Topic.COMMUTE, Topic.INSURANCE, Topic.HOUSEHOLD);
     for (Topic topic : Topic.values()) {
-      assertThat(Interview.questionsOf(NONE, topic)).isNotEmpty();
+      assertThat(INTERVIEW.questionsOf(NONE, topic)).isNotEmpty();
     }
   }
 
   @Test
   void aFieldQuestionNamesAFieldOfItsForm() {
-    Question occupation = Interview.find(NONE, "occupation").orElseThrow();
+    Question occupation = INTERVIEW.find(NONE, "occupation").orElseThrow();
     assertThat(occupation.formId()).isEqualTo(MainForm.ID);
-    assertThat(new MainForm().fields()).anyMatch(field -> field.id().equals("occupation"));
-    assertThat(Interview.find(NONE, "commuteKm").orElseThrow().formId()).isEqualTo(AnlageN.ID);
+    assertThat(form(MainForm.ID).fields()).anyMatch(field -> field.id().equals("occupation"));
+    assertThat(INTERVIEW.find(NONE, "commuteKm").orElseThrow().formId()).isEqualTo(AnlageN.ID);
   }
 
   @Test
   void anEmployeeIsAskedTheLinesOfTheCertificateAndThenForAnotherEmployer() {
     Answers employed = new Answers(Map.of("employed", Interview.YES));
 
-    assertThat(ids(Interview.questionsOf(employed, Topic.JOB)))
+    assertThat(ids(INTERVIEW.questionsOf(employed, Topic.JOB)))
         .containsExactly(
             Interview.PERSONAL_DETAILS,
             "employed",
@@ -69,13 +74,13 @@ class InterviewTest {
             "employerCommute",
             "anotherEmployer",
             "occupation");
-    AnlageN anlageN = new AnlageN(YearPack.of(new TaxYear(2022)).orElseThrow());
-    for (Question question : Interview.questionsOf(employed, Topic.JOB)) {
+    FormModule anlageN = form(AnlageN.ID);
+    for (Question question : INTERVIEW.questionsOf(employed, Topic.JOB)) {
       if (question.type() == Type.FIELD && question.formId().equals(AnlageN.ID)) {
         assertThat(anlageN.field(question.id())).isPresent();
       }
     }
-    assertThat(Interview.find(employed, "grossWage").orElseThrow().text()).contains("Zeile 3");
+    assertThat(INTERVIEW.find(employed, "grossWage").orElseThrow().text()).contains("Zeile 3");
   }
 
   @Test
@@ -83,12 +88,12 @@ class InterviewTest {
     Answers answers =
         new Answers(Map.of("employed", Interview.YES, "wageCertificate", Interview.YES));
 
-    List<String> ids = ids(Interview.questionsOf(answers, Topic.JOB));
+    List<String> ids = ids(INTERVIEW.questionsOf(answers, Topic.JOB));
     assertThat(ids.subList(ids.indexOf("wageCertificate"), ids.indexOf("wageCertificate") + 3))
         .containsExactly("wageCertificate", "wageCertificateDocument", "employerName");
-    assertThat(Interview.find(answers, "wageCertificate").orElseThrow().text())
+    assertThat(INTERVIEW.find(answers, "wageCertificate").orElseThrow().text())
         .contains("Hast du deine Lohnsteuerbescheinigung?");
-    assertThat(Interview.find(answers, "wageCertificateDocument").orElseThrow().type())
+    assertThat(INTERVIEW.find(answers, "wageCertificateDocument").orElseThrow().type())
         .isEqualTo(Type.DOCUMENT);
   }
 
@@ -120,7 +125,7 @@ class InterviewTest {
                 "wageCertificateDocument", "7"));
 
     assertThat(Interview.certificateDocument(answers, "grossWage")).isEmpty();
-    assertThat(ids(Interview.questions(answers))).doesNotContain("wageCertificateDocument");
+    assertThat(ids(INTERVIEW.questions(answers))).doesNotContain("wageCertificateDocument");
   }
 
   @Test
@@ -132,18 +137,18 @@ class InterviewTest {
                 "anotherEmployer", Interview.YES,
                 "employer2-anotherEmployer", Interview.NO));
 
-    List<String> ids = ids(Interview.questionsOf(twoEmployers, Topic.JOB));
+    List<String> ids = ids(INTERVIEW.questionsOf(twoEmployers, Topic.JOB));
     assertThat(ids).contains("employer2-employerName", "employer2-grossWage");
     assertThat(ids).doesNotContain("employer3-employerName");
     assertThat(ids.subList(ids.indexOf("employer2-anotherEmployer"), ids.size()))
         .containsExactly("employer2-anotherEmployer", "occupation");
-    assertThat(Interview.find(twoEmployers, "employer2-grossWage").orElseThrow().text())
+    assertThat(INTERVIEW.find(twoEmployers, "employer2-grossWage").orElseThrow().text())
         .startsWith("Arbeitgeber 2:");
-    assertThat(Interview.find(twoEmployers, "employer2-grossWage").orElseThrow().hintId())
+    assertThat(INTERVIEW.find(twoEmployers, "employer2-grossWage").orElseThrow().hintId())
         .isEqualTo("grossWage");
     // The next question after a yes is the first one of the next employer.
-    Question another = Interview.find(twoEmployers, "anotherEmployer").orElseThrow();
-    assertThat(Interview.nextInTopic(twoEmployers, another))
+    Question another = INTERVIEW.find(twoEmployers, "anotherEmployer").orElseThrow();
+    assertThat(INTERVIEW.nextInTopic(twoEmployers, another))
         .map(Question::id)
         .hasValue("employer2-wageCertificate");
   }
@@ -151,12 +156,12 @@ class InterviewTest {
   @Test
   void withoutEmploymentThereAreNoEmployerQuestions() {
     Answers notEmployed = new Answers(Map.of("employed", Interview.NO));
-    assertThat(ids(Interview.questions(notEmployed))).doesNotContain("employerName", "grossWage");
+    assertThat(ids(INTERVIEW.questions(notEmployed))).doesNotContain("employerName", "grossWage");
   }
 
   @Test
   void theCommuteTopicAsksTheAnlageNFieldsWithTheTransportBeforeTheDays() {
-    assertThat(Interview.questionsOf(NONE, Topic.COMMUTE).stream().map(Question::id))
+    assertThat(INTERVIEW.questionsOf(NONE, Topic.COMMUTE).stream().map(Question::id))
         .containsExactly(
             "commuteKm",
             "commuteTransport",
@@ -165,16 +170,16 @@ class InterviewTest {
             "workEquipment",
             "workTraining");
     for (String id : new String[] {"commuteTransport", "commuteDays", "homeOfficeDays"}) {
-      assertThat(Interview.find(NONE, id).orElseThrow().formId()).isEqualTo(AnlageN.ID);
-      assertThat(new AnlageN(null).fields()).anyMatch(field -> field.id().equals(id));
+      assertThat(INTERVIEW.find(NONE, id).orElseThrow().formId()).isEqualTo(AnlageN.ID);
+      assertThat(form(AnlageN.ID).fields()).anyMatch(field -> field.id().equals(id));
     }
   }
 
   @Test
   void backAndNextStayInTheTopicAndThenMoveToTheNeighbourTopic() {
-    Question first = Interview.questionsOf(NONE, Topic.COMMUTE).getFirst();
-    assertThat(Interview.previousInTopic(NONE, first)).isEmpty();
-    assertThat(Interview.nextInTopic(NONE, first)).map(Question::topic).hasValue(Topic.COMMUTE);
+    Question first = INTERVIEW.questionsOf(NONE, Topic.COMMUTE).getFirst();
+    assertThat(INTERVIEW.previousInTopic(NONE, first)).isEmpty();
+    assertThat(INTERVIEW.nextInTopic(NONE, first)).map(Question::topic).hasValue(Topic.COMMUTE);
     assertThat(Interview.previousTopic(Topic.COMMUTE)).hasValue(Topic.JOB);
     assertThat(Interview.previousTopic(Topic.JOB)).isEmpty();
     assertThat(Interview.nextTopic(Topic.HOUSEHOLD)).isEmpty();
@@ -183,14 +188,14 @@ class InterviewTest {
   @Test
   void aFieldAnswerDoesNotAddAPage() {
     Map<String, String> values = new LinkedHashMap<>();
-    Interview.questions(NONE).forEach(question -> values.put(question.id(), Interview.DONE));
-    assertThat(Interview.steps(new Answers(values)))
+    INTERVIEW.questions(NONE).forEach(question -> values.put(question.id(), Interview.DONE));
+    assertThat(INTERVIEW.steps(new Answers(values)))
         .containsExactly(new Step(FilingCheckForm.ID, null), new Step("main", null));
   }
 
   @Test
   void withoutAnyYesTheReturnNeedsOnlyTheFilingCheckAndTheMainForm() {
-    assertThat(Interview.steps(NONE))
+    assertThat(INTERVIEW.steps(NONE))
         .containsExactly(new Step(FilingCheckForm.ID, null), new Step("main", null));
   }
 
@@ -201,12 +206,12 @@ class InterviewTest {
     values.put("medical", Interview.YES);
     values.put("cleaning", Interview.YES);
     values.put("craftsmen", Interview.YES);
-    Interview.questions(new Answers(values))
+    INTERVIEW.questions(new Answers(values))
         .forEach(question -> values.putIfAbsent(question.id(), Interview.NO));
     Answers answers = new Answers(values);
 
-    assertThat(Interview.isDone(answers)).isTrue();
-    assertThat(Interview.steps(answers))
+    assertThat(INTERVIEW.isDone(answers)).isTrue();
+    assertThat(INTERVIEW.steps(answers))
         .containsExactly(
             new Step(FilingCheckForm.ID, null),
             new Step("main", null),
@@ -217,12 +222,12 @@ class InterviewTest {
 
   @Test
   void theHouseholdAsksEachCategoryAndAfterAYesTheInvoiceTheAmountTheLabourAndThePayment() {
-    assertThat(ids(Interview.questionsOf(NONE, Topic.HOUSEHOLD)))
+    assertThat(ids(INTERVIEW.questionsOf(NONE, Topic.HOUSEHOLD)))
         .containsExactly(
             "cleaning", "gardening", "craftsmen", "ancillaryCosts", "childcare", "donations");
 
     Answers cleaning = new Answers(Map.of("cleaning", Interview.YES));
-    List<String> ids = ids(Interview.questionsOf(cleaning, Topic.HOUSEHOLD));
+    List<String> ids = ids(INTERVIEW.questionsOf(cleaning, Topic.HOUSEHOLD));
     assertThat(ids.subList(0, 7))
         .containsExactly(
             "cleaning",
@@ -234,7 +239,7 @@ class InterviewTest {
             "gardening");
     HouseholdServicesForm form = new HouseholdServicesForm();
     for (String id : ids.subList(1, 5)) {
-      Question question = Interview.find(cleaning, id).orElseThrow();
+      Question question = INTERVIEW.find(cleaning, id).orElseThrow();
       assertThat(question.formId()).isEqualTo(HouseholdServicesForm.ID);
       assertThat(form.field(id)).isPresent();
       assertThat(question.text()).startsWith("Reinigung 1:");
@@ -244,14 +249,14 @@ class InterviewTest {
   @Test
   void theAncillaryCostStatementAsksTheLabourForServicesAndForCraftsmen() {
     Answers statement = new Answers(Map.of("ancillaryCosts", Interview.YES));
-    assertThat(ids(Interview.questionsOf(statement, Topic.HOUSEHOLD)))
+    assertThat(ids(INTERVIEW.questionsOf(statement, Topic.HOUSEHOLD)))
         .contains(
             "ancillaryCosts1-statement",
             "ancillaryCosts1-paidAmount",
             "ancillaryCosts1-labourServices",
             "ancillaryCosts1-labourCraftsmen",
             "ancillaryCosts1-another");
-    assertThat(ids(Interview.questionsOf(statement, Topic.HOUSEHOLD)))
+    assertThat(ids(INTERVIEW.questionsOf(statement, Topic.HOUSEHOLD)))
         .doesNotContain("ancillaryCosts1-payment");
   }
 
@@ -259,10 +264,10 @@ class InterviewTest {
   void aYesToAnotherInvoiceAsksTheNextInvoiceOfTheSameCategory() {
     Answers two =
         new Answers(Map.of("craftsmen", Interview.YES, "craftsmen1-another", Interview.YES));
-    List<String> ids = ids(Interview.questionsOf(two, Topic.HOUSEHOLD));
+    List<String> ids = ids(INTERVIEW.questionsOf(two, Topic.HOUSEHOLD));
     assertThat(ids).contains("craftsmen2-invoice", "craftsmen2-another");
     assertThat(ids).doesNotContain("craftsmen3-invoice");
-    assertThat(Interview.find(two, "craftsmen2-paidAmount").orElseThrow().hintId())
+    assertThat(INTERVIEW.find(two, "craftsmen2-paidAmount").orElseThrow().hintId())
         .isEqualTo("paidAmount");
   }
 
@@ -270,7 +275,7 @@ class InterviewTest {
   void aYesToAnotherEmployerAddsNoPage() {
     Answers answers =
         new Answers(Map.of("employed", Interview.YES, "anotherEmployer", Interview.YES));
-    assertThat(Interview.steps(answers))
+    assertThat(INTERVIEW.steps(answers))
         .containsExactly(
             new Step(FilingCheckForm.ID, null), new Step("main", null), new Step(AnlageN.ID, null));
   }
@@ -285,7 +290,7 @@ class InterviewTest {
                 "employer2-anotherEmployer", Interview.NO,
                 Interview.HEALTH_INSURANCE, Interview.STATUTORY));
 
-    List<Question> insurance = Interview.questionsOf(answers, Topic.INSURANCE);
+    List<Question> insurance = INTERVIEW.questionsOf(answers, Topic.INSURANCE);
     assertThat(ids(insurance))
         .containsExactly(
             Interview.HEALTH_INSURANCE,
@@ -306,7 +311,7 @@ class InterviewTest {
             "insurance",
             "medical");
     assertFieldsExist(insurance);
-    Question health = Interview.find(answers, "employer2-healthEmployee").orElseThrow();
+    Question health = INTERVIEW.find(answers, "employer2-healthEmployee").orElseThrow();
     assertThat(health.text()).startsWith("Arbeitgeber 2:").contains("Zeile 25");
     assertThat(health.hintId()).isEqualTo("healthEmployee");
   }
@@ -317,7 +322,7 @@ class InterviewTest {
         new Answers(
             Map.of("employed", Interview.YES, Interview.HEALTH_INSURANCE, Interview.PRIVATE));
 
-    List<Question> insurance = Interview.questionsOf(answers, Topic.INSURANCE);
+    List<Question> insurance = INTERVIEW.questionsOf(answers, Topic.INSURANCE);
     assertThat(ids(insurance))
         .containsExactly(
             Interview.HEALTH_INSURANCE,
@@ -337,7 +342,7 @@ class InterviewTest {
   void withoutEmploymentAPrivateInsuranceAsksOnlyTheInsurer() {
     Answers answers =
         new Answers(Map.of("employed", Interview.NO, Interview.HEALTH_INSURANCE, Interview.PRIVATE));
-    assertThat(ids(Interview.questionsOf(answers, Topic.INSURANCE)))
+    assertThat(ids(INTERVIEW.questionsOf(answers, Topic.INSURANCE)))
         .containsExactly(
             Interview.HEALTH_INSURANCE,
             "privateHealthBasic",
@@ -350,9 +355,9 @@ class InterviewTest {
   @Test
   void beforeTheAnswerToTheHealthInsuranceThereAreNoCertificateLines() {
     Answers answers = new Answers(Map.of("employed", Interview.YES));
-    assertThat(ids(Interview.questionsOf(answers, Topic.INSURANCE)))
+    assertThat(ids(INTERVIEW.questionsOf(answers, Topic.INSURANCE)))
         .containsExactly(Interview.HEALTH_INSURANCE, "insurance", "medical");
-    Question health = Interview.find(answers, Interview.HEALTH_INSURANCE).orElseThrow();
+    Question health = INTERVIEW.find(answers, Interview.HEALTH_INSURANCE).orElseThrow();
     assertThat(health.type()).isEqualTo(Type.CHOICE);
     assertThat(health.allows(Interview.STATUTORY)).isTrue();
     assertThat(health.allows(Interview.YES)).isFalse();
@@ -362,7 +367,7 @@ class InterviewTest {
   @Test
   void eachAnswerToTheHealthInsuranceAddsAnlageVorsorgeaufwand() {
     for (String kind : List.of(Interview.STATUTORY, Interview.PRIVATE)) {
-      assertThat(Interview.steps(new Answers(Map.of(Interview.HEALTH_INSURANCE, kind))))
+      assertThat(INTERVIEW.steps(new Answers(Map.of(Interview.HEALTH_INSURANCE, kind))))
           .containsExactly(
               new Step(FilingCheckForm.ID, null),
               new Step("main", null),
@@ -371,7 +376,7 @@ class InterviewTest {
   }
 
   private static void assertFieldsExist(List<Question> questions) {
-    AnlageVorsorgeaufwand form = new AnlageVorsorgeaufwand();
+    FormModule form = form(AnlageVorsorgeaufwand.ID);
     for (Question question : questions) {
       if (question.type() == Type.FIELD) {
         assertThat(question.formId()).isEqualTo(AnlageVorsorgeaufwand.ID);

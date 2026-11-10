@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.core.form;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.colla69.makemytaxes.core.TaxYear;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +31,8 @@ class AnlageVorsorgeaufwandTest {
 
   @Test
   void eachEmployerWithAnAnswerHasItsOwnBlock() {
-    AnlageVorsorgeaufwand form = new AnlageVorsorgeaufwand();
+    FormModule form =
+        Forms.find(new TaxYear(2022), AnlageVorsorgeaufwand.ID).orElseThrow();
     assertThat(form.fields(BOTH_KINDS).stream().map(Field::section).distinct())
         .containsExactly(
             "Arbeitgeber 1", "Arbeitgeber 2", "Private Kranken- und Pflegeversicherung");

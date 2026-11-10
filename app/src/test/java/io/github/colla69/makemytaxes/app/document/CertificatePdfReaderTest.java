@@ -19,9 +19,13 @@ import org.junit.jupiter.api.Test;
 /** Each PDF here is generated with made-up values in the layout of the official sample 2022. */
 class CertificatePdfReaderTest {
 
+  private static CertificateValues read(byte[] pdf) {
+    return CertificatePdfReader.read(pdf, WageTaxCertificate2022.LAYOUT);
+  }
+
   @Test
   void readsTheValuesOfAGeneratedCertificate() {
-    CertificateValues values = CertificatePdfReader.read(MadeUpCertificate.pdf("2022"));
+    CertificateValues values = read(MadeUpCertificate.pdf("2022"));
 
     assertThat(values.found())
         .containsEntry("employerName", "Beispiel Werkstatt GmbH")
@@ -42,22 +46,21 @@ class CertificatePdfReaderTest {
 
   @Test
   void aCertificateOfAnotherYearGivesNotFoundForEachField() {
-    assertNothingFound(CertificatePdfReader.read(MadeUpCertificate.pdf("2023")));
+    assertNothingFound(read(MadeUpCertificate.pdf("2023")));
   }
 
   @Test
   void aScanWithoutTextGivesNotFoundForEachField() throws IOException {
-    assertNothingFound(CertificatePdfReader.read(scan()));
+    assertNothingFound(read(scan()));
   }
 
   @Test
   void aFileThatIsNotAPdfGivesNotFoundForEachField() {
-    assertNothingFound(
-        CertificatePdfReader.read("not a pdf".getBytes(StandardCharsets.US_ASCII)));
+    assertNothingFound(read("not a pdf".getBytes(StandardCharsets.US_ASCII)));
   }
 
   private static void assertNothingFound(CertificateValues values) {
-    for (String fieldId : WageTaxCertificate2022.fieldIds()) {
+    for (String fieldId : WageTaxCertificate2022.LAYOUT.fieldIds()) {
       assertThat(values.valueOrNotFound(fieldId)).isEqualTo("nicht gefunden");
     }
   }

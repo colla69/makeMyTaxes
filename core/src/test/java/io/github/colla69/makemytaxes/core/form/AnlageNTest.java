@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
 
 class AnlageNTest {
 
-  private final AnlageN form = new AnlageN(YearPack.of(new TaxYear(2022)).orElseThrow());
+  private final AnlageN form =
+      (AnlageN) Forms.find(new TaxYear(2022), AnlageN.ID).orElseThrow();
 
   @Test
   void reviewFollowsTheLinesOfTheFormAndNamesTheEvidence() {

@@ -4,8 +4,8 @@ import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.FormModule;
-import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Interview;
+import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import java.util.HashSet;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -30,18 +30,19 @@ public class ReturnProgress {
     Set<String> done = new HashSet<>();
     household
         .taxYearOf(returnId)
+        .flatMap(YearDefinition::of)
         .ifPresent(
-            taxYear -> {
-              for (FormModule form : Forms.of(taxYear)) {
+            definition -> {
+              for (FormModule form : definition.forms()) {
                 Answers answers = forms.answers(returnId, form.id());
                 if (!answers.values().isEmpty() && form.missing(answers).isEmpty()) {
                   done.add(form.id());
                 }
               }
+              if (definition.interview().isDone(forms.answers(returnId, Interview.ID))) {
+                done.add(Interview.ID);
+              }
             });
-    if (Interview.isDone(forms.answers(returnId, Interview.ID))) {
-      done.add(Interview.ID);
-    }
     return done;
   }
 }

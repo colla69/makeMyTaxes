@@ -1,9 +1,5 @@
 package io.github.colla69.makemytaxes.core.form;
 
-import static io.github.colla69.makemytaxes.core.form.Field.optional;
-import static io.github.colla69.makemytaxes.core.form.Field.required;
-import static io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022.label;
-
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
@@ -20,7 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Anlage N 2022, with one block for each employer, as Mein ELSTER has one entry for each
+ * Anlage N, with one block for each employer, as Mein ELSTER has one entry for each
  * Lohnsteuerbescheinigung. The app does not add the employers together on the review.
  */
 public final class AnlageN implements FormModule {
@@ -29,92 +25,24 @@ public final class AnlageN implements FormModule {
 
   private static final String WORK = "Werbungskosten";
 
-  private record ExpenseLine(ExpenseTopic topic, String line, String label) {}
+  /** The line of an expense topic comes from the {@link FormLayout}, by the name of the topic. */
+  private record ExpenseLine(ExpenseTopic topic, String label) {}
 
   private static final List<ExpenseLine> EXPENSE_LINES =
       List.of(
-          new ExpenseLine(ExpenseTopic.WORK_ASSOCIATIONS, "41", "Beiträge zu Berufsverbänden"),
-          new ExpenseLine(ExpenseTopic.WORK_EQUIPMENT, "42", "Aufwendungen für Arbeitsmittel"),
-          new ExpenseLine(ExpenseTopic.WORK_TRAINING, "46", "Fortbildungskosten"),
-          new ExpenseLine(ExpenseTopic.WORK_OTHER, "48", "Weitere Werbungskosten"));
-
-  /**
-   * The fields of one Lohnsteuerbescheinigung. A label starts with the line on the certificate.
-   * The name and the period have no line on Anlage N.
-   */
-  private static final List<Field> EMPLOYER_FIELDS =
-      List.of(
-          required("employerName", "", "", "Name des Arbeitgebers", Kind.TEXT),
-          optional(
-              "employedFrom",
-              "",
-              "",
-              label("employedFrom", "Dauer des Dienstverhältnisses: vom"),
-              Kind.DATE),
-          optional(
-              "employedTo",
-              "",
-              "",
-              label("employedTo", "Dauer des Dienstverhältnisses: bis"),
-              Kind.DATE),
-          required("taxClass", "", "5", "Steuerklasse", Kind.WHOLE_NUMBER),
-          required("grossWage", "", "6", label("grossWage", "Bruttoarbeitslohn (EUR)"), Kind.MONEY),
-          required("wageTax", "", "7", label("wageTax", "Lohnsteuer (EUR)"), Kind.MONEY),
-          optional(
-              "solidarity", "", "8", label("solidarity", "Solidaritätszuschlag (EUR)"), Kind.MONEY),
-          optional(
-              "churchTax",
-              "",
-              "9",
-              label("churchTax", "Kirchensteuer des Arbeitnehmers (EUR)"),
-              Kind.MONEY),
-          optional(
-              "shortTimeWork",
-              "",
-              "28",
-              label(
-                  "shortTimeWork",
-                  "Kurzarbeitergeld, Zuschuss zum Mutterschaftsgeld, Verdienstausfallentschädigung,"
-                      + " Aufstockungsbetrag (EUR)"),
-              Kind.MONEY),
-          optional(
-                  "employerCommute",
-                  "",
-                  "39",
-                  label("employerCommute", "Arbeitgeberleistungen (EUR)"),
-                  Kind.MONEY)
-              .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."));
-
-  private static final List<Field> WORK_FIELDS =
-      List.of(
-          optional("workplace", WORK, "31", "Erste Tätigkeitsstätte", Kind.TEXT)
-              .withHelp("Postleitzahl, Ort und Straße."),
-          optional(
-              "commuteDays", WORK, "35", "Wege zur Arbeit: aufgesucht an Tagen", Kind.WHOLE_NUMBER),
-          optional(
-                  "commuteKm",
-                  WORK,
-                  "35",
-                  "Wege zur Arbeit: einfache Entfernung (km)",
-                  Kind.WHOLE_NUMBER)
-              .withHelp("Auf volle Kilometer abgerundet."),
-          optional(
-              "commuteTransport",
-              WORK,
-              "35",
-              "Wege zur Arbeit: zurückgelegt mit",
-              Kind.COMMUTE_TRANSPORT),
-          optional("homeOfficeDays", WORK, "45", "Homeoffice: Kalendertage", Kind.WHOLE_NUMBER)
-              .withHelp(
-                  "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den"
-                      + " Betrag."));
+          new ExpenseLine(ExpenseTopic.WORK_ASSOCIATIONS, "Beiträge zu Berufsverbänden"),
+          new ExpenseLine(ExpenseTopic.WORK_EQUIPMENT, "Aufwendungen für Arbeitsmittel"),
+          new ExpenseLine(ExpenseTopic.WORK_TRAINING, "Fortbildungskosten"),
+          new ExpenseLine(ExpenseTopic.WORK_OTHER, "Weitere Werbungskosten"));
 
   private static final Pattern EMPLOYER_ID = Pattern.compile("employer(\\d+)-(.+)");
 
   private final YearPack pack;
+  private final FormLayout layout;
 
-  public AnlageN(YearPack pack) {
+  public AnlageN(YearPack pack, FormLayout layout) {
     this.pack = pack;
+    this.layout = layout;
   }
 
   /**
@@ -144,15 +72,7 @@ public final class AnlageN implements FormModule {
     return count;
   }
 
-  public static List<Field> employerFields(int employer) {
-    return EMPLOYER_FIELDS.stream()
-        .map(
-            field ->
-                field.inEntry(employerFieldId(employer, field.id()), "Arbeitgeber " + employer))
-        .toList();
-  }
-
-  /** The employer payments for commuting, line 39, of all employers together. */
+  /** The employer payments for commuting of all employers together. */
   public static Money employerCommute(Answers answers) {
     Money total = Money.ofCents(0);
     for (int employer = 1; employer <= employerCount(answers); employer++) {
@@ -180,20 +100,12 @@ public final class AnlageN implements FormModule {
   /** One block of fields for each employer, then the work expenses. */
   @Override
   public List<Field> fields(Answers answers) {
-    List<Field> fields = new ArrayList<>();
-    for (int employer = 1; employer <= employerCount(answers); employer++) {
-      fields.addAll(employerFields(employer));
-    }
-    fields.addAll(WORK_FIELDS);
-    return fields;
+    return layout.fields(employerCount(answers));
   }
 
   @Override
   public Optional<Field> field(String fieldId) {
-    Matcher matcher = EMPLOYER_ID.matcher(fieldId);
-    List<Field> candidates =
-        matcher.matches() ? employerFields(Integer.parseInt(matcher.group(1))) : fields();
-    return candidates.stream().filter(field -> field.id().equals(fieldId)).findFirst();
+    return layout.field(fieldId);
   }
 
   /** A day cannot be both, because the home office amount excludes days at the workplace. */
@@ -260,18 +172,19 @@ public final class AnlageN implements FormModule {
     return employers;
   }
 
-  private static List<ReviewLine> expenseLines(ExpenseLine line, List<Expense> expenses) {
+  private List<ReviewLine> expenseLines(ExpenseLine expenseLine, List<Expense> expenses) {
     List<Expense> matching =
-        expenses.stream().filter(e -> e.purpose().topic() == line.topic()).toList();
+        expenses.stream().filter(e -> e.purpose().topic() == expenseLine.topic()).toList();
     if (matching.isEmpty()) {
       return List.of();
     }
+    String line = layout.line(expenseLine.topic().name());
     List<ReviewLine> lines = new ArrayList<>();
     for (Expense expense : matching) {
       lines.add(
           new ReviewLine(
               WORK,
-              line.line(),
+              line,
               expense.purpose().description()
                   + ", bezahlt am "
                   + GermanFormats.format(expense.payment().paidOn()),
@@ -281,9 +194,9 @@ public final class AnlageN implements FormModule {
     lines.add(
         new ReviewLine(
             WORK,
-            line.line(),
-            line.label() + ": Summe",
-            GermanFormats.format(ExpenseSummary.of(matching).totalFor(line.topic())),
+            line,
+            expenseLine.label() + ": Summe",
+            GermanFormats.format(ExpenseSummary.of(matching).totalFor(expenseLine.topic())),
             new Source.Sum()));
     return lines;
   }

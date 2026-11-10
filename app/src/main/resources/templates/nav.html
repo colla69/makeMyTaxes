@@ -23,6 +23,8 @@
            th:href="@{/returns/{id}/review(id=${returnId})}"
            th:attr="aria-current=${tab == 'review'} ? 'page' : null">Übersicht</a>
       </div>
+      <!-- A year without a definition has no forms, so the tabs above say why they are missing. -->
+      <p th:if="${#lists.isEmpty(forms)}" class="no-rules">Für dieses Jahr gibt es noch keine Regeln.</p>
     </nav>
   </body>
 </html>

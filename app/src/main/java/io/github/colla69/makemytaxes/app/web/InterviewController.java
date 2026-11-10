@@ -19,6 +19,7 @@ import io.github.colla69.makemytaxes.core.form.Interview.Topic;
 import io.github.colla69.makemytaxes.core.form.Interview.Type;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.form.MainForm;
+import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -74,16 +75,20 @@ class InterviewController {
   /** The first open question, or the summary of all topics when each question has an answer. */
   @GetMapping("/returns/{returnId}/interview")
   String page(@PathVariable long returnId, Model model) {
-    TaxYear taxYear = taxYearWithForms(returnId);
+    YearDefinition definition = definitionOf(returnId);
+    TaxYear taxYear = definition.pack().taxYear();
+    Interview interview = definition.interview();
     Answers answers = forms.answers(returnId, Interview.ID);
-    var next = Interview.next(answers);
+    var next = interview.next(answers);
     if (next.isPresent()) {
       return questionScreen(returnId, next.get(), model);
     }
     addCommon(returnId, model);
     model.addAttribute(
         "topics", Arrays.stream(Topic.values()).map(topic -> topicView(returnId, topic)).toList());
-    model.addAttribute("steps", steps(returnId, taxYear, answers));
+    model.addAttribute(
+        "steps",
+        interview.steps(answers).stream().map(step -> view(returnId, taxYear, step)).toList());
     return "interview";
   }
 
@@ -93,10 +98,8 @@ class InterviewController {
       @PathVariable String questionId,
       @RequestParam(defaultValue = "false") boolean saved,
       Model model) {
-    taxYearWithForms(returnId);
     model.addAttribute("saved", saved);
-    return questionScreen(
-        returnId, questionOf(forms.answers(returnId, Interview.ID), questionId), model);
+    return questionScreen(returnId, questionOf(returnId, questionId), model);
   }
 
   @GetMapping("/returns/{returnId}/interview/topics/{topic}")
@@ -105,20 +108,20 @@ class InterviewController {
       @PathVariable String topic,
       @RequestParam(defaultValue = "false") boolean saved,
       Model model) {
-    taxYearWithForms(returnId);
+    Interview interview = interviewOf(returnId);
     model.addAttribute("saved", saved);
     Topic shown = topicOf(topic);
     Answers answers = forms.answers(returnId, Interview.ID);
     addCommon(returnId, model);
     model.addAttribute("summary", topicView(returnId, shown));
     model.addAttribute(
-        "back", questionHref(returnId, Interview.questionsOf(answers, shown).getLast()));
+        "back", questionHref(returnId, interview.questionsOf(answers, shown).getLast()));
     model.addAttribute(
         "forward",
         Interview.nextTopic(shown)
             .map(
                 nextTopic ->
-                    questionHref(returnId, Interview.questionsOf(answers, nextTopic).getFirst()))
+                    questionHref(returnId, interview.questionsOf(answers, nextTopic).getFirst()))
             .orElse(interviewHref(returnId)));
     return "interview";
   }
@@ -133,8 +136,7 @@ class InterviewController {
       @PathVariable String questionId,
       @RequestParam(defaultValue = "") String answer,
       Model model) {
-    taxYearWithForms(returnId);
-    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
+    Question question = questionOf(returnId, questionId);
     boolean hasButtons = !question.options().isEmpty();
     if (question.type() == Type.DOCUMENT || (hasButtons && !question.allows(answer))) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
@@ -172,8 +174,7 @@ class InterviewController {
       @RequestParam(required = false) Long documentId,
       Model model)
       throws IOException {
-    taxYearWithForms(returnId);
-    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
+    Question question = questionOf(returnId, questionId);
     if (question.type() != Type.DOCUMENT) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
@@ -193,9 +194,7 @@ class InterviewController {
   String tooLarge(HttpServletRequest request, Model model) {
     long returnId = DocumentController.returnIdOf(request);
     Question question =
-        questionOf(
-            forms.answers(returnId, Interview.ID),
-            DocumentController.pathVariable(request, "questionId"));
+        questionOf(returnId, DocumentController.pathVariable(request, "questionId"));
     model.addAttribute("documentError", DocumentController.TOO_LARGE);
     return questionScreen(returnId, question, model);
   }
@@ -226,8 +225,9 @@ class InterviewController {
   }
 
   /** The new answer can add questions, such as those of another employer. */
-  private static String nextHref(long returnId, Answers answers, Question question) {
-    return Interview.nextInTopic(answers, question)
+  private String nextHref(long returnId, Answers answers, Question question) {
+    return interviewOf(returnId)
+        .nextInTopic(answers, question)
         .map(next -> questionHref(returnId, next))
         .orElse(topicHref(returnId, question.topic()));
   }
@@ -242,8 +242,7 @@ class InterviewController {
       @PathVariable long returnId,
       @PathVariable String questionId,
       @RequestParam(defaultValue = "") String value) {
-    taxYearWithForms(returnId);
-    Question question = questionOf(forms.answers(returnId, Interview.ID), questionId);
+    Question question = questionOf(returnId, questionId);
     if (question.type() != Type.FIELD) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
@@ -254,7 +253,7 @@ class InterviewController {
   /** Clears the interview answers. The values in the forms stay. */
   @PostMapping("/returns/{returnId}/interview/restart")
   String restart(@PathVariable long returnId) {
-    taxYearWithForms(returnId);
+    definitionOf(returnId);
     forms.save(returnId, Interview.ID, new Answers(Map.of()));
     return "redirect:" + interviewHref(returnId);
   }
@@ -285,7 +284,7 @@ class InterviewController {
   private String questionScreen(long returnId, Question question, Model model) {
     addCommon(returnId, model);
     Answers answers = forms.answers(returnId, Interview.ID);
-    List<Question> inTopic = Interview.questionsOf(answers, question.topic());
+    List<Question> inTopic = interviewOf(returnId).questionsOf(answers, question.topic());
     model.addAttribute("question", question);
     model.addAttribute("topicLabel", question.topic().label());
     model.addAttribute("position", inTopic.indexOf(question) + 1);
@@ -314,8 +313,7 @@ class InterviewController {
       Answers main = forms.answers(returnId, MainForm.ID);
       model.addAttribute(
           "details",
-          new MainForm()
-              .personalFields().stream()
+          MainForm.personalFields().stream()
                   .map(field -> new DetailView(field.label(), main.text(field.id())))
                   .toList());
       model.addAttribute(
@@ -332,7 +330,10 @@ class InterviewController {
   private String readValue(long returnId, long document, Field field) {
     return documents
         .find(returnId, document)
-        .map(stored -> CertificatePdfReader.read(documents.content(stored.id())))
+        .map(
+            stored ->
+                CertificatePdfReader.read(
+                    documents.content(stored.id()), definitionOf(returnId).certificate()))
         .flatMap(read -> read.value(field.hintId()))
         .orElse("");
   }
@@ -345,21 +346,21 @@ class InterviewController {
   }
 
   private void addCommon(long returnId, Model model) {
-    TaxYear taxYear = taxYearWithForms(returnId);
+    YearDefinition definition = definitionOf(returnId);
+    Interview interview = definition.interview();
+    Answers answers = forms.answers(returnId, Interview.ID);
     model.addAttribute("returnId", returnId);
     model.addAttribute("tab", Interview.ID);
-    model.addAttribute("taxYear", taxYear.value());
-    model.addAttribute("forms", Forms.of(taxYear));
-    model.addAttribute(
-        "answeredCount", Interview.answeredCount(forms.answers(returnId, Interview.ID)));
-    model.addAttribute(
-        "questionCount", Interview.questions(forms.answers(returnId, Interview.ID)).size());
+    model.addAttribute("taxYear", definition.pack().taxYear().value());
+    model.addAttribute("forms", definition.forms());
+    model.addAttribute("answeredCount", interview.answeredCount(answers));
+    model.addAttribute("questionCount", interview.questions(answers).size());
   }
 
   private TopicView topicView(long returnId, Topic topic) {
     Answers answers = forms.answers(returnId, Interview.ID);
     List<AnsweredView> views =
-        Interview.questionsOf(answers, topic).stream()
+        interviewOf(returnId).questionsOf(answers, topic).stream()
             .map(
                 question ->
                     new AnsweredView(
@@ -396,8 +397,9 @@ class InterviewController {
     };
   }
 
-  private static String backHref(long returnId, Answers answers, Question question) {
-    return Interview.previousInTopic(answers, question)
+  private String backHref(long returnId, Answers answers, Question question) {
+    return interviewOf(returnId)
+        .previousInTopic(answers, question)
         .map(previous -> questionHref(returnId, previous))
         .or(() -> Interview.previousTopic(question.topic()).map(topic -> topicHref(returnId, topic)))
         .orElse(null);
@@ -415,10 +417,6 @@ class InterviewController {
     return interviewHref(returnId) + "/topics/" + topic.name();
   }
 
-  private static List<StepView> steps(long returnId, TaxYear taxYear, Answers answers) {
-    return Interview.steps(answers).stream().map(step -> view(returnId, taxYear, step)).toList();
-  }
-
   private static StepView view(long returnId, TaxYear taxYear, Step step) {
     if (step.isForm()) {
       FormModule form = Forms.find(taxYear, step.formId()).orElseThrow();
@@ -433,8 +431,10 @@ class InterviewController {
         "Erfassen Sie jede Zahlung mit der Kategorie „" + step.topic().label() + "“.");
   }
 
-  private static Question questionOf(Answers answers, String questionId) {
-    return Interview.find(answers, questionId).orElseThrow(InterviewController::notFound);
+  private Question questionOf(long returnId, String questionId) {
+    return interviewOf(returnId)
+        .find(forms.answers(returnId, Interview.ID), questionId)
+        .orElseThrow(InterviewController::notFound);
   }
 
   private static Topic topicOf(String name) {
@@ -445,16 +445,19 @@ class InterviewController {
   }
 
   private FormModule formOf(long returnId, String formId) {
-    return Forms.find(taxYearWithForms(returnId), formId).orElseThrow();
+    return Forms.find(definitionOf(returnId).pack().taxYear(), formId).orElseThrow();
   }
 
-  /** A year without a year pack has no forms, so the interview could point nowhere. */
-  private TaxYear taxYearWithForms(long returnId) {
-    TaxYear taxYear = household.taxYearOf(returnId).orElseThrow(InterviewController::notFound);
-    if (Forms.of(taxYear).isEmpty()) {
-      throw notFound();
-    }
-    return taxYear;
+  private Interview interviewOf(long returnId) {
+    return definitionOf(returnId).interview();
+  }
+
+  /** A year without a definition has no forms, so the interview could point nowhere. */
+  private YearDefinition definitionOf(long returnId) {
+    return household
+        .taxYearOf(returnId)
+        .flatMap(YearDefinition::of)
+        .orElseThrow(InterviewController::notFound);
   }
 
   private static ResponseStatusException notFound() {

@@ -227,7 +227,7 @@ class WageTaxCertificateReader2022Test {
   void aDocumentWithoutTextGivesNotFoundForEachField() {
     CertificateValues values = WageTaxCertificateReader2022.read(CertificateText.EMPTY);
 
-    for (String fieldId : WageTaxCertificate2022.fieldIds()) {
+    for (String fieldId : WageTaxCertificate2022.LAYOUT.fieldIds()) {
       assertThat(values.valueOrNotFound(fieldId)).isEqualTo("nicht gefunden");
     }
   }

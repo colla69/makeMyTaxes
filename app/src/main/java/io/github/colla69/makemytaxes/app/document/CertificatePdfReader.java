@@ -2,7 +2,7 @@ package io.github.colla69.makemytaxes.app.document;
 
 import io.github.colla69.makemytaxes.core.form.CertificateText;
 import io.github.colla69.makemytaxes.core.form.CertificateValues;
-import io.github.colla69.makemytaxes.core.form.WageTaxCertificateReader2022;
+import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import org.apache.pdfbox.Loader;
@@ -14,7 +14,7 @@ import org.apache.pdfbox.text.PDFTextStripperByArea;
 
 /**
  * Reads the text of a stored PDF on this machine with Apache PDFBox and finds the values of a
- * Lohnsteuerbescheinigung 2022 in it. It reads the first page only. A scan has no text, so each
+ * Lohnsteuerbescheinigung in it. It reads the first page only. A scan has no text, so each
  * field is not found. There is no OCR.
  */
 public final class CertificatePdfReader {
@@ -27,8 +27,9 @@ public final class CertificatePdfReader {
 
   private CertificatePdfReader() {}
 
-  public static CertificateValues read(byte[] pdf) {
-    return WageTaxCertificateReader2022.read(textOf(pdf));
+  /** The values of a certificate with the layout of the year of the return. */
+  public static CertificateValues read(byte[] pdf, WageTaxCertificate certificate) {
+    return certificate.read(textOf(pdf));
   }
 
   /** The text of the first page, or no text if the file is not a readable PDF. */

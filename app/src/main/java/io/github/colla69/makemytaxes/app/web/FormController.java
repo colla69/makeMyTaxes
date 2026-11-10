@@ -1,5 +1,7 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.document.CertificatePdfReader;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore.StoredExpense;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
@@ -11,12 +13,14 @@ import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.filing.FilingCheck;
 import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.CertificateValues;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
+import io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022;
 import io.github.colla69.makemytaxes.core.form.WorkExpenseEstimate;
 import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.time.LocalDate;
@@ -91,17 +95,32 @@ class FormController {
 
   record FormReview(String title, List<SectionView> sections, List<Field> missing) {}
 
-  /** The fields of one section. {@code documentHref} is the certificate beside them, or null. */
-  record FieldGroup(String title, List<Field> fields, String documentHref) {}
+  /**
+   * The fields of one section. {@code documentId} is the certificate beside them, or null, and
+   * {@code documentHref} its address.
+   */
+  record FieldGroup(String title, List<Field> fields, Long documentId, String documentHref) {}
+
+  /**
+   * One field in the check against a certificate. {@code read} is the value that the app read from
+   * the certificate, or empty if it did not find one. {@code input} is the value on the page, or
+   * the read value if the page has none.
+   */
+  record CheckRow(
+      String fieldId, String label, String certificateLine, String kind, String read,
+      String input) {}
 
   private final HouseholdStore household;
   private final ExpenseStore expenses;
   private final FormStore forms;
+  private final DocumentStore documents;
 
-  FormController(HouseholdStore household, ExpenseStore expenses, FormStore forms) {
+  FormController(
+      HouseholdStore household, ExpenseStore expenses, FormStore forms, DocumentStore documents) {
     this.household = household;
     this.expenses = expenses;
     this.forms = forms;
+    this.documents = documents;
   }
 
   @GetMapping("/returns/{returnId}/forms/{formId}")
@@ -174,6 +193,46 @@ class FormController {
     }
     forms.saveAnswer(returnId, formId, field, text);
     return ResponseEntity.ok(String.join("\n", form.check(forms.answers(returnId, formId))));
+  }
+
+  /**
+   * The dialog that checks the values of the fields from one certificate against the values that
+   * the app reads from it. The page sends the values in its fields. This saves nothing: the page
+   * saves the values after the user confirms them in the dialog.
+   */
+  @PostMapping("/returns/{returnId}/forms/{formId}/document-check")
+  String documentCheck(
+      @PathVariable long returnId,
+      @PathVariable String formId,
+      @RequestParam long document,
+      @RequestParam Map<String, String> submitted,
+      Model model) {
+    FormModule form = formOf(returnId, formId);
+    documents.find(returnId, document).orElseThrow(FormController::notFound);
+    CertificateValues read = CertificatePdfReader.read(documents.content(document));
+    Answers interview = forms.answers(returnId, Interview.ID);
+    List<CheckRow> rows = new ArrayList<>();
+    for (Field field : form.fields(forms.answers(returnId, formId))) {
+      OptionalLong source = Interview.certificateDocument(interview, field.id());
+      if (source.isPresent() && source.getAsLong() == document) {
+        rows.add(checkRow(field, read, submitted.getOrDefault(field.id(), "").strip()));
+      }
+    }
+    model.addAttribute("rows", rows);
+    return "document-check :: dialog";
+  }
+
+  /** A value that the app did not read stays empty: the app never suggests a value of its own. */
+  private static CheckRow checkRow(Field field, CertificateValues read, String onPage) {
+    String certificateId = field.hintId();
+    String readValue = read.value(certificateId).orElse("");
+    return new CheckRow(
+        field.id(),
+        field.label(),
+        WageTaxCertificate2022.lineOf(certificateId).orElse("ohne Zeile"),
+        field.kind().name(),
+        readValue,
+        onPage.isEmpty() ? readValue : onPage);
   }
 
   @GetMapping("/returns/{returnId}/review")
@@ -263,19 +322,18 @@ class FormController {
     }
     return bySection.entrySet().stream()
         .map(
-            entry ->
-                new FieldGroup(
-                    entry.getKey(),
-                    entry.getValue(),
-                    documentHref(returnId, interview, entry.getValue().getFirst())))
+            entry -> {
+              OptionalLong document =
+                  Interview.certificateDocument(interview, entry.getValue().getFirst().id());
+              return document.isPresent()
+                  ? new FieldGroup(
+                      entry.getKey(),
+                      entry.getValue(),
+                      document.getAsLong(),
+                      "/returns/" + returnId + "/documents/" + document.getAsLong())
+                  : new FieldGroup(entry.getKey(), entry.getValue(), null, null);
+            })
         .toList();
-  }
-
-  private static String documentHref(long returnId, Answers interview, Field field) {
-    OptionalLong document = Interview.certificateDocument(interview, field.id());
-    return document.isPresent()
-        ? "/returns/" + returnId + "/documents/" + document.getAsLong()
-        : null;
   }
 
   private FormModule formOf(long returnId, String formId) {

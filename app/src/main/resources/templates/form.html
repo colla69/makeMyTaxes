@@ -6,6 +6,7 @@
     <title th:text="${form.title} + ' ' + ${taxYear}">Vordruck</title>
     <link rel="stylesheet" th:href="@{/app.css}">
     <script th:src="@{/fields.js}" defer></script>
+    <script th:src="@{/document-check.js}" defer></script>
   </head>
   <body>
     <nav th:replace="~{nav :: nav}"></nav>
@@ -22,6 +23,10 @@
           th:action="@{/returns/{r}/forms/{f}(r=${returnId},f=${form.id})}">
       <section class="field-group" th:each="group : ${fieldGroups}">
         <h2 th:text="${group.title}">Abschnitt</h2>
+        <p th:if="${group.documentId}">
+          <button type="button"
+                  th:data-document-check="@{/returns/{r}/forms/{f}/document-check(r=${returnId},f=${form.id},document=${group.documentId})}">Mit der Lohnsteuerbescheinigung prüfen</button>
+        </p>
         <div th:classappend="${group.documentHref} ? 'with-document'">
         <div class="fields">
           <th:block th:each="field : ${group.fields}">

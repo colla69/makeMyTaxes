@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!--
+      The check of the values of one certificate. document-check.js opens it as a modal dialog.
+      The inputs have no name, so the autosave of fields.js never saves them. Only "Übernehmen"
+      copies them into the fields of the page, and the page saves them.
+    -->
+    <dialog id="document-check" class="document-check" th:fragment="dialog"
+            aria-labelledby="document-check-title">
+      <h2 id="document-check-title">Werte mit der Lohnsteuerbescheinigung prüfen</h2>
+      <p class="help">
+        Vergleichen Sie jeden Wert mit dem Beleg. Ein Wert, der nicht mit dem gelesenen Wert
+        übereinstimmt, ist markiert. Erst „Übernehmen“ speichert die Werte.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Feld</th>
+            <th>Zeile der Bescheinigung</th>
+            <th>Gelesener Wert</th>
+            <th>Eingabe</th>
+            <th>Prüfung</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${rows}" th:data-field="${row.fieldId}" th:data-read="${row.read}"
+              th:data-kind="${row.kind}">
+            <td th:text="${row.label}">Feld</td>
+            <td th:text="${row.certificateLine}">Zeile 3</td>
+            <td class="read" th:text="${#strings.isEmpty(row.read)} ? 'nicht gefunden' : ${row.read}">1,00</td>
+            <td>
+              <input th:value="${row.input}" th:data-kind="${row.kind}" th:aria-label="${row.label}"
+                     th:inputmode="${row.kind == 'MONEY' ? 'decimal' : (row.kind == 'DATE' or row.kind == 'WHOLE_NUMBER' ? 'numeric' : null)}">
+            </td>
+            <td class="mark"></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="form-buttons">
+        <button type="button" data-check-confirm>Übernehmen</button>
+        <button type="button" data-check-cancel>Abbrechen</button>
+      </p>
+    </dialog>
+  </body>
+</html>

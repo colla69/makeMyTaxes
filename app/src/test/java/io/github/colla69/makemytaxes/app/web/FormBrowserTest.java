@@ -424,9 +424,43 @@ class FormBrowserTest {
   }
 
   @Test
-  void aReturnWithoutAYearPackHasNoFormsYet() {
+  void aReturnOf2023ShowsAllTabsAndAFilledAnlageNReachesTheReview() {
     Page page = browser.newPage();
     openANewReturn(page, "2023");
+
+    assertThat(link(page, "Übersicht")).hasCount(1);
+    assertThat(link(page, "Fragen")).hasCount(1);
+    for (String form : FORM_TABS) {
+      assertThat(link(page, form)).hasCount(1);
+    }
+    assertThat(page.getByText(NO_RULES)).hasCount(0);
+
+    link(page, "Anlage N").click();
+    assertThat(page.locator(".without-lines")).isVisible();
+    fill(page, "grossWage", "2345,6");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N")))
+        .containsText("2.345,60");
+  }
+
+  @Test
+  void aFormOf2022DoesNotSayItHasNoLinesOfTheForm() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    link(page, "Anlage N").click();
+
+    assertThat(page.locator("#answers")).isVisible();
+    assertThat(page.locator(".without-lines")).hasCount(0);
+  }
+
+  @Test
+  void aReturnWithoutAYearPackHasNoFormsYet() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2024");
 
     assertThat(page.getByLabel("Datum")).isVisible();
     assertThat(link(page, "Übersicht")).hasCount(0);

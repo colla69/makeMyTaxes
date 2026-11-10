@@ -124,7 +124,10 @@ public final class AnlageN implements FormModule {
     for (ExpenseLine expenseLine : EXPENSE_LINES) {
       work.addAll(expenseLines(expenseLine, expenses));
     }
-    work.sort(Comparator.comparingInt(line -> Integer.parseInt(line.line())));
+    // A year without the lines of its form keeps the order of the form.
+    work.sort(
+        Comparator.comparingInt(
+            line -> line.line().isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(line.line())));
     employers.addAll(work);
     return employers;
   }

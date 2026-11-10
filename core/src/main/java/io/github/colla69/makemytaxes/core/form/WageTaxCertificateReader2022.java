@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
  */
 public final class WageTaxCertificateReader2022 {
 
-  private static final int YEAR = 2022;
   private static final int LAST_LINE = 34;
 
   private static final Pattern TITLE =
@@ -49,12 +48,22 @@ public final class WageTaxCertificateReader2022 {
   private WageTaxCertificateReader2022() {}
 
   public static CertificateValues read(CertificateText text) {
+    return read(text, 2022);
+  }
+
+  /**
+   * Reads a certificate of another year with the same lines as the sample of 2022. The sample of
+   * 2023 has the same lines: {@code WageTaxCertificate2023Test} names it.
+   *
+   * @param taxYear the year that the certificate must have in its title and its period
+   */
+  public static CertificateValues read(CertificateText text, int taxYear) {
     Map<String, String> found = new HashMap<>();
-    if (yearOf(text.page()).filter(year -> year == YEAR).isEmpty()) {
+    if (yearOf(text.page()).filter(year -> year == taxYear).isEmpty()) {
       return new CertificateValues(found);
     }
     readLeftColumn(text.leftColumn(), found);
-    readRightColumn(text.rightColumn(), found);
+    readRightColumn(text.rightColumn(), found, taxYear);
     return new CertificateValues(found);
   }
 
@@ -83,7 +92,7 @@ public final class WageTaxCertificateReader2022 {
     return Optional.empty();
   }
 
-  private static void readRightColumn(String column, Map<String, String> found) {
+  private static void readRightColumn(String column, Map<String, String> found, int taxYear) {
     Map<String, List<String>> amounts = new HashMap<>();
     List<String> periods = new ArrayList<>();
     int line = 0;
@@ -109,7 +118,7 @@ public final class WageTaxCertificateReader2022 {
         amounts.computeIfAbsent(line + part, key -> new ArrayList<>()).add(amountText(amount));
       }
     }
-    putPeriod(periods, found);
+    putPeriod(periods, found, taxYear);
     putAmounts(new Amounts(amounts), found);
   }
 
@@ -131,23 +140,24 @@ public final class WageTaxCertificateReader2022 {
   }
 
   /** Line 1 shows the period without the year, such as "01.01.-31.12.". */
-  private static void putPeriod(List<String> periods, Map<String, String> found) {
+  private static void putPeriod(List<String> periods, Map<String, String> found, int taxYear) {
     if (periods.size() != 1) {
       return;
     }
     String[] dates = periods.getFirst().split("-");
-    Optional<LocalDate> from = dateOf(dates[0]);
-    Optional<LocalDate> to = dateOf(dates[1]);
+    Optional<LocalDate> from = dateOf(dates[0], taxYear);
+    Optional<LocalDate> to = dateOf(dates[1], taxYear);
     if (from.isPresent() && to.isPresent() && !from.get().isAfter(to.get())) {
       found.put("employedFrom", GermanFormats.format(from.get()));
       found.put("employedTo", GermanFormats.format(to.get()));
     }
   }
 
-  private static Optional<LocalDate> dateOf(String text) {
-    String withYear = text.endsWith(".") ? text + YEAR : text;
+  private static Optional<LocalDate> dateOf(String text, int taxYear) {
+    String withYear = text.endsWith(".") ? text + taxYear : text;
     try {
-      return Optional.of(GermanFormats.parseDate(withYear)).filter(date -> date.getYear() == YEAR);
+      return Optional.of(GermanFormats.parseDate(withYear))
+          .filter(date -> date.getYear() == taxYear);
     } catch (IllegalArgumentException e) {
       return Optional.empty();
     }

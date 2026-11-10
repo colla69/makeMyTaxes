@@ -413,6 +413,7 @@ class FormController {
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
+    model.addAttribute("withoutFormLines", definitionOf(returnId).lacksFormLines(form.id()));
     model.addAttribute("fieldGroups", fieldGroups(returnId, form.fields(new Answers(values))));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);

@@ -41,6 +41,12 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.webjars.npm</groupId>
       <artifactId>htmx.org</artifactId>
       <version>${htmx.version}</version>

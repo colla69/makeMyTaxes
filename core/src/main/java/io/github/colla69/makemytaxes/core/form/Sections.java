@@ -129,8 +129,10 @@ public final class Sections {
    */
   public static final Section WORK_FROM_2023 =
       work(
-          "Tage, an denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
-              + " Tätigkeitsstätte aufgesucht haben. Das Finanzamt berechnet den Betrag.");
+          "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61): Tage, an"
+              + " denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
+              + " Tätigkeitsstätte aufgesucht haben. Ohne anderen Arbeitsplatz gilt Zeile 62,"
+              + " die die App noch nicht unterstützt. Das Finanzamt berechnet den Betrag.");
 
   private static Section work(String homeOfficeHelp) {
     return Section.once(

@@ -424,7 +424,7 @@ class FormBrowserTest {
   @Test
   void aReturnWithoutAYearPackHasNoFormsYet() {
     Page page = browser.newPage();
-    openANewReturn(page, "2021");
+    openANewReturn(page, "2023");
 
     assertThat(page.getByLabel("Datum")).isVisible();
     assertThat(link(page, "Übersicht")).hasCount(0);
@@ -559,12 +559,6 @@ class FormBrowserTest {
 
     link(page, "Hauptvordruck").click();
     assertThat(page.locator("#answers .field .help").first()).not().isEmpty();
-
-    link(page, "Zurück").click();
-    Locator taxYear = page.getByLabel("Steuerjahr").first();
-    assertThat(taxYear).hasAttribute("type", "number");
-    assertThat(taxYear).hasAttribute("min", "2000");
-    assertThat(taxYear).hasAttribute("max", "2100");
   }
 
   @Test
@@ -795,10 +789,8 @@ class FormBrowserTest {
     page.locator("#new-person [name=lastName]").fill(lastName);
     page.locator("#new-person [name=lastName]").press("Enter");
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
-    section.getByLabel("Steuerjahr").fill(year);
-    section.getByLabel("Steuerjahr").press("Enter");
     section
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung " + year))
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung " + year))
         .click();
     assertThat(page.getByLabel("Datum")).isVisible();
   }

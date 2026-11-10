@@ -704,9 +704,7 @@ class InterviewBrowserTest {
     form.locator("[name=street]").fill("Musterweg");
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
-    section.getByLabel("Steuerjahr").fill("2022");
-    section.getByLabel("Steuerjahr").press("Enter");
-    section.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2022")).click();
+    section.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022")).click();
     tab(page, "Fragen").click();
     assertThat(page.locator("#question")).isVisible();
   }

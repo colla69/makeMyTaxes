@@ -121,11 +121,18 @@ public class HouseholdStore {
         > 0;
   }
 
-  /** Adding a year twice keeps the existing return and its expenses. */
-  public void addReturn(long personId, TaxYear taxYear) {
+  /**
+   * Returns the id of the person's return for the year, and creates the return first if it does
+   * not exist. Adding a year twice keeps the existing return and its expenses.
+   */
+  public long addReturn(long personId, TaxYear taxYear) {
     jdbc.sql("insert or ignore into tax_return(person_id, tax_year) values (?, ?)")
         .params(personId, taxYear.value())
         .update();
+    return jdbc.sql("select id from tax_return where person_id = ? and tax_year = ?")
+        .params(personId, taxYear.value())
+        .query(Long.class)
+        .single();
   }
 
   public Optional<Long> personOf(long returnId) {

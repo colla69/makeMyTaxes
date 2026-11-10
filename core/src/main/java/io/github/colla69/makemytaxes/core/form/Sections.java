@@ -132,8 +132,9 @@ public final class Sections {
       work(
           "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder"
               + " überlassenem Kraftwagen in Anlage N Zeile 34, mit einer Sammelbeförderung des"
-              + " Arbeitgebers in Zeile 35, mit öffentlichen Verkehrsmitteln, Fahrrad, zu Fuß oder"
-              + " Carsharing in Zeile 36. Haben Sie mehrere Verkehrsmittel genutzt, teilen Sie die"
+              + " Arbeitgebers in Zeile 35, mit öffentlichen Verkehrsmitteln, Motorrad, Fahrrad oder"
+              + " Ähnlichem, zu Fuß oder als Mitfahrer einer Fahrgemeinschaft in Zeile 36. Haben"
+              + " Sie mehrere Verkehrsmittel genutzt, teilen Sie die"
               + " Kilometer auf diese Zeilen auf.",
           "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61): Tage, an"
               + " denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"

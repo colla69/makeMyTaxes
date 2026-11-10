@@ -97,6 +97,8 @@ class Definition2024Test {
     "Kraftwagen, Anlage N Zeile 34",
     "Sammelbeförderung des Arbeitgebers, Zeile 35",
     "öffentlichen Verkehrsmitteln, Zeile 36",
+    "Motorrad, Zeile 36",
+    "Mitfahrer einer Fahrgemeinschaft, Zeile 36",
   })
   void theTransportHelpNamesTheLineOfEachChoice(String transport, String line) {
     String help = anlageN.field("commuteTransport").orElseThrow().help();

@@ -1,26 +1,16 @@
 package io.github.colla69.makemytaxes.core.form;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
-import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.util.List;
 import java.util.Optional;
 
-/** The form modules of a tax year. A year without a year pack has none yet. */
+/** The form modules of a tax year. A year without a {@link YearDefinition} has none yet. */
 public final class Forms {
 
   private Forms() {}
 
   public static List<FormModule> of(TaxYear taxYear) {
-    return YearPack.of(taxYear)
-        .<List<FormModule>>map(
-            pack ->
-                List.of(
-                    new FilingCheckForm(pack),
-                    new MainForm(),
-                    new AnlageN(pack),
-                    new AnlageVorsorgeaufwand(),
-                    new HouseholdServicesForm()))
-        .orElse(List.of());
+    return YearDefinition.of(taxYear).map(YearDefinition::forms).orElse(List.of());
   }
 
   public static Optional<FormModule> find(TaxYear taxYear, String formId) {

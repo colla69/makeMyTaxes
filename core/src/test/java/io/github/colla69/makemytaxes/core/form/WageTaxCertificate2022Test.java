@@ -3,7 +3,6 @@ package io.github.colla69.makemytaxes.core.form;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
-import io.github.colla69.makemytaxes.core.year.YearPack;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,8 +18,11 @@ import org.junit.jupiter.params.provider.CsvSource;
  */
 class WageTaxCertificate2022Test {
 
-  private final AnlageN anlageN = new AnlageN(YearPack.of(new TaxYear(2022)).orElseThrow());
-  private final AnlageVorsorgeaufwand vorsorge = new AnlageVorsorgeaufwand();
+  private static final WageTaxCertificate CERTIFICATE = WageTaxCertificate2022.LAYOUT;
+
+  private final FormModule anlageN = Forms.find(new TaxYear(2022), AnlageN.ID).orElseThrow();
+  private final FormModule vorsorge =
+      Forms.find(new TaxYear(2022), AnlageVorsorgeaufwand.ID).orElseThrow();
 
   @ParameterizedTest(name = "{0} is on {1}")
   @DisplayName("Sample of the Lohnsteuerbescheinigung 2022, print mark 3.21: lines of Anlage N")
@@ -35,7 +37,7 @@ class WageTaxCertificate2022Test {
     "employerCommute, Zeile 17 und 18"
   })
   void eachWageFieldShowsItsLine(String fieldId, String line) {
-    assertThat(WageTaxCertificate2022.lineOf(fieldId)).hasValue(line);
+    assertThat(CERTIFICATE.lineOf(fieldId)).hasValue(line);
     assertThat(anlageN.field(fieldId).orElseThrow().label()).startsWith(line + " ");
     assertThat(anlageN.field("employer2-" + fieldId).orElseThrow().label()).startsWith(line + " ");
   }
@@ -54,7 +56,7 @@ class WageTaxCertificate2022Test {
     "unemploymentEmployee, Zeile 27"
   })
   void eachSocialInsuranceFieldShowsItsLine(String fieldId, String line) {
-    assertThat(WageTaxCertificate2022.lineOf(fieldId)).hasValue(line);
+    assertThat(CERTIFICATE.lineOf(fieldId)).hasValue(line);
     assertThat(vorsorge.field(fieldId).orElseThrow().label()).startsWith(line + " ");
   }
 
@@ -64,15 +66,21 @@ class WageTaxCertificate2022Test {
           + " have no numbered line")
   void theTaxClassAndTheEmployerAreOnTheCertificateWithoutALine() {
     for (String fieldId : new String[] {"taxClass", "employerName"}) {
-      assertThat(WageTaxCertificate2022.isOnCertificate(fieldId)).isTrue();
-      assertThat(WageTaxCertificate2022.lineOf(fieldId)).isEmpty();
+      assertThat(CERTIFICATE.fieldIds()).contains(fieldId);
+      assertThat(CERTIFICATE.lineOf(fieldId)).isEmpty();
       assertThat(anlageN.field(fieldId).orElseThrow().label()).doesNotContain("Zeile");
     }
   }
 
   @Test
   void aFieldFromAnotherSourceIsNotOnTheCertificate() {
-    assertThat(WageTaxCertificate2022.isOnCertificate("commuteKm")).isFalse();
-    assertThat(WageTaxCertificate2022.isOnCertificate("privateHealthBasic")).isFalse();
+    assertThat(CERTIFICATE.fieldIds()).doesNotContain("commuteKm", "privateHealthBasic");
+    assertThat(Sections.isOnCertificate("commuteKm")).isFalse();
+  }
+
+  @Test
+  void theSectionsHoldExactlyTheFieldsOfTheCertificate() {
+    assertThat(Sections.certificateFieldIds())
+        .containsExactlyInAnyOrderElementsOf(CERTIFICATE.fieldIds());
   }
 }

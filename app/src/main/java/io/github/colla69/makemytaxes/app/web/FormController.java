@@ -23,8 +23,9 @@ import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
 import io.github.colla69.makemytaxes.core.form.Source;
-import io.github.colla69.makemytaxes.core.form.WageTaxCertificate2022;
+import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
 import io.github.colla69.makemytaxes.core.form.WorkExpenseEstimate;
+import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import io.github.colla69.makemytaxes.core.year.YearPack;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -241,30 +242,29 @@ class FormController {
       Model model) {
     FormModule form = formOf(returnId, formId);
     documents.find(returnId, document).orElseThrow(FormController::notFound);
-    CertificateValues read = CertificatePdfReader.read(documents.content(document));
+    WageTaxCertificate certificate = definitionOf(returnId).certificate();
+    CertificateValues read = CertificatePdfReader.read(documents.content(document), certificate);
     Answers interview = forms.answers(returnId, Interview.ID);
     List<CheckRow> rows = new ArrayList<>();
     for (Field field : form.fields(forms.answers(returnId, formId))) {
       OptionalLong source = Interview.certificateDocument(interview, field.id());
       if (source.isPresent() && source.getAsLong() == document) {
-        rows.add(checkRow(field, read, submitted.getOrDefault(field.id(), "").strip()));
+        // A value that the app did not read stays empty: the app never suggests a value of its own.
+        String certificateId = field.hintId();
+        String readValue = read.value(certificateId).orElse("");
+        String onPage = submitted.getOrDefault(field.id(), "").strip();
+        rows.add(
+            new CheckRow(
+                field.id(),
+                field.label(),
+                certificate.lineOf(certificateId).orElse("ohne Zeile"),
+                field.kind().name(),
+                readValue,
+                onPage.isEmpty() ? readValue : onPage));
       }
     }
     model.addAttribute("rows", rows);
     return "document-check :: dialog";
-  }
-
-  /** A value that the app did not read stays empty: the app never suggests a value of its own. */
-  private static CheckRow checkRow(Field field, CertificateValues read, String onPage) {
-    String certificateId = field.hintId();
-    String readValue = read.value(certificateId).orElse("");
-    return new CheckRow(
-        field.id(),
-        field.label(),
-        WageTaxCertificate2022.lineOf(certificateId).orElse("ohne Zeile"),
-        field.kind().name(),
-        readValue,
-        onPage.isEmpty() ? readValue : onPage);
   }
 
   @GetMapping("/returns/{returnId}/review")
@@ -454,6 +454,10 @@ class FormController {
 
   private YearPack packOf(TaxYear taxYear) {
     return YearPack.of(taxYear).orElseThrow(FormController::notFound);
+  }
+
+  private YearDefinition definitionOf(long returnId) {
+    return YearDefinition.of(taxYearOf(returnId)).orElseThrow(FormController::notFound);
   }
 
   private TaxYear taxYearOf(long returnId) {

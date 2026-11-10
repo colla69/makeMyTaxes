@@ -22,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Controller
 class HomeController {
 
-  private static final List<Field> PERSONAL_FIELDS = new MainForm().personalFields();
+  private static final List<Field> PERSONAL_FIELDS = MainForm.personalFields();
 
   /** The years that the start page offers as a button for each person. */
   private static final List<Integer> YEARS = List.of(2022, 2023, 2024, 2025, 2026);

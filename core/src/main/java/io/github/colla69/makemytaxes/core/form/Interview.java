@@ -171,23 +171,22 @@ public final class Interview {
 
   private record EmployerQuestion(String fieldId, String text) {}
 
-  private static EmployerQuestion amountQuestion(String fieldId, String name) {
+  private EmployerQuestion amountQuestion(String fieldId, String name) {
     return new EmployerQuestion(
-        fieldId,
-        "Welcher Betrag steht in %s, %s?".formatted(WageTaxCertificate2022.line(fieldId), name));
+        fieldId, "Welcher Betrag steht in %s, %s?".formatted(certificate.line(fieldId), name));
   }
 
   /** One question for each line of the Lohnsteuerbescheinigung, in the order of the form. */
-  private static final List<EmployerQuestion> EMPLOYER_QUESTIONS =
-      List.of(
+  private List<EmployerQuestion> employerQuestions() {
+    return List.of(
           new EmployerQuestion("employerName", "Wie heißt der Arbeitgeber?"),
           new EmployerQuestion(
               "employedFrom",
-              WageTaxCertificate2022.line("employedFrom")
+              certificate.line("employedFrom")
                   + " der Lohnsteuerbescheinigung: Ab welchem Tag dauerte das Dienstverhältnis?"),
           new EmployerQuestion(
               "employedTo",
-              WageTaxCertificate2022.line("employedTo")
+              certificate.line("employedTo")
                   + " der Lohnsteuerbescheinigung: Bis zu welchem Tag dauerte das"
                   + " Dienstverhältnis?"),
           new EmployerQuestion(
@@ -204,6 +203,7 @@ public final class Interview {
               "employerCommute",
               "Wie hoch ist die Summe von Zeile 17 und Zeile 18, Arbeitgeberleistungen für Fahrten"
                   + " zur Arbeit?"));
+  }
 
   private static final List<Question> JOB_AND_COMMUTE =
       List.of(
@@ -316,14 +316,19 @@ public final class Interview {
                   + " Partei?",
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
-  private Interview() {}
+  private final WageTaxCertificate certificate;
+
+  /** The interview of a year. The questions name the lines of the certificate of that year. */
+  public Interview(WageTaxCertificate certificate) {
+    this.certificate = certificate;
+  }
 
   /**
    * The questions for these interview answers. A yes to {@link #EMPLOYED} adds the questions of
    * the first employer, and each yes to {@link #ANOTHER_EMPLOYER} adds one more employer. The
    * answer to {@link #HEALTH_INSURANCE} adds the social insurance lines of each employer.
    */
-  public static List<Question> questions(Answers answers) {
+  public List<Question> questions(Answers answers) {
     List<Question> questions = new ArrayList<>(START);
     int employers = employerCount(answers);
     for (int employer = 1; employer <= employers; employer++) {
@@ -356,25 +361,25 @@ public final class Interview {
    * The social insurance lines of each certificate, and for a private insurance the values of the
    * certificate of the insurer. Without an answer to the kind of health insurance, there are none.
    */
-  private static List<Question> insuranceQuestions(String healthInsurance, int employers) {
+  private List<Question> insuranceQuestions(String healthInsurance, int employers) {
     if (!HEALTH_INSURANCE_QUESTION.allows(healthInsurance)) {
       return List.of();
     }
     boolean isPrivate = PRIVATE.equals(healthInsurance);
-    List<Field> lines =
+    List<String> lines =
         isPrivate
             ? AnlageVorsorgeaufwand.PRIVATE_EMPLOYER_FIELDS
             : AnlageVorsorgeaufwand.STATUTORY_EMPLOYER_FIELDS;
     List<Question> questions = new ArrayList<>();
     for (int employer = 1; employer <= employers; employer++) {
-      for (Field line : lines) {
+      for (String fieldId : lines) {
         questions.add(
             Question.field(
                 AnlageVorsorgeaufwand.ID,
-                AnlageN.employerFieldId(employer, line.id()),
+                AnlageN.employerFieldId(employer, fieldId),
                 Topic.INSURANCE,
                 "Arbeitgeber %d: Welcher Betrag steht auf der Lohnsteuerbescheinigung in %s?"
-                    .formatted(employer, line.label().replace(" (EUR)", ""))));
+                    .formatted(employer, socialInsuranceLabel(fieldId).replace(" (EUR)", ""))));
       }
     }
     if (isPrivate) {
@@ -382,12 +387,22 @@ public final class Interview {
         questions.add(
             Question.field(
                 AnlageVorsorgeaufwand.ID,
-                AnlageVorsorgeaufwand.PRIVATE_FIELDS.get(index).id(),
+                Sections.PRIVATE_HEALTH.fields().get(index).id(),
                 Topic.INSURANCE,
                 PRIVATE_TEXTS.get(index)));
       }
     }
     return questions;
+  }
+
+  /** The label of a social insurance field, with its line on the certificate of the year. */
+  private String socialInsuranceLabel(String fieldId) {
+    Field field =
+        Sections.SOCIAL_INSURANCE.fields().stream()
+            .filter(candidate -> candidate.id().equals(fieldId))
+            .findFirst()
+            .orElseThrow();
+    return certificate.label(fieldId, field.label());
   }
 
   /**
@@ -434,7 +449,7 @@ public final class Interview {
     int employer = AnlageN.employerOf(fieldId);
     String document = answers.text(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE_DOCUMENT));
     boolean fromCertificate =
-        WageTaxCertificate2022.isOnCertificate(fieldId.substring(fieldId.indexOf('-') + 1))
+        Sections.isOnCertificate(fieldId.substring(fieldId.indexOf('-') + 1))
             && YES.equals(answers.text(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE)))
             && !document.isEmpty();
     return fromCertificate ? OptionalLong.of(Long.parseLong(document)) : OptionalLong.empty();
@@ -450,7 +465,7 @@ public final class Interview {
     return AnlageN.employerFieldId(employer, ANOTHER_EMPLOYER);
   }
 
-  private static List<Question> employerQuestions(Answers answers, int employer) {
+  private List<Question> employerQuestions(Answers answers, int employer) {
     List<Question> questions = new ArrayList<>();
     String prefix = "Arbeitgeber " + employer + ": ";
     String certificateId = AnlageN.employerFieldId(employer, WAGE_CERTIFICATE);
@@ -464,7 +479,7 @@ public final class Interview {
               Topic.JOB,
               prefix + "Laden Sie die Lohnsteuerbescheinigung hoch, oder wählen Sie sie aus."));
     }
-    for (EmployerQuestion question : EMPLOYER_QUESTIONS) {
+    for (EmployerQuestion question : employerQuestions()) {
       questions.add(
           Question.field(
               AnlageN.ID,
@@ -481,28 +496,28 @@ public final class Interview {
     return questions;
   }
 
-  public static Optional<Question> find(Answers answers, String id) {
+  public Optional<Question> find(Answers answers, String id) {
     return questions(answers).stream().filter(question -> question.id().equals(id)).findFirst();
   }
 
-  public static List<Question> questionsOf(Answers answers, Topic topic) {
+  public List<Question> questionsOf(Answers answers, Topic topic) {
     return questions(answers).stream().filter(question -> question.topic() == topic).toList();
   }
 
   /** The first question without an answer, or none when the interview is done. */
-  public static Optional<Question> next(Answers answers) {
+  public Optional<Question> next(Answers answers) {
     return questions(answers).stream().filter(question -> !answers.has(question.id())).findFirst();
   }
 
   /** The question after this one in the same topic, or none after the last one of the topic. */
-  public static Optional<Question> nextInTopic(Answers answers, Question question) {
+  public Optional<Question> nextInTopic(Answers answers, Question question) {
     List<Question> topic = questionsOf(answers, question.topic());
     int index = topic.indexOf(question);
     return index + 1 < topic.size() ? Optional.of(topic.get(index + 1)) : Optional.empty();
   }
 
   /** The question before this one in the same topic, or none before the first one. */
-  public static Optional<Question> previousInTopic(Answers answers, Question question) {
+  public Optional<Question> previousInTopic(Answers answers, Question question) {
     List<Question> topic = questionsOf(answers, question.topic());
     int index = topic.indexOf(question);
     return index > 0 ? Optional.of(topic.get(index - 1)) : Optional.empty();
@@ -523,11 +538,11 @@ public final class Interview {
         : Optional.empty();
   }
 
-  public static long answeredCount(Answers answers) {
+  public long answeredCount(Answers answers) {
     return questions(answers).stream().filter(question -> answers.has(question.id())).count();
   }
 
-  public static boolean isDone(Answers answers) {
+  public boolean isDone(Answers answers) {
     return next(answers).isEmpty();
   }
 
@@ -541,7 +556,7 @@ public final class Interview {
   }
 
   /** The pages that the return needs, in the order of the questions. */
-  public static List<Step> steps(Answers answers) {
+  public List<Step> steps(Answers answers) {
     List<Step> steps = new ArrayList<>(ALWAYS);
     for (Question question : questions(answers)) {
       if (question.step() != null

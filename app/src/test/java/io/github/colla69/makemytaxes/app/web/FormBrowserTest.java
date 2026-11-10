@@ -45,6 +45,8 @@ class FormBrowserTest {
   /** The browser rounds column widths, so two equal columns can differ by a part of a pixel. */
   private static final double LAYOUT_ROUNDING = 0.1;
 
+  private static final String NO_RULES = "Für dieses Jahr gibt es noch keine Regeln.";
+
   /** The tabs of the forms with fields. */
   private static final List<String> FORM_TABS =
       List.of(
@@ -430,6 +432,18 @@ class FormBrowserTest {
     assertThat(link(page, "Übersicht")).hasCount(0);
     assertThat(link(page, "Anlage N")).hasCount(0);
     assertThat(link(page, "Fragen")).hasCount(0);
+    assertThat(page.getByText(NO_RULES)).isVisible();
+    link(page, "Belege").click();
+    assertThat(page.getByText(NO_RULES)).isVisible();
+  }
+
+  @Test
+  void aReturnOfAYearWithADefinitionDoesNotSayItHasNoRules() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+
+    assertThat(link(page, "Anlage N")).hasCount(1);
+    assertThat(page.getByText(NO_RULES)).hasCount(0);
   }
 
   @Test

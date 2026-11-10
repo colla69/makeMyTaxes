@@ -93,7 +93,19 @@ public final class Sections {
 
   /** Anlage N: the workplace, the way to work and the home office. */
   public static final Section WORK =
-      Section.once(
+      work("Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den Betrag.");
+
+  /**
+   * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and
+   * 31.12.2025. The work is done mostly at home, and the first place of work is not visited.
+   */
+  public static final Section WORK_2025 =
+      work(
+          "Tage, an denen Sie überwiegend zu Hause gearbeitet und Ihre erste Tätigkeitsstätte nicht"
+              + " aufgesucht haben. Das Finanzamt berechnet den Betrag.");
+
+  private static Section work(String homeOfficeHelp) {
+    return Section.once(
               optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
                   .withHelp("Postleitzahl, Ort und Straße."),
               optional(
@@ -121,10 +133,9 @@ public final class Sections {
                       "",
                       "Homeoffice: Kalendertage",
                       Kind.WHOLE_NUMBER)
-                  .withHelp(
-                      "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet"
-                          + " den Betrag."))
-          .withCheck(Sections::checkWork);
+                  .withHelp(homeOfficeHelp))
+        .withCheck(Sections::checkWork);
+  }
 
   /**
    * Anlage Vorsorgeaufwand: the social insurance values of one Lohnsteuerbescheinigung, in the

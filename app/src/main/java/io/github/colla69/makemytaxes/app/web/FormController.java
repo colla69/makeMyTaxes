@@ -96,15 +96,20 @@ class FormController {
   /** The rates and limits of the year pack that the estimate uses. The page names their source. */
   record LimitsView(
       String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
-      String homeOfficeLimit) {
+      String homeOfficeLimit, String homeOfficeDay, String homeOfficeSource) {
 
     static LimitsView of(YearPack pack) {
+      boolean mostlyAtHome = pack.homeOfficeDayIsMostlyAtHome();
       return new LimitsView(
           GermanFormats.format(pack.commutePerKmFirst20()),
           GermanFormats.format(pack.commutePerKmFrom21()),
           GermanFormats.format(pack.commuteLimitWithoutCar()),
           GermanFormats.format(pack.homeOfficePerDay()),
-          GermanFormats.format(pack.homeOfficeLimit()));
+          GermanFormats.format(pack.homeOfficeLimit()),
+          mostlyAtHome
+              ? "für jeden Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte"
+              : "für jeden Tag nur zu Hause",
+          mostlyAtHome ? "§ 4 Abs. 5 Satz 1 Nr. 6c EStG" : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG");
     }
   }
 

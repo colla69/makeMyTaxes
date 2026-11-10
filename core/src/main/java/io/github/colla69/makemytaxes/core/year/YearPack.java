@@ -4,6 +4,7 @@ import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Money;
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,8 +16,9 @@ import java.util.Optional;
  * @param commutePerKmFirst20 the commuting rate for each of the first 20 km, § 9(1) no. 4 EStG
  * @param commutePerKmFrom21 the commuting rate from the 21st km, § 9(1) no. 4 EStG
  * @param commuteLimitWithoutCar the yearly commuting limit without a car, § 9(1) no. 4 EStG
- * @param homeOfficePerDay the home office amount for each day, § 4(5) no. 6b EStG
- * @param homeOfficeLimit the yearly home office limit, § 4(5) no. 6b EStG
+ * @param homeOfficePerDay the home office amount for each day, § 4(5) no. 6b EStG in 2022 and
+ *     no. 6c EStG from 2023
+ * @param homeOfficeLimit the yearly home office limit, in the same provision
  * @param mandatoryDeadline the last day of a mandatory return without an adviser
  */
 public record YearPack(
@@ -44,13 +46,39 @@ public record YearPack(
           Money.ofCents(600_00),
           LocalDate.of(2023, 10, 2));
 
+  private static final YearPack YEAR_2025 =
+      new YearPack(
+          new TaxYear(2025),
+          Money.ofCents(410_00),
+          Money.ofCents(13_362_00),
+          Money.ofCents(1_230_00),
+          Money.ofCents(30),
+          Money.ofCents(38),
+          Money.ofCents(4_500_00),
+          Money.ofCents(6_00),
+          Money.ofCents(1_260_00),
+          LocalDate.of(2026, 7, 31));
+
+  private static final Map<TaxYear, YearPack> PACKS =
+      Map.of(YEAR_2022.taxYear, YEAR_2022, YEAR_2025.taxYear, YEAR_2025);
+
   public static Optional<YearPack> of(TaxYear taxYear) {
-    return taxYear.equals(YEAR_2022.taxYear) ? Optional.of(YEAR_2022) : Optional.empty();
+    return Optional.ofNullable(PACKS.get(taxYear));
   }
 
   /** The tax can be assessed for four years after the end of the tax year: §§ 169, 170 AO. */
   public LocalDate voluntaryDeadline() {
     return LocalDate.of(taxYear.value() + 4, 12, 31);
+  }
+
+  /**
+   * True if a home office day is a day of work mostly at home without a visit to the first place
+   * of work, under § 4(5) no. 6c EStG. § 52(6) sentence 13 EStG applies that rule, in the version
+   * of the law of 16.12.2022, to work at home after 31.12.2022. Before, a day of work only at home
+   * counted, under § 4(5) no. 6b sentence 4 EStG.
+   */
+  public boolean homeOfficeDayIsMostlyAtHome() {
+    return taxYear.value() >= 2023;
   }
 
   public int daysInYear() {

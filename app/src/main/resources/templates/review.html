@@ -16,7 +16,7 @@
       <a id="export" th:href="@{/returns/{id}/review/export(id=${returnId})}" download>Übersicht mit Belegen exportieren</a>
       <span class="help">Eine ZIP-Datei mit dieser Übersicht und allen verknüpften Belegen, als Nachweis der Abgabe.</span>
     </p>
-    <p>Tragen Sie diese Werte in Mein ELSTER ein. Die Zeilennummern stammen aus den Vordrucken 2022. „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
+    <p>Tragen Sie diese Werte in Mein ELSTER ein. <span id="lines-source" th:text="'Die Zeilennummern stammen aus den Vordrucken ' + ${taxYear} + '.'">Die Zeilennummern stammen aus den Vordrucken.</span> „Zeile“ in einer Bezeichnung meint die Zeile der Lohnsteuerbescheinigung.</p>
 
     <section th:replace="~{filing-result :: result}"></section>
 
@@ -34,7 +34,7 @@
         <li id="limit-commute" th:with="l=${estimate.limits}"
             th:text="'Wege zur Arbeit: ' + ${l.perKmFirst20} + ' EUR je vollen Kilometer bis 20 km, ' + ${l.perKmFrom21} + ' EUR ab dem 21. Kilometer, für jeden Tag an der ersten Tätigkeitsstätte. Ohne eigenen oder überlassenen Kraftwagen höchstens ' + ${l.commuteLimit} + ' EUR im Jahr. Quelle: § 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG. Arbeitgeberleistungen mindern den Betrag: § 9 Abs. 1 Satz 3 Nr. 4 Satz 5, § 3 Nr. 15 Satz 3 und § 40 Abs. 2 Satz 2 Nr. 1 EStG.'">Wege zur Arbeit</li>
         <li id="limit-home-office" th:with="l=${estimate.limits}"
-            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR für jeden Tag nur zu Hause, höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: § 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG mit § 9 Abs. 5 EStG.'">Homeoffice</li>
+            th:text="'Homeoffice: ' + ${l.homeOfficePerDay} + ' EUR ' + ${l.homeOfficeCondition} + ', höchstens ' + ${l.homeOfficeLimit} + ' EUR im Jahr. Quelle: ' + ${l.homeOfficeSource} + '.'">Homeoffice</li>
         <li>Erfasste Ausgaben: die Summe der Beträge, die Sie als Werbungskosten erfasst haben. Die App verteilt keine Kosten über mehrere Jahre (Absetzung für Abnutzung, § 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG). Prüfen Sie das bei teuren Arbeitsmitteln selbst.</li>
       </ul>
       <p th:if="${estimate.aboveLumpSum}">Ihre Werbungskosten liegen über dem Pauschbetrag. Sie zählen daher in voller Höhe.</p>

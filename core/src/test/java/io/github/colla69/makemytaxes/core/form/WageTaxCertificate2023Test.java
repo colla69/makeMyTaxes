@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Expense;
+import io.github.colla69.makemytaxes.core.expense.Money;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -17,8 +18,7 @@ import org.junit.jupiter.params.provider.CsvSource;
  * https://www.elster.de/eportal/attachments/help_lstb_2023/Muster_LSTB_2023.pdf, read on
  * 10.11.2026. Lines 1 to 34 have the same numbers and parts as the sample of 2022, print mark 3.21.
  *
- * <p>The forms of 2023 have no line of the form yet, because the official forms of 2023 are not
- * in law/forms/2023.
+ * <p>The lines of the forms come from the official forms of 2023 in law/forms/2023.
  */
 class WageTaxCertificate2023Test {
 
@@ -80,21 +80,113 @@ class WageTaxCertificate2023Test {
         .containsExactlyInAnyOrderElementsOf(CERTIFICATE.fieldIds());
   }
 
-  @Test
-  void theFormsOf2023HaveNoLineOfTheFormAndSaySo() {
-    for (String formId : List.of(MainForm.ID, AnlageN.ID, AnlageVorsorgeaufwand.ID)) {
-      FormModule form = Forms.find(YEAR, formId).orElseThrow();
-      assertThat(form.fields()).extracting(Field::line).containsOnly("");
-      assertThat(definition.lacksFormLines(formId)).isTrue();
-    }
-    assertThat(definition.lacksFormLines(HouseholdServicesForm.ID)).isFalse();
+  @ParameterizedTest(name = "{1} is on line {2}")
+  @DisplayName(
+      "Official forms 2023 in law/forms/2023: Hauptvordruck 2023ESt1A011NET/012NET and Anlage N"
+          + " 2023AnlN031NET to 034NET, September 2023")
+  @CsvSource({
+    "main, taxNumber, 4",
+    "main, taxOffice, 5",
+    "main, taxId, 8",
+    "main, birthDate, 8",
+    "main, lastName, 9",
+    "main, firstName, 10",
+    "main, occupation, 12",
+    "main, street, 13",
+    "main, houseNumber, 14",
+    "main, postalCode, 15",
+    "main, city, 16",
+    "main, iban, 30",
+    "main, benefits, 35",
+    "main, notes, 37",
+    "anlage-n, taxClass, 4",
+    "anlage-n, grossWage, 5",
+    "anlage-n, wageTax, 6",
+    "anlage-n, solidarity, 7",
+    "anlage-n, churchTax, 8",
+    "anlage-n, shortTimeWork, 23",
+    "anlage-n, workplace, 30",
+    "anlage-n, commuteDays, 32",
+    "anlage-n, commuteKm, 33",
+    "anlage-n, employerCommute, 54",
+    "anlage-n, homeOfficeDays, 61",
+    "anlage-n, homeOfficeDaysNoWorkplace, 62"
+  })
+  void theFieldsHaveTheLinesOfTheFormsOf2023(String formId, String fieldId, String line) {
+    FormLayout layout = definition.layouts().get(formId);
+
+    assertThat(layout.field(fieldId)).map(Field::line).hasValue(line);
+  }
+
+  @ParameterizedTest(name = "{0} is on line {1}")
+  @DisplayName("Official form Anlage N 2023, 2023AnlN033NET: the lines of the expense topics")
+  @CsvSource({
+    "WORK_ASSOCIATIONS, 56",
+    "WORK_EQUIPMENT, 57",
+    "WORK_TRAINING, 63",
+    "WORK_OTHER, 65"
+  })
+  void theExpenseTopicsHaveTheLinesOfAnlageN2023(String topic, String line) {
+    assertThat(definition.layouts().get(AnlageN.ID).line(topic)).isEqualTo(line);
   }
 
   @Test
-  void theFormsOf2022HaveTheirLines() {
-    YearDefinition of2022 = YearDefinition.of(new TaxYear(2022)).orElseThrow();
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentence 1 EStG, version 31.12.2023: a day with another workplace"
+          + " counts only without a trip to the first workplace")
+  void aDayWithAnotherWorkplaceCannotAlsoBeACommuteDay() {
+    Answers answers =
+        new Answers(
+            Map.of("commuteDays", "230", "homeOfficeDays", "136", "commuteTransport", "CAR"));
 
-    assertThat(of2022.lacksFormLines(AnlageN.ID)).isFalse();
+    assertThat(anlageN.check(answers))
+        .containsExactly(
+            "Tage mit Wegen zur Arbeit und Homeoffice-Tage mit anderem Arbeitsplatz ergeben"
+                + " zusammen 366, aber 2023 hat nur 365 Tage.");
+  }
+
+  @Test
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentence 2 EStG, version 31.12.2023: without another workplace, a"
+          + " day with a trip to work also counts")
+  void withoutAnotherWorkplaceACommuteDayAlsoCounts() {
+    Answers answers =
+        new Answers(
+            Map.of(
+                "commuteDays", "230",
+                Sections.NO_WORKPLACE_DAYS, "200",
+                "commuteTransport", "CAR"));
+
+    assertThat(anlageN.check(answers)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Official form Anlage N 2023, lines 61 and 62: a day goes on one line only")
+  void bothHomeOfficeLinesTogetherFitInTheYear() {
+    Answers answers =
+        new Answers(Map.of("homeOfficeDays", "200", Sections.NO_WORKPLACE_DAYS, "166"));
+
+    assertThat(anlageN.check(answers))
+        .containsExactly("Die Homeoffice-Tage ergeben zusammen 366, aber 2023 hat nur 365 Tage.");
+  }
+
+  @Test
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c EStG, version 31.12.2023: 6 euros for each day of both lines,"
+          + " limit 1 260 euros")
+  void theEstimateCountsTheDaysOfBothLines() {
+    Answers answers =
+        new Answers(Map.of("homeOfficeDays", "10", Sections.NO_WORKPLACE_DAYS, "20"));
+
+    assertThat(WorkExpenseEstimate.of(definition.pack(), answers, List.of()).homeOffice())
+        .isEqualTo(Money.ofCents(180_00));
+  }
+
+  @Test
+  void theInterviewOf2023AsksForBothHomeOfficeLines() {
+    assertThat(definition.interview().questions(new Answers(Map.of())))
+        .extracting(Interview.Question::id)
+        .contains("homeOfficeDays", Sections.NO_WORKPLACE_DAYS);
   }
 
   @Test

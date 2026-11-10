@@ -22,6 +22,9 @@ public final class Sections {
   private static final String WORK_TITLE = "Werbungskosten";
   private static final String PRIVATE_TITLE = "Private Kranken- und Pflegeversicherung";
 
+  /** The home office days without another workplace, § 4(5) sentence 1 no. 6c sentence 2 EStG. */
+  public static final String NO_WORKPLACE_DAYS = "homeOfficeDaysNoWorkplace";
+
   /** Hauptvordruck: the tax office and the person. */
   public static final Section GENERAL =
       Section.once(
@@ -91,40 +94,85 @@ public final class Sections {
                   .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
           .withCheck(Sections::checkPeriod);
 
-  /** Anlage N: the workplace, the way to work and the home office. */
+  private static final List<Field> COMMUTE_FIELDS =
+      List.of(
+          optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
+              .withHelp("Postleitzahl, Ort und Straße."),
+          optional(
+              "commuteDays",
+              WORK_TITLE,
+              "",
+              "Wege zur Arbeit: aufgesucht an Tagen",
+              Kind.WHOLE_NUMBER),
+          optional(
+                  "commuteKm",
+                  WORK_TITLE,
+                  "",
+                  "Wege zur Arbeit: einfache Entfernung (km)",
+                  Kind.WHOLE_NUMBER)
+              .withHelp("Auf volle Kilometer abgerundet."),
+          optional(
+              "commuteTransport",
+              WORK_TITLE,
+              "",
+              "Wege zur Arbeit: zurückgelegt mit",
+              Kind.COMMUTE_TRANSPORT));
+
+  /**
+   * Anlage N until 2022: the workplace, the way to work and the home office. A home office day is
+   * a day of work only at home, § 4(5) sentence 1 no. 6b sentence 4 EStG.
+   */
   public static final Section WORK =
       Section.once(
-              optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
-                  .withHelp("Postleitzahl, Ort und Straße."),
-              optional(
-                  "commuteDays",
-                  WORK_TITLE,
-                  "",
-                  "Wege zur Arbeit: aufgesucht an Tagen",
-                  Kind.WHOLE_NUMBER),
-              optional(
-                      "commuteKm",
-                      WORK_TITLE,
-                      "",
-                      "Wege zur Arbeit: einfache Entfernung (km)",
-                      Kind.WHOLE_NUMBER)
-                  .withHelp("Auf volle Kilometer abgerundet."),
-              optional(
-                  "commuteTransport",
-                  WORK_TITLE,
-                  "",
-                  "Wege zur Arbeit: zurückgelegt mit",
-                  Kind.COMMUTE_TRANSPORT),
-              optional(
-                      "homeOfficeDays",
-                      WORK_TITLE,
-                      "",
-                      "Homeoffice: Kalendertage",
-                      Kind.WHOLE_NUMBER)
-                  .withHelp(
-                      "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet"
-                          + " den Betrag."))
+              Stream.concat(
+                      COMMUTE_FIELDS.stream(),
+                      Stream.of(
+                          optional(
+                                  "homeOfficeDays",
+                                  WORK_TITLE,
+                                  "",
+                                  "Homeoffice: Kalendertage",
+                                  Kind.WHOLE_NUMBER)
+                              .withHelp(
+                                  "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt"
+                                      + " berechnet den Betrag.")))
+                  .toArray(Field[]::new))
           .withCheck(Sections::checkWork);
+
+  /**
+   * Anlage N from 2023: the workplace, the way to work and the day rate of § 4(5) sentence 1 no.
+   * 6c EStG. The form has a line for days with another workplace (sentence 1) and a line for days
+   * without one (sentence 2). A day goes on one line only.
+   */
+  public static final Section WORK_DAY_RATE =
+      Section.once(
+              Stream.concat(
+                      COMMUTE_FIELDS.stream(),
+                      Stream.of(
+                          optional(
+                                  "homeOfficeDays",
+                                  WORK_TITLE,
+                                  "",
+                                  "Homeoffice mit anderem Arbeitsplatz: Kalendertage",
+                                  Kind.WHOLE_NUMBER)
+                              .withHelp(
+                                  "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht: Tage,"
+                                      + " an denen Sie ganz oder überwiegend zu Hause gearbeitet haben"
+                                      + " und nicht zur ersten Tätigkeitsstätte gefahren sind. Das"
+                                      + " Finanzamt berechnet den Betrag."),
+                          optional(
+                                  NO_WORKPLACE_DAYS,
+                                  WORK_TITLE,
+                                  "",
+                                  "Homeoffice ohne anderen Arbeitsplatz: Kalendertage",
+                                  Kind.WHOLE_NUMBER)
+                              .withHelp(
+                                  "Nur wenn Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung"
+                                      + " steht: Tage, an denen Sie auch zu Hause gearbeitet haben,"
+                                      + " auch mit einem Weg zur Arbeit am selben Tag. Zählen Sie"
+                                      + " diese Tage nicht im Feld davor.")))
+                  .toArray(Field[]::new))
+          .withCheck(Sections::checkWorkDayRate);
 
   /**
    * Anlage Vorsorgeaufwand: the social insurance values of one Lohnsteuerbescheinigung, in the
@@ -223,11 +271,41 @@ public final class Sections {
           "Tage mit Wegen zur Arbeit und Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
               .formatted(days, pack.taxYear().value(), pack.daysInYear()));
     }
-    // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
-    if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
-      messages.add("Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
-    }
+    messages.addAll(checkTransport(answers));
     return messages;
+  }
+
+  /**
+   * Days with another workplace exclude a trip to the first workplace (no. 6c sentence 1). Days
+   * without another workplace may have a trip (sentence 2), but a day goes on one line only.
+   */
+  private static List<String> checkWorkDayRate(Answers answers, int employer, YearPack pack) {
+    List<String> messages = new ArrayList<>();
+    long homeOfficeDays = answers.wholeNumber("homeOfficeDays");
+    long withCommute = answers.wholeNumber("commuteDays") + homeOfficeDays;
+    if (withCommute > pack.daysInYear()) {
+      messages.add(
+          ("Tage mit Wegen zur Arbeit und Homeoffice-Tage mit anderem Arbeitsplatz ergeben zusammen"
+                  + " %d, aber %d hat nur %d Tage.")
+              .formatted(withCommute, pack.taxYear().value(), pack.daysInYear()));
+    }
+    long homeOffice = homeOfficeDays + answers.wholeNumber(NO_WORKPLACE_DAYS);
+    if (homeOffice > pack.daysInYear()) {
+      messages.add(
+          "Die Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
+              .formatted(homeOffice, pack.taxYear().value(), pack.daysInYear()));
+    }
+    messages.addAll(checkTransport(answers));
+    return messages;
+  }
+
+  /** The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer. */
+  private static List<String> checkTransport(Answers answers) {
+    if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
+      return List.of(
+          "Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
+    }
+    return List.of();
   }
 
   private static Optional<LocalDate> dateOf(Answers answers, String fieldId) {

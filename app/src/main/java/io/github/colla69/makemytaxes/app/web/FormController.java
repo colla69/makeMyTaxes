@@ -96,7 +96,7 @@ class FormController {
   /** The rates and limits of the year pack that the estimate uses. The page names their source. */
   record LimitsView(
       String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
-      String homeOfficeLimit) {
+      String homeOfficeLimit, String homeOfficeCondition, String homeOfficeSource) {
 
     static LimitsView of(YearPack pack) {
       return new LimitsView(
@@ -104,7 +104,9 @@ class FormController {
           GermanFormats.format(pack.commutePerKmFrom21()),
           GermanFormats.format(pack.commuteLimitWithoutCar()),
           GermanFormats.format(pack.homeOfficePerDay()),
-          GermanFormats.format(pack.homeOfficeLimit()));
+          GermanFormats.format(pack.homeOfficeLimit()),
+          pack.homeOfficeRule().condition(),
+          pack.homeOfficeRule().source());
     }
   }
 
@@ -413,7 +415,6 @@ class FormController {
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
     model.addAttribute("form", form);
-    model.addAttribute("withoutFormLines", definitionOf(returnId).lacksFormLines(form.id()));
     model.addAttribute("fieldGroups", fieldGroups(returnId, form.fields(new Answers(values))));
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);

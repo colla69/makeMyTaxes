@@ -19,6 +19,7 @@ import java.util.Optional;
  *     no. 6c EStG from 2023
  * @param homeOfficeLimit the yearly home office limit, § 4(5) no. 6b EStG until 2022 and no. 6c
  *     EStG from 2023
+ * @param homeOfficeRule the rule that decides which days count for the home office amount
  * @param wageLimit the wage limit of § 46(2) no. 3 and no. 4 EStG for a single person. From 2023
  *     the law names no amount, but the sum of the Grundfreibetrag, the employee lump sum and the
  *     Sonderausgaben lump sum.
@@ -34,6 +35,7 @@ public record YearPack(
     Money commuteLimitWithoutCar,
     Money homeOfficePerDay,
     Money homeOfficeLimit,
+    HomeOfficeRule homeOfficeRule,
     LocalDate mandatoryDeadline) {
 
   private static final YearPack YEAR_2022 =
@@ -47,6 +49,7 @@ public record YearPack(
           Money.ofCents(4_500_00),
           Money.ofCents(5_00),
           Money.ofCents(600_00),
+          HomeOfficeRule.ONLY_AT_HOME,
           LocalDate.of(2023, 10, 2));
 
   private static final YearPack YEAR_2023 =
@@ -60,6 +63,7 @@ public record YearPack(
           Money.ofCents(4_500_00),
           Money.ofCents(6_00),
           Money.ofCents(1_260_00),
+          HomeOfficeRule.DAY_RATE,
           LocalDate.of(2024, 9, 2));
 
   private static final Map<TaxYear, YearPack> PACKS =

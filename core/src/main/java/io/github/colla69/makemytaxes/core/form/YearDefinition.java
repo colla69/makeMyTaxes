@@ -11,15 +11,9 @@ import java.util.function.Function;
  * The forms of one tax year: the sections of each form, the line of each field and the layout of
  * the Lohnsteuerbescheinigung. The year pack holds the legal values. A year without a definition
  * has no forms yet.
- *
- * @param formLinesKnown false if the official forms of the year are not checked yet. Then the
- *     fields have no line of the form, and each form with a layout says so.
  */
 public record YearDefinition(
-    YearPack pack,
-    WageTaxCertificate certificate,
-    Map<String, FormLayout> layouts,
-    boolean formLinesKnown) {
+    YearPack pack, WageTaxCertificate certificate, Map<String, FormLayout> layouts) {
 
   private static final Map<Integer, Function<YearPack, YearDefinition>> DEFINITIONS =
       Map.of(2022, Definition2022::of, 2023, Definition2023::of);
@@ -39,12 +33,7 @@ public record YearDefinition(
         new HouseholdServicesForm());
   }
 
-  /** True if this form has fields with lines of the form, but the lines are not known yet. */
-  public boolean lacksFormLines(String formId) {
-    return !formLinesKnown && layouts.containsKey(formId);
-  }
-
   public Interview interview() {
-    return new Interview(certificate);
+    return new Interview(certificate, pack.homeOfficeRule());
   }
 }

@@ -63,6 +63,19 @@ class YearPack2023Test {
 
   @Test
   @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentences 1 and 2 EStG, versions 30.06.2023 and 31.12.2023, with"
+          + " § 52(6) sentence 12 EStG for work at home after 31.12.2022: the day rate")
+  void homeOfficeRuleIsTheDayRate() {
+    // The rule of 2022 counted days only at home: § 4(5) sentence 1 no. 6b sentence 4 EStG.
+    assertThat(YearPack.of(new TaxYear(2022)).orElseThrow().homeOfficeRule())
+        .isEqualTo(HomeOfficeRule.ONLY_AT_HOME);
+    assertThat(pack.homeOfficeRule()).isEqualTo(HomeOfficeRule.DAY_RATE);
+    assertThat(HomeOfficeRule.DAY_RATE.source())
+        .isEqualTo("§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 und 2 EStG mit § 9 Abs. 5 Satz 1 EStG");
+  }
+
+  @Test
+  @DisplayName(
       "§ 149(2) AO, Art. 97 § 36(3) no. 3 c EGAO, § 108(3) AO, versions 30.06.2023 and"
           + " 31.12.2023: eight months, then a workday")
   void mandatoryDeadline() {

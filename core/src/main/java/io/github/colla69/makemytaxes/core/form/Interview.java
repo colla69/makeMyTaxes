@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.core.form;
 
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.form.HouseholdServicesForm.Category;
+import io.github.colla69.makemytaxes.core.year.HomeOfficeRule;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -224,12 +225,37 @@ public final class Interview {
               AnlageN.ID,
               "commuteDays",
               Topic.COMMUTE,
-              "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"),
+              "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"));
+
+  /** The home office questions until 2022: § 4(5) sentence 1 no. 6b sentence 4 EStG. */
+  private static final List<Question> HOME_OFFICE_ONLY_AT_HOME =
+      List.of(
           Question.field(
               AnlageN.ID,
               "homeOfficeDays",
               Topic.COMMUTE,
-              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"),
+              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"));
+
+  /** The home office questions from 2023: § 4(5) sentence 1 no. 6c sentences 1 and 2 EStG. */
+  private static final List<Question> HOME_OFFICE_DAY_RATE =
+      List.of(
+          Question.field(
+              AnlageN.ID,
+              "homeOfficeDays",
+              Topic.COMMUTE,
+              "Falls Ihnen ein anderer Arbeitsplatz zur Verfügung steht: An wie vielen Tagen haben"
+                  + " Sie ganz oder überwiegend zu Hause gearbeitet und sind nicht zur ersten"
+                  + " Tätigkeitsstätte gefahren?"),
+          Question.field(
+              AnlageN.ID,
+              Sections.NO_WORKPLACE_DAYS,
+              Topic.COMMUTE,
+              "Falls Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung steht: An wie vielen"
+                  + " Tagen haben Sie auch zu Hause gearbeitet, auch mit einem Weg zur Arbeit am"
+                  + " selben Tag?"));
+
+  private static final List<Question> WORK_EXPENSES =
+      List.of(
           Question.yesNo(
               "workEquipment",
               Topic.COMMUTE,
@@ -317,10 +343,15 @@ public final class Interview {
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
   private final WageTaxCertificate certificate;
+  private final HomeOfficeRule homeOfficeRule;
 
-  /** The interview of a year. The questions name the lines of the certificate of that year. */
-  public Interview(WageTaxCertificate certificate) {
+  /**
+   * The interview of a year. The questions name the lines of the certificate of that year, and
+   * ask for the home office days that the rule of that year counts.
+   */
+  public Interview(WageTaxCertificate certificate, HomeOfficeRule homeOfficeRule) {
     this.certificate = certificate;
+    this.homeOfficeRule = homeOfficeRule;
   }
 
   /**
@@ -335,6 +366,11 @@ public final class Interview {
       questions.addAll(employerQuestions(answers, employer));
     }
     questions.addAll(JOB_AND_COMMUTE);
+    questions.addAll(
+        homeOfficeRule == HomeOfficeRule.DAY_RATE
+            ? HOME_OFFICE_DAY_RATE
+            : HOME_OFFICE_ONLY_AT_HOME);
+    questions.addAll(WORK_EXPENSES);
     questions.add(HEALTH_INSURANCE_QUESTION);
     questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
     questions.addAll(INSURANCE_REST);

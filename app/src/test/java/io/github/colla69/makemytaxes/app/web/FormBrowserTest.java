@@ -436,25 +436,42 @@ class FormBrowserTest {
     assertThat(page.getByText(NO_RULES)).hasCount(0);
 
     link(page, "Anlage N").click();
-    assertThat(page.locator(".without-lines")).isVisible();
     fill(page, "grossWage", "2345,6");
+    fill(page, "homeOfficeDays", "10");
+    fill(page, "homeOfficeDaysNoWorkplace", "20");
     save(page);
     assertThat(page.locator(".saved")).isVisible();
 
     link(page, "Übersicht").click();
 
-    assertThat(page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N")))
-        .containsText("2.345,60");
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN).containsText("2.345,60");
+    assertThat(
+            anlageN
+                .locator("tr")
+                .filter(new Locator.FilterOptions().setHasText("2.345,60"))
+                .locator("td")
+                .first())
+        .hasText("5");
+    assertThat(page.locator("#lines-source"))
+        .hasText("Die Zeilennummern stammen aus den Vordrucken 2023.");
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("180,00");
+    assertThat(estimate.locator("#limit-home-office")).containsText("überwiegend zu Hause");
+    assertThat(estimate.locator("#limit-home-office"))
+        .containsText("§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 und 2 EStG mit § 9 Abs. 5 Satz 1 EStG");
+    assertThat(estimate.locator("#limit-home-office")).not().containsText("Nr. 6b");
   }
 
   @Test
-  void aFormOf2022DoesNotSayItHasNoLinesOfTheForm() {
+  void aReturnOf2022NamesTheFormsOf2022() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");
-    link(page, "Anlage N").click();
+    link(page, "Übersicht").click();
 
-    assertThat(page.locator("#answers")).isVisible();
-    assertThat(page.locator(".without-lines")).hasCount(0);
+    assertThat(page.locator("#lines-source"))
+        .hasText("Die Zeilennummern stammen aus den Vordrucken 2022.");
   }
 
   @Test

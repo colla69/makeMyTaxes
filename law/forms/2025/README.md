@@ -14,9 +14,9 @@ Einkommensteuer > Einkommensteuer 2025.
 ## Lines that the wage tax certificate fills
 
 The certificate is the sample "Ausdruck der elektronischen Lohnsteuerbescheinigung für 2025",
-print mark 6.24, from the notice of the BMF of 24.09.2024, BStBl I 2024, 1262. A new sample
-replaced it in February 2025 (BStBl I 2025, 650). The worker could not read that sample, so the
-owner decides which sample the tests cite.
+print mark 2.25, from the notice of the BMF of 20.02.2025, IV C 5 - S 2533/00123/006, BStBl I
+2025, 650. It replaced the sample of 24.09.2024 (BStBl I 2024, 1262). The only change is line 30,
+which the app does not read. The owner read the sample and checked the lines that the app uses.
 
 - Anlage N line 51 takes Nr. 17 and Nr. 18 of the certificate in two boxes: 290 for amounts
   that the employer paid tax-free, and 295 for amounts that the employer taxed at a flat rate.

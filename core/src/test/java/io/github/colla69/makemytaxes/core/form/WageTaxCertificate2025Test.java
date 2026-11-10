@@ -11,9 +11,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * The expected lines come from the official sample "Ausdruck der elektronischen
- * Lohnsteuerbescheinigung für 2025", print mark 6.24, which the BMF published with its notice of
- * 24.09.2024, BStBl I 2024, 1262. The basis of the sample is § 51 (4) no. 1 EStG, versions
- * 30.06.2025 and 31.12.2025. Compared with the sample of 2022, the numbered lines of these fields
+ * Lohnsteuerbescheinigung für 2025", print mark 2.25, which the BMF published with its notice of
+ * 20.02.2025, IV C 5 - S 2533/00123/006, BStBl I 2025, 650. It replaced the sample of 24.09.2024
+ * (BStBl I 2024, 1262) and changes only line 30, which the app does not read. The basis of the
+ * sample is § 51 (4) no. 1 EStG, versions 30.06.2025 and 31.12.2025. Compared with the sample of 2022, the numbered lines of these fields
  * are the same. Line 15 now reads "Leistungen, die dem Progressionsvorbehalt unterliegen (z.B.
  * Lohnersatzleistungen)", and a new line 15a reads "(Saison-)Kurzarbeitergeld in 15. enthalten".
  *
@@ -28,7 +29,7 @@ class WageTaxCertificate2025Test {
       Forms.find(new TaxYear(2025), AnlageVorsorgeaufwand.ID).orElseThrow();
 
   @ParameterizedTest(name = "{0} is on {1}")
-  @DisplayName("Sample of the Lohnsteuerbescheinigung 2025, print mark 6.24: lines of Anlage N")
+  @DisplayName("Sample of the Lohnsteuerbescheinigung 2025, print mark 2.25: lines of Anlage N")
   @CsvSource({
     "employedFrom, Zeile 1",
     "employedTo, Zeile 1",
@@ -46,7 +47,7 @@ class WageTaxCertificate2025Test {
 
   @ParameterizedTest(name = "{0} is on {1}")
   @DisplayName(
-      "Sample of the Lohnsteuerbescheinigung 2025, print mark 6.24: lines of Anlage Vorsorgeaufwand")
+      "Sample of the Lohnsteuerbescheinigung 2025, print mark 2.25: lines of Anlage Vorsorgeaufwand")
   @CsvSource({
     "pensionEmployer, Zeile 22a/b",
     "pensionEmployee, Zeile 23a/b",
@@ -64,7 +65,7 @@ class WageTaxCertificate2025Test {
 
   @Test
   @DisplayName(
-      "Sample of the Lohnsteuerbescheinigung 2025, print mark 6.24: the tax class and the employer"
+      "Sample of the Lohnsteuerbescheinigung 2025, print mark 2.25: the tax class and the employer"
           + " have no numbered line")
   void theTaxClassAndTheEmployerAreOnTheCertificateWithoutALine() {
     for (String fieldId : new String[] {"taxClass", "employerName"}) {
@@ -106,7 +107,7 @@ class WageTaxCertificate2025Test {
 
   @Test
   @DisplayName(
-      "Sample of the Lohnsteuerbescheinigung 2025, print mark 6.24: line 15a is not taken for"
+      "Sample of the Lohnsteuerbescheinigung 2025, print mark 2.25: line 15a is not taken for"
           + " line 15")
   void readsACertificateFor2025() {
     assertThat(read(2025).found())

@@ -9,6 +9,10 @@
 # Private terms come from .privacy/terms.txt, or from the variable PRIVATE_TERMS. They are the things
 # a pattern cannot know, such as real names and addresses.
 #
+# A file of a blocked type passes only in the fixtures folder, or when its SHA-256 is in
+# scripts/privacy-scan-approved.sha256. The list holds published official documents, such as blank
+# tax forms. A hash matches one exact file, so a real document cannot pass by its name or folder.
+#
 # A finding names the file, the line and the rule, and never the value. CI logs can be public.
 set -euo pipefail
 
@@ -22,6 +26,7 @@ TAX_ID_CANDIDATE='(?<![0-9A-Za-z.,/-])[1-9][0-9]( ?[0-9]{3}){3}(?![0-9A-Za-z/-]|
 ALLOW_MARKER='privacy-scan:allow'
 
 root=$(git rev-parse --show-toplevel)
+APPROVED_LIST="$root/scripts/privacy-scan-approved.sha256"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 findings=0
@@ -123,9 +128,16 @@ check_content() { # location, file
   check_private_terms "$1" "$2"
 }
 
-check_path() { # path
-  if [[ $1 =~ $BLOCKED_FILES ]] && ! [[ $1 =~ $FIXTURES ]]; then
-    report "$1" "this file type can hold real data, and only src/test/resources/fixtures/ can have it"
+is_approved() { # file
+  [[ -f "$APPROVED_LIST" ]] || return 1
+  local hash
+  hash=$(sha256sum "$1" | cut -d ' ' -f 1)
+  grep -qE "^$hash( |$)" "$APPROVED_LIST"
+}
+
+check_path() { # path, file
+  if [[ $1 =~ $BLOCKED_FILES ]] && ! [[ $1 =~ $FIXTURES ]] && ! is_approved "$2"; then
+    report "$1" "this file type can hold real data, and only src/test/resources/fixtures/ or an approved hash can have it"
   fi
   if [[ -s "$work/terms.clean" ]] && grep -qiF -f "$work/terms.clean" <<<"$1"; then
     report "$1" "the file name matches a private term"
@@ -135,8 +147,8 @@ check_path() { # path
 scan_staged() {
   local path
   while IFS= read -r -d '' path; do
-    check_path "$path"
     git show ":$path" >"$work/blob"
+    check_path "$path" "$work/blob"
     check_content "$path" "$work/blob"
   done < <(git diff --cached --name-only --diff-filter=ACMR -z)
 }
@@ -145,7 +157,7 @@ scan_tracked() {
   local path
   while IFS= read -r -d '' path; do
     [[ -f "$root/$path" ]] || continue
-    check_path "$path"
+    check_path "$path" "$root/$path"
     check_content "$path" "$root/$path"
   done < <(git ls-files -z)
 }
@@ -155,8 +167,8 @@ scan_history() {
   while read -r blob path; do
     [[ -n "$path" ]] || continue
     [[ $(git cat-file -t "$blob") == blob ]] || continue
-    check_path "$path"
     git cat-file blob "$blob" >"$work/blob"
+    check_path "$path" "$work/blob"
     check_content "$path (blob ${blob:0:8})" "$work/blob"
   done < <(git rev-list --all --objects)
 

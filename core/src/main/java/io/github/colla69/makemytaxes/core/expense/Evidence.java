@@ -29,12 +29,4 @@ public record Evidence(String receiptNote, DocumentRef document, String statedBa
   public String documentName() {
     return document == null ? null : document.fileName();
   }
-
-  /** A document comes first, because it is the stronger proof of the two. */
-  public String label() {
-    if (document != null) {
-      return "Beleg: " + document.fileName();
-    }
-    return hasStatedBasis() ? "Grundlage: " + statedBasis : "Beleg fehlt";
-  }
 }

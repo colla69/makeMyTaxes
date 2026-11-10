@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Money;
+import io.github.colla69.makemytaxes.core.form.Field;
+import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +39,40 @@ class YearPack2024Test {
   void wageLimit() {
     assertThat(pack.wageLimit()).isEqualTo(Money.ofCents((11_784 + 1_230 + 36) * 100L));
     assertThat(pack.wageLimit()).isEqualTo(Money.ofCents(13_050_00));
+  }
+
+  /**
+   * The source chain for the § 46(2) no. 3 question of the filing check in 2024:
+   *
+   * <ol>
+   *   <li>§ 52(36) sentence 3 EStG, versions 30.06.2024 and 31.12.2024, applies § 46(2) no. 3 in
+   *       the wording of Art. 3 of the law of 08.12.2022 (BGBl. I S. 2230) only from 01.01.2026. So
+   *       the wording in the two 2024 versions (Erstattung über 410 Euro) does not apply to 2024.
+   *   <li>The wording that applies to 2024 is the one in the version of 31.12.2023 (scripts/law.sh
+   *       2023 estg "§ 46"): the Teilbeträge der Vorsorgepauschale are higher than the abziehbare
+   *       Vorsorgeaufwendungen, and the wage is higher than Grundfreibetrag +
+   *       Arbeitnehmer-Pauschbetrag + Sonderausgaben-Pauschbetrag.
+   *   <li>The amounts for 2024: Grundfreibetrag 11 784 euros (§ 32a(1) sentence 2 no. 1, version
+   *       31.12.2024), Arbeitnehmer-Pauschbetrag 1 230 euros (§ 9a sentence 1 no. 1a),
+   *       Sonderausgaben-Pauschbetrag 36 euros (§ 10c sentence 1). The sum is 13 050 euros, the
+   *       same amount as for no. 4.
+   * </ol>
+   */
+  @Test
+  @DisplayName(
+      "§ 46(2) no. 3 EStG, version 31.12.2023, with § 52(36) sentence 3, version 31.12.2024:"
+          + " 11 784 + 1 230 + 36 = 13 050 euros in the filing check of 2024")
+  void wageLimitOfTheHealthAllowanceQuestion() {
+    Field question =
+        new FilingCheckForm(pack)
+            .fields().stream()
+                .filter(field -> field.id().equals("healthAllowance"))
+                .findFirst()
+                .orElseThrow();
+
+    assertThat(question.line()).isEqualTo("§ 46 Abs. 2 Nr. 3 EStG");
+    assertThat(question.label()).contains("Arbeitslohn über 13.050,00 Euro");
+    assertThat(pack.wageLimit()).isEqualTo(Money.ofCents((11_784 + 1_230 + 36) * 100L));
   }
 
   @Test

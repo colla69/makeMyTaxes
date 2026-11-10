@@ -13,18 +13,21 @@
     <h1>makeMyTaxes</h1>
 
     <section th:each="person : ${persons}">
-      <h2 th:text="${person.name}">Name</h2>
-      <p><a th:href="@{/persons/{id}(id=${person.id})}">Persönliche Angaben ändern</a></p>
+      <div class="person-head">
+        <h2 th:text="${person.name}">Name</h2>
+        <a th:href="@{/persons/{id}(id=${person.id})}">Persönliche Angaben ändern</a>
+      </div>
+      <!-- A button opens the return of its year, and creates the return first if it does not exist. -->
+      <form class="year-buttons" method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
+        <button th:each="year : ${years}" name="taxYear" th:value="${year}"
+                th:text="'Steuererklärung ' + ${year}">Steuererklärung</button>
+      </form>
       <ul>
-        <li th:each="taxReturn : ${person.returns}">
+        <li th:each="taxReturn : ${person.returns}" th:unless="${#lists.contains(years, taxReturn.taxYear.value)}">
           <a th:href="@{/returns/{id}(id=${taxReturn.id})}"
              th:text="'Steuererklärung ' + ${taxReturn.taxYear.value}">Steuererklärung</a>
         </li>
       </ul>
-      <form class="fields" method="post" th:action="@{/persons/{id}/returns(id=${person.id})}">
-        <div th:replace="~{fields :: field(name='taxYear', label='Steuerjahr', hint=#{hint.home.taxYear},type='number', min='2000', max='2100', required=true)}"></div>
-        <button>Erklärung anlegen</button>
-      </form>
     </section>
 
     <section>

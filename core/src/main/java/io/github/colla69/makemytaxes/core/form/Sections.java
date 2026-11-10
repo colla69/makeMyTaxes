@@ -88,7 +88,9 @@ public final class Sections {
                       + " Aufstockungsbetrag (EUR)",
                   Kind.MONEY),
               optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-                  .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
+                  .withHelp(
+                      "Die Summe der steuerfreien und der pauschal besteuerten"
+                          + " Arbeitgeberleistungen für Fahrten zur Arbeit."))
           .withCheck(Sections::checkPeriod);
 
   /** Anlage N: the workplace, the way to work and the home office. */

@@ -12,6 +12,10 @@ public final class FilingCheckForm implements FormModule {
 
   private static final String SECTION = "Müssen Sie eine Erklärung abgeben?";
 
+  private static final int FIRST_YEAR_WITH_REFUND_RULE = 2026;
+
+  private static final int FIRST_YEAR_WITHOUT_REDUCED_PAYROLL_RATE = 2025;
+
   private final YearPack pack;
 
   public FilingCheckForm(YearPack pack) {
@@ -49,15 +53,7 @@ public final class FilingCheckForm implements FormModule {
             "severalEmployers",
             "§ 46 Abs. 2 Nr. 2 EStG",
             "Arbeitslohn von zwei oder mehr Arbeitgebern gleichzeitig?"),
-        question(
-            "healthAllowance",
-            "§ 46 Abs. 2 Nr. 3 EStG",
-            "Arbeitslohn über "
-                + wage
-                + " Euro, und die Teilbeträge der Vorsorgepauschale für die Kranken- und"
-                + " Pflegeversicherung (§ 39b Abs. 2 Satz 5 Nr. 3 Buchst. b bis d EStG) beim"
-                + " Lohnsteuerabzug waren höher als Ihre abziehbaren Vorsorgeaufwendungen nach"
-                + " § 10 Abs. 1 Nr. 3 und 3a in Verbindung mit Abs. 4 EStG?"),
+        question("healthAllowance", "§ 46 Abs. 2 Nr. 3 EStG", healthQuestion(income, wage)),
         question(
             "wageTaxAllowance",
             "§ 46 Abs. 2 Nr. 4 EStG",
@@ -68,7 +64,7 @@ public final class FilingCheckForm implements FormModule {
         question(
             "specialPayment",
             "§ 46 Abs. 2 Nr. 5 EStG",
-            "Hat Ihr Arbeitgeber eine Einmalzahlung, etwa eine Abfindung, ermäßigt besteuert?"),
+            specialPaymentQuestion()),
         question(
             "certificateS",
             "§ 46 Abs. 2 Nr. 5a EStG",
@@ -77,6 +73,41 @@ public final class FilingCheckForm implements FormModule {
             "officeRequest",
             "§ 149 Abs. 1 AO",
             "Hat das Finanzamt Sie aufgefordert, für dieses Jahr eine Erklärung abzugeben?"));
+  }
+
+  /**
+   * § 46(2) no. 3 EStG. From 2026, a refund of health and care insurance contributions over 410
+   * euros decides, and no longer the Vorsorgepauschale: § 52(36) sentence 3 EStG. Both versions
+   * name the same 410 euros as no. 1.
+   */
+  private String healthQuestion(String income, String wage) {
+    if (pack.taxYear().value() >= FIRST_YEAR_WITH_REFUND_RULE) {
+      return "Arbeitslohn über "
+          + wage
+          + " Euro, und Ihre Beiträge zur Kranken- und Pflegeversicherung (§ 10 Abs. 1 Nr. 3"
+          + " EStG) wurden mit mehr als "
+          + income
+          + " Euro erstattet?";
+    }
+    return "Arbeitslohn über "
+        + wage
+        + " Euro, und die Teilbeträge der Vorsorgepauschale für die Kranken- und"
+        + " Pflegeversicherung (§ 39b Abs. 2 Satz 5 Nr. 3 Buchst. b bis d EStG) beim"
+        + " Lohnsteuerabzug waren höher als Ihre abziehbaren Vorsorgeaufwendungen nach"
+        + " § 10 Abs. 1 Nr. 3 und 3a in Verbindung mit Abs. 4 EStG?";
+  }
+
+  /**
+   * § 46(2) no. 5 EStG. Until the version of 31.12.2024, it also names a one-off payment that the
+   * employer taxed at the reduced rate of § 34. From the version of 30.06.2025, it names only the
+   * 20 percent of § 39c(3), and § 52 has no own rule for it, so § 52(1) applies it from 2025.
+   */
+  private String specialPaymentQuestion() {
+    if (pack.taxYear().value() >= FIRST_YEAR_WITHOUT_REDUCED_PAYROLL_RATE) {
+      return "Hat ein Dritter, der Ihnen Arbeitslohn zahlt (§ 38 Abs. 3a EStG), die Lohnsteuer"
+          + " für eine Einmalzahlung mit 20 Prozent ermittelt (§ 39c Abs. 3 EStG)?";
+    }
+    return "Hat Ihr Arbeitgeber eine Einmalzahlung, etwa eine Abfindung, ermäßigt besteuert?";
   }
 
   private static Field question(String id, String source, String label) {

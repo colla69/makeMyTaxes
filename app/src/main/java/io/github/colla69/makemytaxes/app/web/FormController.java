@@ -96,7 +96,27 @@ class FormController {
   /** The rates and limits of the year pack that the estimate uses. The page names their source. */
   record LimitsView(
       String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
-      String homeOfficeLimit) {
+      String homeOfficeLimit, Sources sources) {
+
+    /**
+     * The legal sources of the rates. Until 2025, § 9(1) sentence 3 no. 4 sentence 8 EStG sets the
+     * higher rate from the 21st km. From 2026, sentence 2 sets one rate from the first km. From
+     * 2023, § 52(6) sentence 13 EStG applies the daily home office amount of § 4(5) no. 6c.
+     */
+    record Sources(String commute, String homeOffice) {
+
+      static Sources of(int year) {
+        String commute =
+            year >= 2026
+                ? "§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG"
+                : "§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG";
+        String homeOffice =
+            year >= 2023
+                ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 EStG"
+                : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
+        return new Sources(commute, homeOffice);
+      }
+    }
 
     static LimitsView of(YearPack pack) {
       return new LimitsView(
@@ -104,7 +124,8 @@ class FormController {
           GermanFormats.format(pack.commutePerKmFrom21()),
           GermanFormats.format(pack.commuteLimitWithoutCar()),
           GermanFormats.format(pack.homeOfficePerDay()),
-          GermanFormats.format(pack.homeOfficeLimit()));
+          GermanFormats.format(pack.homeOfficeLimit()),
+          Sources.of(pack.taxYear().value()));
     }
   }
 
@@ -361,6 +382,7 @@ class FormController {
     attributes.put("tab", "review");
     attributes.put("taxYear", taxYear.value());
     attributes.put("forms", Forms.of(taxYear));
+    attributes.put("linesKnown", definitionOf(returnId).linesKnown());
     attributes.put("filing", filingOf(returnId, pack));
     attributes.put("reviews", reviews);
     attributes.put(
@@ -412,6 +434,7 @@ class FormController {
     model.addAttribute("tab", form.id());
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
+    model.addAttribute("linesKnown", definitionOf(returnId).linesKnown());
     model.addAttribute("form", form);
     model.addAttribute("fieldGroups", fieldGroups(returnId, form.fields(new Answers(values))));
     model.addAttribute("values", values);

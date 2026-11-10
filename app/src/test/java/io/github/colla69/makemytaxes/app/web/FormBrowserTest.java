@@ -424,6 +424,55 @@ class FormBrowserTest {
   }
 
   @Test
+  void a2026ReturnHasAllTabsAndAFilledAnlageNReachesTheReviewWithoutLines() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2026");
+
+    for (String tab : List.of("Fragen", "Belege", "Übersicht")) {
+      assertThat(link(page, tab)).hasCount(1);
+    }
+    for (String form : FORM_TABS) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertThat(page.locator("#lines-unknown")).containsText("keine Zeilennummern");
+      // A form line is a number. A legal source such as "§ 35a Abs. 2 EStG" can stand there too.
+      for (String line : page.locator("#answers .line").allTextContents()) {
+        assertTrue(line.startsWith("§"), "A line number on the 2026 form " + form + ": " + line);
+      }
+    }
+    assertThat(page.locator("#answers")).containsText("mit mehr als 410,00 Euro erstattet");
+    assertThat(page.locator("#answers")).containsText("13.614,00");
+
+    link(page, "Anlage N").click();
+    fill(page, "taxClass", "1");
+    fill(page, "grossWage", "40.000,00");
+    fill(page, "commuteDays", "10");
+    fill(page, "commuteKm", "30");
+    field(page, "commuteTransport").selectOption("CAR");
+    fill(page, "homeOfficeDays", "20");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator("#lines-unknown")).containsText("keine Zeilennummern");
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN).containsText("40.000,00");
+    assertThat(anlageN.locator("tbody tr td:first-child"))
+        .hasText(new String[] {"", "", "", "", "", ""});
+
+    // Commuting 10 x 30 x 0,38 = 114,00, home office 20 x 6,00 = 120,00.
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("114,00");
+    assertThat(estimate).containsText("120,00");
+    assertThat(estimate).containsText("1.230,00");
+    assertThat(estimate.locator("#limit-commute")).containsText("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG.");
+    assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+  }
+
+  @Test
   void aReturnWithoutAYearPackHasNoFormsYet() {
     Page page = browser.newPage();
     openANewReturn(page, "2023");

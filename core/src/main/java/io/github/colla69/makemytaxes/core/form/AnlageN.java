@@ -124,9 +124,17 @@ public final class AnlageN implements FormModule {
     for (ExpenseLine expenseLine : EXPENSE_LINES) {
       work.addAll(expenseLines(expenseLine, expenses));
     }
-    work.sort(Comparator.comparingInt(line -> Integer.parseInt(line.line())));
+    work.sort(Comparator.comparingInt(AnlageN::lineOrder));
     employers.addAll(work);
     return employers;
+  }
+
+  /**
+   * The line as a number. A year whose lines are not known yet has none, so its lines keep the
+   * order of the form, and the expenses come after the fields.
+   */
+  private static int lineOrder(ReviewLine line) {
+    return line.line().isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(line.line());
   }
 
   private List<ReviewLine> expenseLines(ExpenseLine expenseLine, List<Expense> expenses) {

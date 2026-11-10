@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!-- A year whose official forms are not published yet: the app shows no line numbers. -->
+    <p id="lines-unknown" class="warning" th:fragment="notice"
+       th:text="'Die amtlichen Vordrucke ' + ${taxYear} + ' und das Muster der Lohnsteuerbescheinigung ' + ${taxYear} + ' sind noch nicht in der App. Die Felder haben daher keine Zeilennummern. Suchen Sie jedes Feld in Mein ELSTER nach seiner Bezeichnung.'">Keine Zeilennummern.</p>
+  </body>
+</html>

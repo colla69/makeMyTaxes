@@ -71,6 +71,14 @@ expect_staged 1 "a PDF fails" receipt.pdf "not really a pdf"
 expect_staged 1 "a database fails" data.db "not really a database"
 expect_staged 0 "a fixture PDF passes" app/src/test/resources/fixtures/made-up.pdf "made up"
 
+mkdir -p scripts
+printf 'approved form\n' | sha256sum | sed 's/ -$/ law\/forms\/form.pdf/' >scripts/privacy-scan-approved.sha256
+expect_staged 0 "a PDF with an approved hash passes" law/forms/form.pdf "approved form"
+expect_staged 0 "an approved PDF passes under another name" other/name.pdf "approved form"
+expect_staged 1 "a PDF with another hash fails beside an approved one" law/forms/real.pdf "a real document"
+rm -rf scripts
+expect_staged 1 "a PDF fails when the approved list is missing" law/forms/form.pdf "approved form"
+
 export PRIVATE_TERMS="$PRIVATE_TERM"
 expect_staged 1 "a private term fails" a.md "Name: $PRIVATE_TERM"
 expect_staged 1 "a private term in another case fails" a.md "Name: ${PRIVATE_TERM^^}"

@@ -27,6 +27,7 @@
     <archunit.version>1.5.1</archunit.version>
     <htmx.version>2.0.11</htmx.version>
     <playwright.version>1.64.0</playwright.version>
+    <pdfbox.version>3.0.8</pdfbox.version>
   </properties>
 
   <build>

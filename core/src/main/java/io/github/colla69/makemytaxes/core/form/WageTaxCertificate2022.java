@@ -3,6 +3,7 @@ package io.github.colla69.makemytaxes.core.form;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * The form fields that come from the printed Lohnsteuerbescheinigung for 2022, and the numbered
@@ -43,6 +44,13 @@ public final class WageTaxCertificate2022 {
   /** True if the value of this field comes from the certificate. */
   public static boolean isOnCertificate(String fieldId) {
     return LINES.containsKey(fieldId) || WITHOUT_LINE.contains(fieldId);
+  }
+
+  /** The IDs of all fields whose value comes from the certificate. */
+  public static Set<String> fieldIds() {
+    Set<String> ids = new TreeSet<>(LINES.keySet());
+    ids.addAll(WITHOUT_LINE);
+    return ids;
   }
 
   /** The label of a field with a numbered line: the line, then the text. */

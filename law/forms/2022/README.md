@@ -6,8 +6,10 @@ Einkommensteuer > Einkommensteuer 2022.
 
 | File | Form | Mark |
 |---|---|---|
+| `hauptvordruck-est-1-a-2022.pdf` | 005 - Hauptvordruck ESt 1 A (2022) | 2022ESt1A011NET and 2022ESt1A012NET, Juli 2022 |
 | `anlage-n-2022.pdf` | 055 - Anlage N (2022) | 2022AnlN031NET to 2022AnlN034NET, Juli 2022 |
 | `anlage-vorsorgeaufwand-2022.pdf` | 082 - Anlage Vorsorgeaufwand (2022) | 2022AnlVor241NET and 2022AnlVor242NET, Juli 2022 |
+| `anlage-haushaltsnahe-aufwendungen-2022.pdf` | 014 - Anlage Haushaltsnahe Aufwendungen (2022) | 2022Anl35a381NET, Juli 2022 |
 
 ## Lines that the wage tax certificate fills
 

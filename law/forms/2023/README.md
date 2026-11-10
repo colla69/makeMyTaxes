@@ -1,13 +1,16 @@
-# Forms of 2023
+# Official tax forms 2023
 
-The official forms of 2023 are not in this folder yet. The site www.formulare-bfinv.de needs a
-browser session, so the worker could not download them. So the forms of 2023 in the app show
-their fields without a line number, and each form page says so.
+The Formular-Management-System of the federal finance administration publishes these forms.
+They were downloaded on 10.11.2026 from https://www.formulare-bfinv.de, under Steuerformulare >
+Einkommensteuer > Einkommensteuer 2023.
+
+| File | Form | Mark |
+|---|---|---|
+| `hauptvordruck-est-1-a-2023.pdf` | 005 - Hauptvordruck ESt 1 A (2023) | 2023ESt1A011NET and 2023ESt1A012NET, September 2023 |
+| `anlage-n-2023.pdf` | 055 - Anlage N (2023) | 2023AnlN031NET to 2023AnlN034NET, September 2023 |
+| `anlage-vorsorgeaufwand-2023.pdf` | 083 - Anlage Vorsorgeaufwand (2023) | 2023AnlVor241NET to 2023AnlVor243NET, September 2023 |
+| `anlage-haushaltsnahe-aufwendungen-2023.pdf` | 014 - Anlage Haushaltsnahe Aufwendungen (2023) | 2023Anl35a381NET, September 2023 |
 
 The lines of the wage tax certificate come from the official sample "Ausdruck der elektronischen
 Lohnsteuerbescheinigung für 2023", print mark 3.22:
 https://www.elster.de/eportal/attachments/help_lstb_2023/Muster_LSTB_2023.pdf
-
-To add the forms, download them from www.formulare-bfinv.de > Steuerformulare >
-Einkommensteuer > Einkommensteuer 2023, add their SHA-256 to `scripts/privacy-scan-approved.sha256`,
-and add the lines of each form to `Definition2023`.

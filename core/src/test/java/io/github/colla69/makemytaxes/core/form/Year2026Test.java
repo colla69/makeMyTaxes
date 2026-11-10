@@ -85,6 +85,39 @@ class Year2026Test {
     assertThat(filingQuestion(new TaxYear(2022), "specialPayment")).contains("ermäßigt");
   }
 
+  @Test
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentences 1 and 2 EStG with § 52(6) sentence 13 EStG, versions"
+          + " 30.06.2026 and 05.11.2026: a day of work mainly at home counts, not only at home")
+  void theHomeOfficeDaysFollowNo6cIn2026() {
+    String help =
+        Forms.find(YEAR, AnlageN.ID).orElseThrow().fields().stream()
+            .filter(field -> field.id().equals("homeOfficeDays"))
+            .findFirst()
+            .orElseThrow()
+            .help();
+    assertThat(help)
+        .contains("überwiegend zu Hause", "erste Tätigkeitsstätte nicht", "dauerhaft kein anderer")
+        .doesNotContain("nur zu Hause");
+    Answers employed = new Answers(Map.of("employed", Interview.YES));
+    assertThat(DEFINITION.interview().find(employed, "homeOfficeDays").orElseThrow().text())
+        .contains("überwiegend zu Hause")
+        .doesNotContain("nur zu Hause");
+    assertThat(HomeOfficeDay.reviewText(2026)).contains("überwiegend zu Hause");
+  }
+
+  @Test
+  @DisplayName("§ 4(5) sentence 1 no. 6b sentence 4 EStG, version 31.12.2022: only at home in 2022")
+  void theHomeOfficeDaysOf2022StayOnlyAtHome() {
+    TaxYear year2022 = new TaxYear(2022);
+    Answers employed = new Answers(Map.of("employed", Interview.YES));
+    assertThat(
+            YearDefinition.of(year2022).orElseThrow().interview()
+                .find(employed, "homeOfficeDays").orElseThrow().text())
+        .contains("nur zu Hause");
+    assertThat(HomeOfficeDay.reviewText(2022)).isEqualTo("Tag nur zu Hause");
+  }
+
   private static String healthQuestion(TaxYear year) {
     return filingQuestion(year, "healthAllowance");
   }

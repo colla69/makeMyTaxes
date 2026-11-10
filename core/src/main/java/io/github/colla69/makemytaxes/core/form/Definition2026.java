@@ -25,7 +25,7 @@ final class Definition2026 {
                 Map.of(),
                 certificate),
             AnlageN.ID,
-            new FormLayout(List.of(Sections.EMPLOYER, Sections.WORK), Map.of(), certificate),
+            new FormLayout(List.of(Sections.EMPLOYER, Sections.WORK_FROM_2023), Map.of(), certificate),
             AnlageVorsorgeaufwand.ID,
             new FormLayout(
                 List.of(Sections.SOCIAL_INSURANCE, Sections.PRIVATE_HEALTH),

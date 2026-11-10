@@ -242,12 +242,11 @@ public final class Interview {
               AnlageN.ID,
               "commuteDays",
               Topic.COMMUTE,
-              "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"),
-          Question.field(
-              AnlageN.ID,
-              "homeOfficeDays",
-              Topic.COMMUTE,
-              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"),
+              "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"));
+
+  /** The questions after the home office question, which depends on the year. */
+  private static final List<Question> WORK_COSTS =
+      List.of(
           Question.yesNo(
               "workEquipment",
               Topic.COMMUTE,
@@ -335,10 +334,15 @@ public final class Interview {
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
   private final WageTaxCertificate certificate;
+  private final int year;
 
-  /** The interview of a year. The questions name the lines of the certificate of that year. */
-  public Interview(WageTaxCertificate certificate) {
+  /**
+   * The interview of a year. The questions name the lines of the certificate of that year, and the
+   * home office days of that year.
+   */
+  public Interview(WageTaxCertificate certificate, int year) {
     this.certificate = certificate;
+    this.year = year;
   }
 
   /**
@@ -353,6 +357,9 @@ public final class Interview {
       questions.addAll(employerQuestions(answers, employer));
     }
     questions.addAll(JOB_AND_COMMUTE);
+    questions.add(
+        Question.field(AnlageN.ID, "homeOfficeDays", Topic.COMMUTE, HomeOfficeDay.question(year)));
+    questions.addAll(WORK_COSTS);
     questions.add(HEALTH_INSURANCE_QUESTION);
     questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
     questions.addAll(INSURANCE_REST);

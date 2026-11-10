@@ -387,6 +387,8 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-home-office")).containsText("5,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("600,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6b");
+    assertThat(estimate.locator("#limit-home-office")).containsText("Tag nur zu Hause");
+    assertThat(estimate.locator("#union-fees")).hasCount(0);
     assertThat(estimate).containsText("§ 9a Satz 1 Nr. 1 Buchstabe a EStG");
   }
 
@@ -470,6 +472,10 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-commute")).containsText("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG.");
     assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    // § 4(5) no. 6c sentences 1 and 2 and § 9a sentence 3 EStG, versions 30.06.2026 and 05.11.2026.
+    assertThat(estimate.locator("#limit-home-office")).containsText("überwiegend zu Hause");
+    assertThat(estimate.locator("#limit-home-office")).not().containsText("nur zu Hause");
+    assertThat(estimate.locator("#union-fees")).containsText("§ 9a Satz 3 EStG");
   }
 
   @Test

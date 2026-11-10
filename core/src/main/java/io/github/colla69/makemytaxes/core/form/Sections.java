@@ -93,9 +93,14 @@ public final class Sections {
                           + " Arbeitgeberleistungen für Fahrten zur Arbeit."))
           .withCheck(Sections::checkPeriod);
 
-  /** Anlage N: the workplace, the way to work and the home office. */
-  public static final Section WORK =
-      Section.once(
+  /** Anlage N of 2022: the workplace, the way to work and the home office. */
+  public static final Section WORK = work(2022);
+
+  /** Anlage N from 2023: the same fields, with the home office days of § 4(5) no. 6c EStG. */
+  public static final Section WORK_FROM_2023 = work(2023);
+
+  private static Section work(int year) {
+    return Section.once(
               optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
                   .withHelp("Postleitzahl, Ort und Straße."),
               optional(
@@ -123,10 +128,9 @@ public final class Sections {
                       "",
                       "Homeoffice: Kalendertage",
                       Kind.WHOLE_NUMBER)
-                  .withHelp(
-                      "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet"
-                          + " den Betrag."))
-          .withCheck(Sections::checkWork);
+                  .withHelp(HomeOfficeDay.help(year)))
+        .withCheck(Sections::checkWork);
+  }
 
   /**
    * Anlage Vorsorgeaufwand: the social insurance values of one Lohnsteuerbescheinigung, in the

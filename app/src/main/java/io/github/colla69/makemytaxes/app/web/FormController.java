@@ -20,6 +20,7 @@ import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
+import io.github.colla69.makemytaxes.core.form.HomeOfficeDay;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
 import io.github.colla69.makemytaxes.core.form.Source;
@@ -101,9 +102,12 @@ class FormController {
     /**
      * The legal sources of the rates. Until 2025, § 9(1) sentence 3 no. 4 sentence 8 EStG sets the
      * higher rate from the 21st km. From 2026, sentence 2 sets one rate from the first km. From
-     * 2023, § 52(6) sentence 13 EStG applies the daily home office amount of § 4(5) no. 6c.
+     * 2023, § 52(6) sentence 13 EStG applies the daily home office amount of § 4(5) no. 6c, with
+     * other days ({@link HomeOfficeDay}). From 2026, § 9a sentence 3 EStG counts union fees in
+     * addition to the employee lump sum.
      */
-    record Sources(String commute, String homeOffice) {
+    record Sources(
+        String commute, String homeOffice, String homeOfficeDays, boolean unionFeesBesideLumpSum) {
 
       static Sources of(int year) {
         String commute =
@@ -114,7 +118,7 @@ class FormController {
             year >= 2023
                 ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 EStG"
                 : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
-        return new Sources(commute, homeOffice);
+        return new Sources(commute, homeOffice, HomeOfficeDay.reviewText(year), year >= 2026);
       }
     }
 

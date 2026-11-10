@@ -40,6 +40,6 @@ public record YearDefinition(
   }
 
   public Interview interview() {
-    return new Interview(certificate);
+    return new Interview(certificate, pack.taxYear().value());
   }
 }

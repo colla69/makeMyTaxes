@@ -28,8 +28,8 @@ final class Definition2023 {
           Map.entry("notes", "37"));
 
   /**
-   * The name and the period of the employment have no line on Anlage N. The transport has no line
-   * either: the kilometres go on line 34 for a car and on line 36 for other transport.
+   * The name and the period of the employment have no line on Anlage N. The transport has no field
+   * of its own: the kilometres go again on line 34 for a car and on line 36 for other transport.
    */
   private static final Map<String, String> ANLAGE_N_LINES =
       Map.ofEntries(
@@ -42,6 +42,8 @@ final class Definition2023 {
           Map.entry("workplace", "30"),
           Map.entry("commuteDays", "32"),
           Map.entry("commuteKm", "33"),
+          Map.entry("commuteTransport." + Kind.CAR, "34"),
+          Map.entry("commuteTransport." + Kind.OTHER_TRANSPORT, "36"),
           Map.entry("employerCommute", "54"),
           Map.entry("WORK_ASSOCIATIONS", "56"),
           Map.entry("WORK_EQUIPMENT", "57"),

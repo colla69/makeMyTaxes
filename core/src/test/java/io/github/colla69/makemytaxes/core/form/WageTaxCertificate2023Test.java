@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.core.form;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Expense;
@@ -190,14 +191,51 @@ class WageTaxCertificate2023Test {
   }
 
   @Test
-  void theReviewOfAnlageNWithoutLinesKeepsTheOrderOfTheForm() {
+  @DisplayName(
+      "Official form Anlage N 2023 (2023AnlN032NET), lines 33 and 34: the kilometres by car go"
+          + " again on line 34")
+  void theKilometresByCarGoAgainOnLine34() {
     Answers answers =
-        new Answers(Map.of("grossWage", "1.000,00", "commuteKm", "12", "homeOfficeDays", "10"));
+        new Answers(
+            Map.of(
+                "commuteDays", "220",
+                "commuteKm", "60",
+                "commuteTransport", Kind.CAR,
+                "homeOfficeDays", "10"));
 
     List<ReviewLine> lines = anlageN.review(answers, List.<Expense>of());
 
     assertThat(lines)
-        .extracting(ReviewLine::value)
-        .containsExactly("1.000,00", "12", "10");
+        .extracting(ReviewLine::line, ReviewLine::value)
+        .containsExactly(
+            tuple("32", "220"), tuple("33", "60"), tuple("34", "60"), tuple("61", "10"));
+    assertThat(lines.get(2).label()).contains("PKW");
+  }
+
+  @Test
+  @DisplayName(
+      "Official form Anlage N 2023 (2023AnlN032NET), lines 33 and 36: the kilometres by public"
+          + " transport, bike or on foot go again on line 36")
+  void theKilometresByOtherTransportGoAgainOnLine36() {
+    Answers answers =
+        new Answers(Map.of("commuteKm", "12", "commuteTransport", Kind.OTHER_TRANSPORT));
+
+    assertThat(anlageN.review(answers, List.<Expense>of()))
+        .extracting(ReviewLine::line, ReviewLine::value)
+        .containsExactly(tuple("33", "12"), tuple("36", "12"));
+  }
+
+  @Test
+  void theTransportWithoutKilometresHasNoLineAndGoesLast() {
+    Answers answers =
+        new Answers(
+            Map.of("commuteDays", "220", "homeOfficeDays", "10", "commuteTransport", Kind.CAR));
+
+    assertThat(anlageN.review(answers, List.<Expense>of()))
+        .extracting(ReviewLine::line, ReviewLine::value)
+        .containsExactly(
+            tuple("32", "220"),
+            tuple("61", "10"),
+            tuple("", "Eigener oder zur Nutzung überlassener Kraftwagen"));
   }
 }

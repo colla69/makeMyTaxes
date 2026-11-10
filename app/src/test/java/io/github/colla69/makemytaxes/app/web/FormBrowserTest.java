@@ -439,6 +439,9 @@ class FormBrowserTest {
     fill(page, "grossWage", "2345,6");
     fill(page, "homeOfficeDays", "10");
     fill(page, "homeOfficeDaysNoWorkplace", "20");
+    fill(page, "commuteDays", "5");
+    fill(page, "commuteKm", "47");
+    field(page, "commuteTransport").selectOption("CAR");
     save(page);
     assertThat(page.locator(".saved")).isVisible();
 
@@ -447,6 +450,11 @@ class FormBrowserTest {
     Locator anlageN =
         page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
     assertThat(anlageN).containsText("2.345,60");
+    Locator kmLines = anlageN.locator("tr").filter(new Locator.FilterOptions().setHasText("47"));
+    assertThat(kmLines).hasCount(2);
+    assertThat(kmLines.nth(0).locator("td").first()).hasText("33");
+    assertThat(kmLines.nth(1).locator("td").first()).hasText("34");
+    assertThat(kmLines.nth(1)).containsText("PKW");
     assertThat(
             anlageN
                 .locator("tr")

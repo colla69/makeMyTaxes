@@ -119,17 +119,45 @@ public final class AnlageN implements FormModule {
     List<ReviewLine> employers = new ArrayList<>();
     List<ReviewLine> work = new ArrayList<>();
     for (ReviewLine line : FormModule.super.review(answers, expenses)) {
-      (line.section().equals(WORK) ? work : employers).add(line);
+      (line.section().equals(WORK) ? work : employers).add(transportLine(line, answers));
     }
     for (ExpenseLine expenseLine : EXPENSE_LINES) {
       work.addAll(expenseLines(expenseLine, expenses));
     }
-    // A year without the lines of its form keeps the order of the form.
+    // A field without a line on the form goes last, and the fields keep the order of the form.
     work.sort(
         Comparator.comparingInt(
             line -> line.line().isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(line.line())));
     employers.addAll(work);
     return employers;
+  }
+
+  /**
+   * From 2023, Anlage N has no field for the transport. It repeats the kilometres on the line of
+   * the transport, such as line 34 for a car. The layout holds that line by the key {@code
+   * commuteTransport.<option>}. A year without such a line keeps the transport as it is.
+   */
+  private ReviewLine transportLine(ReviewLine line, Answers answers) {
+    if (!(line.source() instanceof Source.Answer(String fieldId))
+        || !fieldId.equals("commuteTransport")) {
+      return line;
+    }
+    String transport = answers.text("commuteTransport");
+    String formLine = layout.line("commuteTransport." + transport);
+    if (formLine.isEmpty() || !answers.has("commuteKm")) {
+      return line;
+    }
+    String label =
+        transport.equals(Kind.CAR)
+            ? "Wege zur Arbeit: davon mit eigenem oder zur Nutzung überlassenem PKW (km)"
+            : "Wege zur Arbeit: davon mit öffentlichen Verkehrsmitteln, Fahrrad, zu Fuß oder als"
+                + " Mitfahrer (km)";
+    return new ReviewLine(
+        line.section(),
+        formLine,
+        label,
+        answers.text("commuteKm"),
+        new Source.Answer("commuteKm"));
   }
 
   private List<ReviewLine> expenseLines(ExpenseLine expenseLine, List<Expense> expenses) {

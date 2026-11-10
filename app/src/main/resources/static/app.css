@@ -148,7 +148,8 @@ td {
   background: #fdecee;
 }
 
-.document-check tr.differs .mark {
+.document-check tr.differs .mark,
+.certificate-check.differs .mark {
   color: #b00020;
   font-weight: bold;
 }

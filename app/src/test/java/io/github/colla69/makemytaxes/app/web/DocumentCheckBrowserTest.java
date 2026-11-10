@@ -135,6 +135,30 @@ class DocumentCheckBrowserTest {
         .hasCount(0);
   }
 
+  @Test
+  void anInterviewAnswerThatDiffersFromTheCertificateGetsTheMark() {
+    Page page = browser.newPage();
+    anlageNWithCertificate(page);
+    String questions = "http://127.0.0.1:" + port + "/returns/" + returnId + "/interview/questions/";
+
+    page.navigate(questions + "grossWage");
+    Locator check = page.locator(".certificate-check");
+    assertThat(check.locator(".read")).hasText("24.000,00");
+    assertThat(page.locator("[name=answer]")).hasValue("");
+    assertThat(check.locator(".mark")).isEmpty();
+    page.locator("[name=answer]").fill("25.000,00");
+    assertThat(check.locator(".mark")).hasText(MARK);
+    page.locator("[name=answer]").fill("24000");
+    assertThat(check.locator(".mark")).isEmpty();
+
+    // A value that the app did not read stays "nicht gefunden", and any typed value differs.
+    page.navigate(questions + "solidarity");
+    assertThat(check.locator(".read")).hasText("nicht gefunden");
+    assertThat(page.locator("[name=answer]")).hasValue("");
+    page.locator("[name=answer]").fill("10,00");
+    assertThat(check.locator(".mark")).hasText(MARK);
+  }
+
   private static void openCheck(Page page) {
     page.getByRole(
             AriaRole.BUTTON,

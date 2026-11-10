@@ -1,5 +1,6 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.document.CertificatePdfReader;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
@@ -293,15 +294,18 @@ class InterviewController {
     model.addAttribute("current", answers.text(question.id()));
     if (question.type() == Type.FIELD) {
       FormModule form = formOf(returnId, question.formId());
-      model.addAttribute("field", form.field(question.id()).orElseThrow());
+      Field field = form.field(question.id()).orElseThrow();
+      model.addAttribute("field", field);
       if (!model.containsAttribute("value")) {
         model.addAttribute("value", forms.answers(returnId, form.id()).text(question.id()));
       }
       Interview.certificateDocument(answers, question.id())
           .ifPresent(
-              document ->
-                  model.addAttribute(
-                      "certificateHref", "/returns/" + returnId + "/documents/" + document));
+              document -> {
+                model.addAttribute(
+                    "certificateHref", "/returns/" + returnId + "/documents/" + document);
+                model.addAttribute("certificateRead", readValue(returnId, document, field));
+              });
     }
     if (question.type() == Type.DOCUMENT) {
       model.addAttribute("certificateOptions", certificateOptions(returnId));
@@ -319,6 +323,18 @@ class InterviewController {
           household.personOf(returnId).map(person -> "/persons/" + person).orElse("/"));
     }
     return "interview";
+  }
+
+  /**
+   * The value of the field that the app reads from the stored certificate, or empty if it finds
+   * none. The page shows it beside the answer and marks an answer that differs. It is never saved.
+   */
+  private String readValue(long returnId, long document, Field field) {
+    return documents
+        .find(returnId, document)
+        .map(stored -> CertificatePdfReader.read(documents.content(stored.id())))
+        .flatMap(read -> read.value(field.hintId()))
+        .orElse("");
   }
 
   private List<Kind.Option> certificateOptions(long returnId) {

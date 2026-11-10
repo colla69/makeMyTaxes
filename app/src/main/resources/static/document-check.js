@@ -65,6 +65,23 @@
     dialog.showModal();
   }
 
+  // An interview question beside a certificate shows the read value. An answer that the user typed
+  // and that differs from it gets the mark. An empty answer gets no mark.
+  function markAnswer(check) {
+    const control = check.closest("form").querySelector('[name="answer"]');
+    const kind = check.dataset.kind;
+    const value = control.value.trim();
+    const differs = value !== "" && normalized(kind, value) !== normalized(kind, check.dataset.read ?? "");
+    check.classList.toggle("differs", differs);
+    check.querySelector(".mark").textContent = differs ? MARK : "";
+  }
+
+  document.querySelectorAll(".certificate-check").forEach((check) => {
+    markAnswer(check);
+    check.closest("form").addEventListener("input", () => markAnswer(check));
+    check.closest("form").addEventListener("change", () => markAnswer(check));
+  });
+
   document.addEventListener("click", (event) => {
     const button = event.target.closest?.("[data-document-check]");
     if (button) {

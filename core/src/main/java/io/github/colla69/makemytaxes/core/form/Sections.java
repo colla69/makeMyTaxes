@@ -140,8 +140,8 @@ public final class Sections {
               + " berechnet den Betrag. Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur"
               + " Verfügung, gehören die Tage in Zeile 62, auch wenn Sie am selben Tag auswärts"
               + " oder an der ersten Tätigkeitsstätte gearbeitet haben. Zeile 62 deckt die App"
-              + " nicht ab. Ziehen Sie ein häusliches Arbeitszimmer ab (Zeile 60), gibt es für"
-              + " denselben Zeitraum keine Tagespauschale.");
+              + " nicht ab. Es gibt keine Tagespauschale, soweit Sie ein häusliches"
+              + " Arbeitszimmer abziehen (Zeile 60).");
 
   private static Section work(String transportHelp, String homeOfficeHelp) {
     return Section.once(

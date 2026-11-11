@@ -156,7 +156,8 @@ class WageTaxCertificate2023Test {
             "Zeile 61",
             "dauerhaft kein anderer Arbeitsplatz",
             "Zeile 62 deckt die App nicht ab",
-            "häusliches Arbeitszimmer ab (Zeile 60)");
+            "keine Tagespauschale, soweit Sie ein häusliches Arbeitszimmer abziehen (Zeile 60)")
+        .doesNotContain("denselben Zeitraum");
   }
 
   @Test

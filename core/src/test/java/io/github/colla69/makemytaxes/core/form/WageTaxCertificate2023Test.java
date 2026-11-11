@@ -135,7 +135,9 @@ class WageTaxCertificate2023Test {
       "Anlage N 2023, mark 2023AnlN032NET, lines 34 to 36: the km line of each means of transport")
   @CsvSource({
     "PKW, Anlage N Zeile 34",
+    "Sammelbeförderung des Arbeitgebers, Zeile 35",
     "öffentlichen Verkehrsmitteln, Zeile 36",
+    "Mitfahrer einer Fahrgemeinschaft, Zeile 36",
   })
   void theTransportHelpNamesTheLineOfEachChoice(String transport, String line) {
     String help = anlageN.field("commuteTransport").orElseThrow().help();
@@ -153,10 +155,11 @@ class WageTaxCertificate2023Test {
         .contains(
             "überwiegend zu Hause",
             "erste Tätigkeitsstätte nicht",
-            "Zeile 61",
+            "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Anlage N Zeile 61)",
             "dauerhaft kein anderer Arbeitsplatz",
             "Zeile 62 deckt die App nicht ab",
-            "keine Tagespauschale, soweit Sie ein häusliches Arbeitszimmer abziehen (Zeile 60)")
+            "keine Tagespauschale, soweit Sie ein häusliches Arbeitszimmer abziehen (Zeile 60)",
+            "Unterkunftskosten einer doppelten Haushaltsführung")
         .doesNotContain("denselben Zeitraum");
   }
 

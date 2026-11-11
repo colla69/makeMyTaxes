@@ -393,6 +393,69 @@ class FormBrowserTest {
     assertThat(estimate).containsText("§ 9a Satz 1 Nr. 1 Buchstabe a EStG");
   }
 
+  /** The lines come from the official forms in law/forms/2024. */
+  @Test
+  void aReturnOf2024HasAllTabsAndAFilledAnlageNReachesTheReview() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2024");
+    for (String form : FORM_TABS) {
+      assertThat(link(page, form)).hasCount(1);
+    }
+
+    page.getByLabel("Datum").fill("05.03.2024");
+    page.getByLabel("Betrag (EUR)").fill("1.500,00");
+    page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    page.getByLabel("Beschreibung").fill("Made-up laptop");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
+    page.getByLabel("Grundlage").press("Enter");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+
+    link(page, "Hauptvordruck").click();
+    fill(page, "taxOffice", "Made-up Finanzamt");
+    fill(page, "occupation", "Made-up job");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Anlage N").click();
+    fill(page, "taxClass", "1");
+    fill(page, "grossWage", "40.000,00");
+    fill(page, "commuteDays", "10");
+    fill(page, "commuteKm", "30");
+    field(page, "commuteTransport").selectOption("CAR");
+    fill(page, "homeOfficeDays", "20");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+    // The Italian hint must not state the 2022 rule (days only at home) for 2024.
+    Locator homeOfficeHint =
+        page.locator(".field")
+            .filter(new Locator.FilterOptions().setHas(page.locator("[name=homeOfficeDays]")))
+            .locator(".hint-text");
+    assertThat(homeOfficeHint).not().containsText("solo da casa");
+    assertThat(homeOfficeHint).containsText("dipende dall'anno");
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator("#form-year")).hasText("2024");
+    Locator main = page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Hauptvordruck"));
+    Locator anlageN = page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(main.locator("tbody tr td:first-child")).hasText(new String[] {"5", "9", "10", "12"});
+    assertThat(anlageN.locator("tbody tr td:first-child"))
+        .hasText(new String[] {"4", "5", "32", "33", "34 bis 36", "57", "57", "61"});
+
+    // Commuting 10 x (20 x 0,30 + 10 x 0,38) = 98,00, home office 20 x 6,00 = 120,00.
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("98,00");
+    assertThat(estimate).containsText("120,00");
+    assertThat(estimate).containsText("1.718,00");
+    assertThat(estimate).containsText("1.230,00");
+    assertThat(estimate.locator("#limit-home-office")).containsText("6,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    assertThat(estimate.locator("#limit-home-office")).containsText("Anlage N Zeile 61");
+    assertThat(estimate.locator("#limit-home-office"))
+        .containsText("Zeile 62, die die App nicht abdeckt");
+  }
+
   @Test
   void aCostWithoutAFormStaysVisibleOnTheReview() {
     Page page = browser.newPage();
@@ -530,20 +593,6 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-home-office"))
         .containsText("Zeile 62, die die App nicht abdeckt");
     assertThat(estimate.locator("#limit-home-office")).not().containsText("Nr. 6b");
-  }
-
-  @Test
-  void aReturnWithoutAYearPackHasNoFormsYet() {
-    Page page = browser.newPage();
-    openANewReturn(page, "2024");
-
-    assertThat(page.getByLabel("Datum")).isVisible();
-    assertThat(link(page, "Übersicht")).hasCount(0);
-    assertThat(link(page, "Anlage N")).hasCount(0);
-    assertThat(link(page, "Fragen")).hasCount(0);
-    assertThat(page.getByText(NO_RULES)).isVisible();
-    link(page, "Belege").click();
-    assertThat(page.getByText(NO_RULES)).isVisible();
   }
 
   @Test

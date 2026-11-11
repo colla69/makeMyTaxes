@@ -59,6 +59,19 @@ public record YearPack(
           Money.ofCents(1_260_00),
           LocalDate.of(2024, 9, 2));
 
+  private static final YearPack YEAR_2024 =
+      new YearPack(
+          new TaxYear(2024),
+          Money.ofCents(410_00),
+          Money.ofCents(13_050_00),
+          Money.ofCents(1_230_00),
+          Money.ofCents(30),
+          Money.ofCents(38),
+          Money.ofCents(4_500_00),
+          Money.ofCents(6_00),
+          Money.ofCents(1_260_00),
+          LocalDate.of(2025, 7, 31));
+
   private static final YearPack YEAR_2025 =
       new YearPack(
           new TaxYear(2025),
@@ -89,6 +102,7 @@ public record YearPack(
       Map.of(
           YEAR_2022.taxYear, YEAR_2022,
           YEAR_2023.taxYear, YEAR_2023,
+          YEAR_2024.taxYear, YEAR_2024,
           YEAR_2025.taxYear, YEAR_2025,
           YEAR_2026.taxYear, YEAR_2026);
 

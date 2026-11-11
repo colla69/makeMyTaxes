@@ -124,24 +124,32 @@ public final class Sections {
               + " Tagespauschale.");
 
   /**
-   * Anlage N 2023, line 61: the home office day of § 4(5) no. 6c sentence 1 EStG, versions
-   * 30.06.2023 and 31.12.2023, which § 52(6) sentence 12 EStG applies from 2023. The days of
-   * sentence 2, for a person with no other permanent place of work, go on line 62, which the app
-   * does not cover. Lines 34 to 36 split the distance by the means of transport (2023AnlN032NET).
+   * Anlage N 2023 and 2024, which have the same lines (2023AnlN032NET and 2024AnlN032NET). Line 61:
+   * the home office day of § 4(5) sentence 1 no. 6c sentence 1 EStG, versions 30.06.2023,
+   * 31.12.2023, 30.06.2024 and 31.12.2024, which § 52(6) EStG applies from 2023. Line 61 holds
+   * only the days of a person who has another workplace. The days of sentence 2, for a person with
+   * no other permanent place of work, go on line 62, which the app does not cover. Sentence 3 rules
+   * out the day allowance as far as a study is deducted under no. 6b (line 60), and for a home whose
+   * costs count under a double household. Lines 34 to 36 split the distance by the means of
+   * transport.
    */
   public static final Section WORK_2023 =
       work(
           "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder zur"
-              + " Nutzung überlassenem PKW in Anlage N Zeile 34, mit öffentlichen Verkehrsmitteln,"
-              + " Motorrad, Fahrrad, zu Fuß oder als Mitfahrer in Zeile 36. Haben Sie mehrere"
-              + " Verkehrsmittel genutzt, teilen Sie die Kilometer auf diese Zeilen auf.",
-          "Tage, an denen Sie ganz oder überwiegend zu Hause gearbeitet und Ihre erste"
-              + " Tätigkeitsstätte nicht aufgesucht haben (Anlage N Zeile 61). Das Finanzamt"
-              + " berechnet den Betrag. Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur"
-              + " Verfügung, gehören die Tage in Zeile 62, auch wenn Sie am selben Tag auswärts"
-              + " oder an der ersten Tätigkeitsstätte gearbeitet haben. Zeile 62 deckt die App"
-              + " nicht ab. Es gibt keine Tagespauschale, soweit Sie ein häusliches"
-              + " Arbeitszimmer abziehen (Zeile 60).");
+              + " Nutzung überlassenem PKW in Anlage N Zeile 34, mit einer Sammelbeförderung des"
+              + " Arbeitgebers in Zeile 35, mit öffentlichen Verkehrsmitteln, Motorrad, Fahrrad"
+              + " oder Ähnlichem, zu Fuß oder als Mitfahrer einer Fahrgemeinschaft in Zeile 36."
+              + " Haben Sie mehrere Verkehrsmittel genutzt, teilen Sie die Kilometer auf diese"
+              + " Zeilen auf.",
+          "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Anlage N Zeile 61): Tage,"
+              + " an denen Sie ganz oder überwiegend zu Hause gearbeitet und Ihre erste"
+              + " Tätigkeitsstätte nicht aufgesucht haben. Das Finanzamt berechnet den Betrag."
+              + " Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gehören die Tage"
+              + " in Zeile 62, auch wenn Sie am selben Tag auswärts oder an der ersten"
+              + " Tätigkeitsstätte gearbeitet haben. Zeile 62 deckt die App nicht ab. Es gibt"
+              + " keine Tagespauschale, soweit Sie ein häusliches Arbeitszimmer abziehen"
+              + " (Zeile 60) oder für diese Wohnung Unterkunftskosten einer doppelten"
+              + " Haushaltsführung abziehen können.");
 
   private static Section work(String transportHelp, String homeOfficeHelp) {
     return Section.once(

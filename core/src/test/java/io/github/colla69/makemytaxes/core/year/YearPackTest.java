@@ -64,7 +64,7 @@ class YearPackTest {
   @Test
   void aYearWithoutAYearPackHasNone() {
     assertThat(YearPack.of(new TaxYear(2021))).isEmpty();
-    assertThat(YearPack.of(new TaxYear(2024))).isEmpty();
+    assertThat(YearPack.of(new TaxYear(2027))).isEmpty();
   }
 
   /**

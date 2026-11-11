@@ -45,6 +45,7 @@ public record YearDefinition(
   }
 
   public Interview interview() {
-    return new Interview(certificate, pack.taxYear().value());
+    return new Interview(
+        certificate, pack.taxYear().value(), new FilingCheckForm(pack).fields());
   }
 }

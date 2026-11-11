@@ -27,8 +27,18 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class InterviewBrowserTest {
 
-  /** The questions without an employer and with a statutory health insurance. */
-  private static final int QUESTIONS = 18;
+  /**
+   * The questions without an employer and with a statutory health insurance: 18 on the job, the
+   * commute, the insurance and the household, then the tax office, the IBAN and the filing checks.
+   */
+  private static final int QUESTIONS = 28;
+
+  /** The questions of the filing check. */
+  private static final int FILING_CHECKS = 8;
+
+  private static final String MADE_UP_TAX_ID = "86402715392"; // privacy-scan:allow made up
+
+  private static final String MADE_UP_IBAN = "DE02120300000000202051"; // privacy-scan:allow made up
 
   /** The certificate question, its lines and the question for another employer. */
   private static final int QUESTIONS_PER_EMPLOYER = 12;
@@ -138,13 +148,21 @@ class InterviewBrowserTest {
     assertThat(page.locator("#summary")).containsText("Zahlung auf das Konto des Leistenden");
     forward(page).click();
 
+    assertTopic(page, "Abgabe");
+    answerFiling(page);
+    assertThat(page.locator("#summary")).containsText("Made-up Finanzamt");
+    forward(page).click();
+
     assertThat(progress)
         .hasAttribute(
             "value",
             String.valueOf(
                 QUESTIONS + QUESTIONS_PER_EMPLOYER + STATUTORY_LINES + QUESTIONS_PER_INVOICE));
     assertThat(page.locator(".topic-summary h2"))
-        .hasText(new String[] {"Beruf", "Arbeitsweg und Arbeit", "Versicherungen", "Haushalt"});
+        .hasText(
+            new String[] {
+              "Beruf", "Arbeitsweg und Arbeit", "Versicherungen", "Haushalt", "Abgabe"
+            });
     assertThat(page.locator("#steps li a"))
         .containsText(
             new String[] {
@@ -175,6 +193,81 @@ class InterviewBrowserTest {
     assertThat(page.locator("#answers [name=cleaning1-paidAmount]")).hasValue("300,00");
     assertThat(page.locator("#answers [name=cleaning1-labourCost]")).hasValue("250,00");
     assertThat(page.locator("#answers [name=cleaning1-payment]")).hasValue("TRANSFER");
+  }
+
+  @Test
+  void aCompleteQuestionnaireTurnsEveryTabGreenAndAnOpenFormLinksToItsMissingFields() {
+    Page page = browser.newPage();
+    openInterview(page);
+
+    // Before the questionnaire, a form names its missing required fields, with a link to each.
+    tab(page, "Anlage N").click();
+    assertThat(tab(page, "Anlage N")).not().hasClass(Pattern.compile("\\bdone\\b"));
+    Locator grossWage = page.locator("#missing a").filter(new Locator.FilterOptions().setHasText("Bruttoarbeitslohn"));
+    assertThat(grossWage).hasAttribute("href", "#field-grossWage");
+    grossWage.click();
+    assertThat(page.locator("#field-grossWage [name=grossWage]")).isVisible();
+    org.assertj.core.api.Assertions.assertThat(page.url()).endsWith("#field-grossWage");
+
+    // A required field question needs a value, and the details of the person need each field.
+    tab(page, "Fragen").click();
+    button(page, "Ja, die Angaben stimmen").click();
+    button(page, "Ja").click();
+    answerEmployer(page, "Made-up GmbH", "30.000,00");
+    button(page, "Nein").click();
+    answerField(page, "");
+    assertThat(page.locator("#question .error")).containsText("braucht diesen Wert");
+    answerField(page, "Made-up job");
+    forward(page).click();
+    for (int field = 0; field < 4; field++) {
+      answerField(page, "");
+    }
+    button(page, "Nein").click();
+    button(page, "Nein").click();
+    forward(page).click();
+    button(page, "Gesetzlich").click();
+    for (int line = 0; line < STATUTORY_LINES; line++) {
+      answerField(page, "");
+    }
+    button(page, "Nein").click();
+    button(page, "Nein").click();
+    forward(page).click();
+    for (int question = 0; question < 6; question++) {
+      button(page, "Nein").click();
+    }
+    forward(page).click();
+    answerFiling(page);
+    forward(page).click();
+    assertThat(page.locator("#steps")).isVisible();
+
+    for (String name :
+        new String[] {
+          "Fragen",
+          "Abgabepflicht",
+          "Hauptvordruck",
+          "Anlage N",
+          "Anlage Vorsorgeaufwand",
+          "Haushaltsnahe Aufwendungen"
+        }) {
+      assertThat(tab(page, name)).hasClass(Pattern.compile("\\bdone\\b"));
+    }
+    tab(page, "Anlage N").click();
+    assertThat(page.locator("#missing")).hasCount(0);
+  }
+
+  @Test
+  void theDetailsOfThePersonCannotBeConfirmedWhileOneIsMissing() {
+    Page page = browser.newPage();
+    openInterview(page);
+    String interview = page.url();
+    page.locator("#question").getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Angaben ändern")).click();
+    page.locator("[name=city]").fill("");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Speichern")).click();
+
+    page.navigate(interview);
+    button(page, "Ja, die Angaben stimmen").click();
+    assertThat(page.locator("#question .error")).containsText("Wohnort");
+    assertThat(page.locator("#details")).isVisible();
   }
 
   @Test
@@ -229,7 +322,7 @@ class InterviewBrowserTest {
     openInterview(page);
     button(page, "Ja, die Angaben stimmen").click();
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
     forward(page).click();
     answerField(page, "12");
     answerField(page, "");
@@ -249,7 +342,7 @@ class InterviewBrowserTest {
     button(page, "Ja").click();
     answerEmployer(page, "Made-up AG", "15.000,00");
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
     forward(page).click();
     answerField(page, "");
     answerField(page, "");
@@ -315,7 +408,7 @@ class InterviewBrowserTest {
     button(page, "Ja").click();
     answerEmployer(page, "Made-up GmbH", "30.000,00");
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
     forward(page).click();
     answerField(page, "");
     answerField(page, "");
@@ -441,7 +534,7 @@ class InterviewBrowserTest {
     org.assertj.core.api.Assertions.assertThat(second).isNotEqualTo(first);
     answerLines(page, "Made-up AG", "15.000,00");
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
 
     assertThat(page.locator("[data-question=wageCertificateDocument] strong"))
         .hasText("made-up-first.pdf");
@@ -531,8 +624,8 @@ class InterviewBrowserTest {
 
     button(page, "Ja, die Angaben stimmen").click();
     button(page, "Nein").click();
-    answerField(page, "");
-    assertThat(page.locator("#summary")).containsText("Keine Angabe");
+    answerField(page, "Made-up job");
+    assertThat(page.locator("#summary")).containsText("Made-up job");
     forward(page).click();
     assertTopic(page, "Arbeitsweg und Arbeit");
     back(page).click();
@@ -545,7 +638,7 @@ class InterviewBrowserTest {
     openInterview(page);
     button(page, "Ja, die Angaben stimmen").click();
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
     forward(page).click();
 
     fieldAnswer(page).fill("12,5");
@@ -575,7 +668,7 @@ class InterviewBrowserTest {
     openInterview(page);
     button(page, "Ja, die Angaben stimmen").click();
     button(page, "Nein").click();
-    answerField(page, "");
+    answerField(page, "Made-up job");
     forward(page).click();
 
     fieldAnswer(page).fill("12,5");
@@ -600,7 +693,7 @@ class InterviewBrowserTest {
       if (page.locator("#details").count() > 0) {
         button(page, "Ja, die Angaben stimmen").click();
       } else if (fieldAnswer(page).count() > 0) {
-        answerField(page, "");
+        answerField(page, anyValue(fieldAnswer(page)));
       } else if (button(page, "Gesetzlich").count() > 0) {
         button(page, "Gesetzlich").click();
       } else {
@@ -609,6 +702,18 @@ class InterviewBrowserTest {
     }
     forward(page).click();
     assertThat(page.locator(".answered li .hint-text")).hasCount(QUESTIONS);
+  }
+
+  /** A valid value: a text for a required text field, a no for a check, else empty. */
+  private static String anyValue(Locator answer) {
+    String kind = answer.getAttribute("data-kind");
+    if ("IBAN".equals(kind)) {
+      return MADE_UP_IBAN;
+    }
+    if ("TEXT".equals(kind)) {
+      return "Made-up";
+    }
+    return answer.locator("option[value=" + Kind.NO + "]").count() > 0 ? Kind.NO : "";
   }
 
   private static void assertTopic(Page page, String topic) {
@@ -652,15 +757,28 @@ class InterviewBrowserTest {
     return view.getAttribute("src");
   }
 
-  /** The lines of one certificate: the name and the gross wage, the rest empty. */
+  /**
+   * The lines of one certificate: the name, the gross wage and the other required lines, the rest
+   * empty.
+   */
   private static void answerLines(Page page, String name, String grossWage) {
     answerField(page, name);
-    for (int line = 0; line < 3; line++) {
+    answerField(page, "");
+    answerField(page, "");
+    answerField(page, "1");
+    answerField(page, grossWage);
+    answerField(page, "3.000,00");
+    for (int line = 0; line < 4; line++) {
       answerField(page, "");
     }
-    answerField(page, grossWage);
-    for (int line = 0; line < 5; line++) {
-      answerField(page, "");
+  }
+
+  /** Answers the questions of the topic "Abgabe": the tax office, the IBAN and a no to each check. */
+  private static void answerFiling(Page page) {
+    answerField(page, "Made-up Finanzamt");
+    answerField(page, MADE_UP_IBAN);
+    for (int check = 0; check < FILING_CHECKS; check++) {
+      answerField(page, Kind.NO);
     }
   }
 
@@ -701,7 +819,12 @@ class InterviewBrowserTest {
     Locator form = page.locator("#new-person");
     form.locator("[name=firstName]").fill("Made-up");
     form.locator("[name=lastName]").fill(lastName);
+    form.locator("[name=taxId]").fill(MADE_UP_TAX_ID);
+    form.locator("[name=birthDate]").fill("01.01.1990");
     form.locator("[name=street]").fill("Musterweg");
+    form.locator("[name=houseNumber]").fill("1");
+    form.locator("[name=postalCode]").fill("00000");
+    form.locator("[name=city]").fill("Made-up city");
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
     section.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022")).click();

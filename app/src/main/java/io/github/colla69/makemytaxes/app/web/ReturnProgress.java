@@ -5,6 +5,7 @@ import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Interview;
+import io.github.colla69.makemytaxes.core.form.Interview.Step;
 import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,8 +24,10 @@ public class ReturnProgress {
   }
 
   /**
-   * The IDs of the done tabs. A form is done when it has saved answers and no required field is
-   * missing. The interview is done when each question has an answer.
+   * The IDs of the done tabs. A form is done when no required field is missing, and it has saved
+   * answers or the interview is done. A form that the return does not need is done when the
+   * interview is done, even when it holds answers, such as the occupation of a person without
+   * employment. The interview is done when each question has an answer.
    */
   public Set<String> doneTabs(long returnId) {
     Set<String> done = new HashSet<>();
@@ -33,13 +36,24 @@ public class ReturnProgress {
         .flatMap(YearDefinition::of)
         .ifPresent(
             definition -> {
+              Answers interview = forms.answers(returnId, Interview.ID);
+              boolean interviewDone = definition.interview().isDone(interview);
+              Set<String> needed = new HashSet<>();
+              for (Step step : definition.interview().steps(interview)) {
+                if (step.isForm()) {
+                  needed.add(step.formId());
+                }
+              }
               for (FormModule form : definition.forms()) {
                 Answers answers = forms.answers(returnId, form.id());
-                if (!answers.values().isEmpty() && form.missing(answers).isEmpty()) {
+                boolean started = !answers.values().isEmpty() || interviewDone;
+                boolean complete = started && form.missing(answers).isEmpty();
+                boolean notNeeded = interviewDone && !needed.contains(form.id());
+                if (complete || notNeeded) {
                   done.add(form.id());
                 }
               }
-              if (definition.interview().isDone(forms.answers(returnId, Interview.ID))) {
+              if (interviewDone) {
                 done.add(Interview.ID);
               }
             });

@@ -6,6 +6,7 @@
 
       Call it with named values. Only "name" and "label" are necessary:
         name, label, value, line, help, hint, fieldError, placeholder, required, autofocus, type, accept, min, max, kind
+        anchor: the id of the field, so that a link can lead to it.
         options: a list of Kind.Option. This makes the field a select, and "value" selects the option.
         blankOption: true adds an empty first option to the select.
         kind: the name of a Kind. DATE, MONEY and WHOLE_NUMBER get an input mask from fields.js,
@@ -16,7 +17,7 @@
       A value that the call does not give comes from the model of the page, if the model has that
       name. So a new value here must not have the name of a model attribute, such as "error".
     -->
-    <div class="field" th:fragment="field">
+    <div class="field" th:fragment="field" th:id="${anchor}">
       <!-- The clear button is outside the label, so that the label names only the control. -->
       <div class="field-row">
       <label>

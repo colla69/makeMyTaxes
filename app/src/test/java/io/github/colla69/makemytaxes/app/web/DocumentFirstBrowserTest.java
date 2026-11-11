@@ -27,6 +27,8 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DocumentFirstBrowserTest {
 
+  private static final String MADE_UP_TAX_ID = "86402715392"; // privacy-scan:allow made up
+
   @TempDir static Path databaseFolder;
 
   private static Playwright playwright;
@@ -155,7 +157,12 @@ class DocumentFirstBrowserTest {
     Locator form = page.locator("#new-person");
     form.locator("[name=firstName]").fill("Made-up");
     form.locator("[name=lastName]").fill(lastName);
+    form.locator("[name=taxId]").fill(MADE_UP_TAX_ID);
+    form.locator("[name=birthDate]").fill("01.01.1990");
     form.locator("[name=street]").fill("Musterweg");
+    form.locator("[name=houseNumber]").fill("1");
+    form.locator("[name=postalCode]").fill("00000");
+    form.locator("[name=city]").fill("Made-up city");
     form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Person anlegen")).click();
     Locator section =
         page.locator("section").filter(new Locator.FilterOptions().setHasText("Made-up " + lastName));

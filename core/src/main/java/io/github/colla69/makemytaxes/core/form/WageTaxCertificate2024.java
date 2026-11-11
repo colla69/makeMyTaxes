@@ -7,11 +7,13 @@ package io.github.colla69.makemytaxes.core.form;
  */
 public final class WageTaxCertificate2024 {
 
+  private static final int YEAR = 2024;
+
   public static final WageTaxCertificate LAYOUT =
       new WageTaxCertificate(
           WageTaxCertificate2022.LAYOUT.lines(),
           WageTaxCertificate2022.LAYOUT.withoutLine(),
-          WageTaxCertificateReader2022.forYear(2024));
+          text -> WageTaxCertificateReader2022.read(text, YEAR));
 
   private WageTaxCertificate2024() {}
 }

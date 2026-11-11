@@ -27,7 +27,10 @@ The argument is the pull request number. Nobody answers while you run.
    `CLAUDE.md`.
 2. If CI failed, find the cause with the failing test. If there is a merge conflict, run
    `git fetch origin dev` and `git merge origin/dev`.
-3. Make the corrections, with tests.
+3. Make the corrections, with tests. If a finding or an owner comment says that the pull request
+   body is out of date, write the new body to a file outside the repository and run
+   `gh pr edit <number> --body-file <file>`. The body must describe the change as it is now. Use
+   `gh pr edit` only for the body: do not change labels, the title, the base or the reviewers.
 4. Run only the test classes that cover your correction, and name each class:
    `./mvnw -q -B test -Dtest=FirstTest,SecondTest -Dsurefire.failIfNoSpecifiedTests=false > target-test.log 2>&1`
    Read only the failures, and delete the log before you commit. If no test covers the correction, run

@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,6 +21,7 @@ import java.util.regex.Pattern;
  */
 public final class WageTaxCertificateReader2022 {
 
+  private static final int YEAR = 2022;
   private static final int LAST_LINE = 34;
 
   private static final Pattern TITLE =
@@ -51,17 +51,8 @@ public final class WageTaxCertificateReader2022 {
 
   private WageTaxCertificateReader2022() {}
 
-  /** Reads a certificate for 2022. */
   public static CertificateValues read(CertificateText text) {
-    return read(text, 2022);
-  }
-
-  /**
-   * The reader of the certificates of a year whose official sample has the same lines and labels
-   * as the sample for 2022. The test of the layout of that year names its sample.
-   */
-  public static Function<CertificateText, CertificateValues> forYear(int year) {
-    return text -> read(text, year);
+    return read(text, YEAR);
   }
 
   /**

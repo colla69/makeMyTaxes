@@ -71,6 +71,7 @@ final class Definition2025 {
             new FormLayout(
                 List.of(Sections.SOCIAL_INSURANCE, Sections.PRIVATE_HEALTH),
                 Map.of(),
-                certificate)));
+                certificate)),
+        true);
   }
 }

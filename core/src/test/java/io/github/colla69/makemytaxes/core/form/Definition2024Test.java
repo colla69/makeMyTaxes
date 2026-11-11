@@ -120,24 +120,20 @@ class Definition2024Test {
   @DisplayName(
       "Anlage N 2024, notes on lines 61 and 62, and § 4(5) sentence 1 no. 6c sentence 2 EStG,"
           + " version 31.12.2024: line 61 only with another workplace; line 62 is not supported")
-  void homeOfficeHelpAndQuestionNameTheConditionOfLine61() {
+  void homeOfficeHelpNamesTheConditionOfLine61() {
     assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
         .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61)")
         .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gilt Zeile 62")
         .contains("die App noch nicht unterstützt");
-    assertThat(homeOfficeQuestion(YEAR))
-        .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht")
-        .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung")
-        .contains("unterstützt die App diese Tage noch nicht");
   }
 
   @Test
   @DisplayName(
-      "§ 4(5) sentence 1 no. 6c sentence 1 EStG, versions 30.06.2024 and 31.12.2024: the interview"
-          + " asks for days worked mostly at home; 2022 keeps no. 6b, version 30.06.2022")
+      "§ 4(5) sentence 1 no. 6c sentences 1 and 2 EStG, versions 30.06.2024 and 31.12.2024, with"
+          + " § 52(6) sentence 13: the interview asks the question of no. 6c")
   void interviewAsksTheHomeOfficeQuestionOfTheYear() {
-    assertThat(homeOfficeQuestion(YEAR)).isEqualTo(Interview.HOME_OFFICE_FROM_2023);
-    assertThat(homeOfficeQuestion(new TaxYear(2022))).isEqualTo(Interview.HOME_OFFICE_UNTIL_2022);
+    assertThat(homeOfficeQuestion(YEAR)).isEqualTo(HomeOfficeDay.question(2024));
+    assertThat(homeOfficeQuestion(YEAR)).isNotEqualTo(HomeOfficeDay.question(2022));
   }
 
   private static String homeOfficeQuestion(TaxYear year) {

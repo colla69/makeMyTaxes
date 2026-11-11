@@ -29,7 +29,7 @@ public final class WageTaxCertificate2022 {
               Map.entry("careEmployee", "26"),
               Map.entry("unemploymentEmployee", "27")),
           Set.of("employerName", "taxClass"),
-          WageTaxCertificateReader2022.forYear(2022));
+          WageTaxCertificateReader2022::read);
 
   private WageTaxCertificate2022() {}
 }

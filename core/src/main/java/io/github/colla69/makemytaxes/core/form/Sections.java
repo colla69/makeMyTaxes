@@ -108,25 +108,26 @@ public final class Sections {
                       + " Aufstockungsbetrag (EUR)",
                   Kind.MONEY),
               optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-                  .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
+                  .withHelp(
+                      "Die Summe der steuerfreien und der pauschal besteuerten"
+                          + " Arbeitgeberleistungen für Fahrten zur Arbeit."))
           .withCheck(Sections::checkPeriod);
 
-  /**
-   * Anlage N: the workplace, the way to work and the home office, with the home office days of §
-   * 4(5) sentence 1 no. 6b sentence 4 EStG, version 30.06.2022, with § 52(6) sentence 15: days of
-   * work only at home.
-   */
-  public static final Section WORK =
-      work(
-          "",
-          "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt berechnet den Betrag.");
+  /** Anlage N of 2022: the workplace, the way to work and the home office. */
+  public static final Section WORK = work("", HomeOfficeDay.help(2022));
 
   /**
-   * Anlage N from 2023: the home office days of § 4(5) sentence 1 no. 6c sentence 1 EStG, versions
-   * 30.06.2024 and 31.12.2024. A day counts if the work was mostly at home and the first place of
-   * work was not visited. The exception of sentence 2, for a person who permanently has no other
-   * workplace, is line 62 of Anlage N 2024, which the app does not have yet. Lines 34 to 36 split
-   * the distance by the means of transport (2024AnlN032NET).
+   * Anlage N from 2023, for a year without known lines: the same fields, with the home office days
+   * of § 4(5) no. 6c EStG.
+   */
+  public static final Section WORK_FROM_2023 = work("", HomeOfficeDay.help(2023));
+
+  /**
+   * Anlage N 2024, line 61: the home office days of § 4(5) sentence 1 no. 6c sentence 1 EStG,
+   * versions 30.06.2024 and 31.12.2024. A day counts if the work was mostly at home and the first
+   * place of work was not visited. The exception of sentence 2, for a person who permanently has no
+   * other workplace, is line 62 of Anlage N 2024, which the app does not have yet. Lines 34 to 36
+   * split the distance by the means of transport (2024AnlN032NET).
    */
   public static final Section WORK_2024 =
       work(

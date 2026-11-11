@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -387,6 +388,8 @@ class FormBrowserTest {
     assertThat(estimate.locator("#limit-home-office")).containsText("5,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("600,00 EUR");
     assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6b");
+    assertThat(estimate.locator("#limit-home-office")).containsText("Tag nur zu Hause");
+    assertThat(estimate.locator("#union-fees")).hasCount(0);
     assertThat(estimate).containsText("§ 9a Satz 1 Nr. 1 Buchstabe a EStG");
   }
 
@@ -484,6 +487,68 @@ class FormBrowserTest {
 
     assertThat(page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N")))
         .containsText("1.234,50");
+  }
+
+  @Test
+  void a2026ReturnHasAllTabsAndAFilledAnlageNReachesTheReviewWithoutLines() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2026");
+
+    for (String tab : List.of("Fragen", "Belege", "Übersicht")) {
+      assertThat(link(page, tab)).hasCount(1);
+    }
+    for (String form : FORM_TABS) {
+      link(page, form).click();
+      assertThat(page.locator("#answers")).isVisible();
+      assertThat(page.locator("#lines-unknown")).containsText("keine Zeilennummern");
+      // A form line is a number. A legal source such as "§ 35a Abs. 2 EStG" can stand there too.
+      for (String line : page.locator("#answers .line").allTextContents()) {
+        assertTrue(line.startsWith("§"), "A line number on the 2026 form " + form + ": " + line);
+      }
+      // The hints have no year, so they must not name a certificate line ("punto 3").
+      for (String hint : page.locator(".field .hint-text").allTextContents()) {
+        assertFalse(hint.contains("punt"), "A certificate line in a hint on " + form + ": " + hint);
+      }
+    }
+    assertThat(page.locator("#answers")).containsText("mit mehr als 410,00 Euro erstattet");
+    assertThat(page.locator("#answers")).containsText("13.614,00");
+
+    link(page, "Anlage N").click();
+    fill(page, "taxClass", "1");
+    fill(page, "grossWage", "40.000,00");
+    fill(page, "commuteDays", "10");
+    fill(page, "commuteKm", "30");
+    field(page, "commuteTransport").selectOption("CAR");
+    fill(page, "homeOfficeDays", "20");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator("#lines-unknown")).containsText("keine Zeilennummern");
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN).containsText("40.000,00");
+    assertThat(anlageN.locator("tbody tr td:first-child"))
+        .hasText(new String[] {"", "", "", "", "", ""});
+
+    // Commuting 10 x 30 x 0,38 = 114,00, home office 20 x 6,00 = 120,00.
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("114,00");
+    assertThat(estimate).containsText("120,00");
+    assertThat(estimate).containsText("1.230,00");
+    assertThat(estimate.locator("#limit-commute")).containsText("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG.");
+    // § 9(1) sentence 3 no. 4 sentence 2 EStG, versions 30.06.2026 and 05.11.2026: one rate.
+    assertThat(estimate.locator("#limit-commute"))
+        .containsText("Wege zur Arbeit: 0,38 EUR je vollen Kilometer, für jeden Tag");
+    assertThat(estimate.locator("#limit-commute")).not().containsText("21. Kilometer");
+    assertThat(estimate.locator("#limit-home-office")).containsText("Nr. 6c Satz 1 und 2 EStG");
+    assertThat(estimate.locator("#limit-home-office")).containsText("1.260,00 EUR");
+    assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    // § 4(5) no. 6c sentences 1 and 2 and § 9a sentence 3 EStG, versions 30.06.2026 and 05.11.2026.
+    assertThat(estimate.locator("#limit-home-office")).containsText("überwiegend zu Hause");
+    assertThat(estimate.locator("#limit-home-office")).not().containsText("nur zu Hause");
+    assertThat(estimate.locator("#union-fees")).containsText("§ 9a Satz 3 EStG");
   }
 
   @Test

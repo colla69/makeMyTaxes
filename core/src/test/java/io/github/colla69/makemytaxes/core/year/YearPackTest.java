@@ -46,7 +46,6 @@ class YearPackTest {
   void homeOfficeUsesTheWordingFor2022AndNotTheYearEndText() {
     assertThat(pack.homeOfficePerDay()).isEqualTo(Money.ofCents(5_00));
     assertThat(pack.homeOfficeLimit()).isEqualTo(Money.ofCents(600_00));
-    assertThat(pack.homeOfficeDayIsMostlyAtHome()).isFalse();
   }
 
   @Test
@@ -126,7 +125,6 @@ class YearPackTest {
     void homeOffice() {
       assertThat(pack.homeOfficePerDay()).isEqualTo(Money.ofCents(6_00));
       assertThat(pack.homeOfficeLimit()).isEqualTo(Money.ofCents(1_260_00));
-      assertThat(pack.homeOfficeDayIsMostlyAtHome()).isTrue();
     }
 
     /** Art. 97 § 36(3) EGAO extends the deadline only for 2020 to 2024. */

@@ -72,36 +72,33 @@ public record YearPack(
           Money.ofCents(1_260_00),
           LocalDate.of(2026, 7, 31));
 
+  private static final YearPack YEAR_2026 =
+      new YearPack(
+          new TaxYear(2026),
+          Money.ofCents(410_00),
+          Money.ofCents(13_614_00),
+          Money.ofCents(1_230_00),
+          Money.ofCents(38),
+          Money.ofCents(38),
+          Money.ofCents(4_500_00),
+          Money.ofCents(6_00),
+          Money.ofCents(1_260_00),
+          LocalDate.of(2027, 8, 2));
+
   private static final Map<TaxYear, YearPack> PACKS =
       Map.of(
           YEAR_2022.taxYear, YEAR_2022,
           YEAR_2024.taxYear, YEAR_2024,
-          YEAR_2025.taxYear, YEAR_2025);
+          YEAR_2025.taxYear, YEAR_2025,
+          YEAR_2026.taxYear, YEAR_2026);
 
   public static Optional<YearPack> of(TaxYear taxYear) {
     return Optional.ofNullable(PACKS.get(taxYear));
   }
 
-  /** The provision of the home office amount: no. 6b until 2022, no. 6c from 2023. */
-  public String homeOfficeProvision() {
-    return homeOfficeDayIsMostlyAtHome()
-        ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 EStG"
-        : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
-  }
-
   /** The tax can be assessed for four years after the end of the tax year: §§ 169, 170 AO. */
   public LocalDate voluntaryDeadline() {
     return LocalDate.of(taxYear.value() + 4, 12, 31);
-  }
-
-  /**
-   * True if a home office day is a day of work mostly at home without a visit to the first place
-   * of work, under § 4(5) no. 6c EStG. § 52(6) sentence 13 EStG applies that rule, in the version
-   * of the law of 16.12.2022, to work at home after 31.12.2022. Before, a day of work only at home
-   * counted, under § 4(5) no. 6b sentence 4 EStG.
-   */
-  public boolean homeOfficeDayIsMostlyAtHome() {
-    return taxYear.value() >= 2023;
   }
 
   public int daysInYear() {

@@ -98,16 +98,6 @@ class YearPack2024Test {
   void homeOffice() {
     assertThat(pack.homeOfficePerDay()).isEqualTo(Money.ofCents(6_00));
     assertThat(pack.homeOfficeLimit()).isEqualTo(Money.ofCents(1_260_00));
-    assertThat(pack.homeOfficeProvision()).isEqualTo("§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 EStG");
-  }
-
-  @Test
-  @DisplayName(
-      "§ 4(5) sentence 1 no. 6b sentence 4 EStG, version 30.06.2022, with § 52(6) sentence 15, is"
-          + " the source in 2022")
-  void homeOfficeProvisionOf2022() {
-    assertThat(YearPack.of(new TaxYear(2022)).orElseThrow().homeOfficeProvision())
-        .isEqualTo("§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG");
   }
 
   /**

@@ -829,6 +829,11 @@ class InterviewBrowserTest {
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
     section.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022")).click();
     tab(page, "Fragen").click();
+    // The interview starts with the upload of documents. These tests answer by hand.
+    assertThat(page.locator("#upload h2")).hasText("Dokumente hochladen");
+    page.locator("#upload")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ohne Dokumente weiter"))
+        .click();
     assertThat(page.locator("#question")).isVisible();
   }
 }

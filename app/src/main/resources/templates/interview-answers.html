@@ -8,6 +8,7 @@
         <th:block th:with="hint=${#messages.msgOrNull('hint.interview.' + item.hintId)}"><span class="hint"
               th:if="${hint}" aria-hidden="true">?<span class="hint-text" th:text="${hint}">Hint</span></span></th:block>
         <strong th:text="${item.answer}">Ja</strong>
+        <span class="source" th:if="${item.source}" th:text="'(' + ${item.source} + ')'">(eigene Angabe)</span>
         <a th:href="@{/returns/{r}/interview/questions/{q}(r=${returnId},q=${item.id})}">Ändern</a>
       </li>
     </ol>

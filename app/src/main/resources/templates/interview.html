@@ -18,6 +18,78 @@
       <span th:text="${answeredCount} + ' von ' + ${questionCount} + ' Fragen beantwortet'">0 von 1</span>
     </p>
 
+    <!--
+      The first step: the user uploads the certificates of the year. The app reads their values,
+      and the user checks them. Only "Werte übernehmen" saves them. document-check.js marks a value
+      that differs from the read value.
+    -->
+    <section id="upload" th:if="${upload}">
+      <h2>Dokumente hochladen</h2>
+      <p class="help">
+        Laden Sie Ihre Lohnsteuerbescheinigungen hoch, eine für jeden Arbeitgeber. Die App liest die
+        Werte auf diesem Rechner und füllt die passenden Fragen aus. Sie können diesen Schritt auch
+        überspringen und alle Fragen selbst beantworten.
+      </p>
+      <form method="post" enctype="multipart/form-data"
+            th:action="@{/returns/{r}/interview/documents(r=${returnId})}">
+        <div class="fields">
+          <div class="field">
+            <label>
+              <span class="field-label">Lohnsteuerbescheinigung</span>
+              <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
+            </label>
+            <p class="help">PDF, JPEG oder PNG, höchstens 20 MB.</p>
+          </div>
+        </div>
+        <p class="error" th:if="${documentError}" th:text="${documentError}">Fehler</p>
+        <p class="form-buttons"><button>Hochladen</button></p>
+      </form>
+
+      <form id="upload-check" method="post" th:unless="${#lists.isEmpty(certificates)}"
+            th:action="@{/returns/{r}/interview/documents/confirm(r=${returnId})}">
+        <section class="upload-check" th:each="certificate, status : ${certificates}"
+                 th:attr="data-document=${certificate.id}">
+          <h3>
+            <span th:text="'Arbeitgeber ' + ${status.count} + ': '">Arbeitgeber 1:</span>
+            <a th:href="@{${certificate.href}}" target="_blank" th:text="${certificate.fileName}">Datei</a>
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Feld</th>
+                <th>Zeile der Bescheinigung</th>
+                <th>Gelesener Wert</th>
+                <th>Eingabe</th>
+                <th>Prüfung</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="row : ${certificate.rows}" th:data-field="${row.name}" th:data-read="${row.values.read}"
+                  th:data-kind="${row.kind}">
+                <td th:text="${row.label}">Feld</td>
+                <td th:text="${row.certificateLine}">Zeile 3</td>
+                <td class="read" th:text="${#strings.isEmpty(row.values.read)} ? 'nicht gefunden' : ${row.values.read}">1,00</td>
+                <td>
+                  <input th:name="${row.name}" th:value="${row.values.input}" th:data-kind="${row.kind}" th:aria-label="${row.label}"
+                         th:inputmode="${row.kind == 'MONEY' ? 'decimal' : (row.kind == 'DATE' or row.kind == 'WHOLE_NUMBER' ? 'numeric' : null)}">
+                </td>
+                <td class="mark"></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+        <p class="help">
+          Vergleichen Sie jeden Wert mit dem Beleg. Ein leeres Feld bleibt eine offene Frage. Erst
+          „Werte übernehmen“ speichert die Werte.
+        </p>
+        <p class="form-buttons"><button>Werte übernehmen</button></p>
+      </form>
+
+      <form method="post" th:action="@{/returns/{r}/interview/documents/skip(r=${returnId})}">
+        <p class="form-buttons"><button>Ohne Dokumente weiter</button></p>
+      </form>
+    </section>
+
     <!-- One question per screen. -->
     <section id="question" th:if="${question}">
       <p class="topic" th:text="${topicLabel} + ', Frage ' + ${position} + ' von ' + ${positions}">Thema</p>
@@ -41,6 +113,7 @@
           <div class="fields">
             <div th:replace="~{fields :: field(name='answer', label=${field.label}, value=${value}, line=${field.line}, help=${field.help}, hint=${#messages.msgOrNull('hint.' + question.formId + '.' + field.hintId())}, fieldError=${fieldError}, options=${field.kind.options()}, blankOption=true, kind=${field.kind.name()}, autofocus=true)}"></div>
           </div>
+          <p class="source" th:if="${source}" th:text="'Quelle: ' + ${source}">Quelle: eigene Angabe</p>
           <!-- document-check.js marks an answer that differs from the value read from the certificate. -->
           <p class="certificate-check" th:if="${certificateRead != null}"
              th:data-read="${certificateRead}" th:data-kind="${field.kind.name()}">

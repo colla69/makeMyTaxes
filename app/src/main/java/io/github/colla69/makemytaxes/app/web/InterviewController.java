@@ -141,8 +141,19 @@ class InterviewController {
     if (question.type() == Type.DOCUMENT || (hasButtons && !question.allows(answer))) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
+    if (question.type() == Type.CONFIRM) {
+      List<String> missing = missingDetails(returnId);
+      if (!missing.isEmpty()) {
+        model.addAttribute(
+            "confirmError", "Bei der Person fehlen noch: " + String.join(", ", missing) + ".");
+        return questionScreen(returnId, question, model);
+      }
+    }
     if (question.type() == Type.FIELD) {
-      String error = saveField(returnId, question, answer.strip());
+      String error = requiredError(returnId, question, answer.strip());
+      if (error == null) {
+        error = saveField(returnId, question, answer.strip());
+      }
       if (error != null) {
         model.addAttribute("value", answer);
         model.addAttribute("fieldError", error);
@@ -256,6 +267,26 @@ class InterviewController {
     definitionOf(returnId);
     forms.save(returnId, Interview.ID, new Answers(Map.of()));
     return "redirect:" + interviewHref(returnId);
+  }
+
+  /**
+   * The error for an empty answer to a required field, or null. "Weiter" needs the value, so a
+   * done interview leaves no required field empty. A save on leaving the field may still clear it.
+   */
+  private String requiredError(long returnId, Question question, String value) {
+    Field field = formOf(returnId, question.formId()).field(question.id()).orElseThrow();
+    return field.required() && value.isEmpty()
+        ? "Die Erklärung braucht diesen Wert. Bitte füllen Sie das Feld aus."
+        : null;
+  }
+
+  /** The labels of the personal details that the person does not have yet. */
+  private List<String> missingDetails(long returnId) {
+    Answers main = forms.answers(returnId, MainForm.ID);
+    return MainForm.personalFields().stream()
+        .filter(field -> field.required() && !main.has(field.id()))
+        .map(Field::label)
+        .toList();
   }
 
   /** Writes the value into the form, or returns the error. An empty value clears the field. */

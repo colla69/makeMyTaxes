@@ -33,7 +33,8 @@ public final class Interview {
     JOB("Beruf"),
     COMMUTE("Arbeitsweg und Arbeit"),
     INSURANCE("Versicherungen"),
-    HOUSEHOLD("Haushalt");
+    HOUSEHOLD("Haushalt"),
+    FILING("Abgabe");
 
     private final String label;
 
@@ -333,16 +334,29 @@ public final class Interview {
                   + " Partei?",
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
+  /** The required fields of the main form that are not personal details. */
+  private static final List<Question> MAIN_REST =
+      List.of(
+          Question.field(
+              MainForm.ID, "taxOffice", Topic.FILING, "An welches Finanzamt geht Ihre Erklärung?"),
+          Question.field(
+              MainForm.ID,
+              "iban",
+              Topic.FILING,
+              "Auf welches Konto soll das Finanzamt eine Erstattung zahlen?"));
+
   private final WageTaxCertificate certificate;
   private final int year;
+  private final List<Field> filingCheck;
 
   /**
    * The interview of a year. The questions name the lines of the certificate of that year, and the
-   * home office days of that year.
+   * home office days of that year. The last topic asks each question of the filing check.
    */
-  public Interview(WageTaxCertificate certificate, int year) {
+  public Interview(WageTaxCertificate certificate, int year, List<Field> filingCheck) {
     this.certificate = certificate;
     this.year = year;
+    this.filingCheck = List.copyOf(filingCheck);
   }
 
   /**
@@ -367,6 +381,10 @@ public final class Interview {
       questions.addAll(householdQuestions(answers, category));
     }
     questions.addAll(HOUSEHOLD_REST);
+    questions.addAll(MAIN_REST);
+    for (Field field : filingCheck) {
+      questions.add(Question.field(FilingCheckForm.ID, field.id(), Topic.FILING, field.label()));
+    }
     return questions;
   }
 

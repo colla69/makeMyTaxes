@@ -37,9 +37,10 @@ class InterviewTest {
   }
 
   @Test
-  void theTopicsComeInTheOrderJobCommuteInsuranceHousehold() {
+  void theTopicsComeInTheOrderJobCommuteInsuranceHouseholdFiling() {
     assertThat(INTERVIEW.questions(NONE).stream().map(Question::topic).distinct())
-        .containsExactly(Topic.JOB, Topic.COMMUTE, Topic.INSURANCE, Topic.HOUSEHOLD);
+        .containsExactly(
+            Topic.JOB, Topic.COMMUTE, Topic.INSURANCE, Topic.HOUSEHOLD, Topic.FILING);
     for (Topic topic : Topic.values()) {
       assertThat(INTERVIEW.questionsOf(NONE, topic)).isNotEmpty();
     }
@@ -182,7 +183,8 @@ class InterviewTest {
     assertThat(INTERVIEW.nextInTopic(NONE, first)).map(Question::topic).hasValue(Topic.COMMUTE);
     assertThat(Interview.previousTopic(Topic.COMMUTE)).hasValue(Topic.JOB);
     assertThat(Interview.previousTopic(Topic.JOB)).isEmpty();
-    assertThat(Interview.nextTopic(Topic.HOUSEHOLD)).isEmpty();
+    assertThat(Interview.nextTopic(Topic.HOUSEHOLD)).hasValue(Topic.FILING);
+    assertThat(Interview.nextTopic(Topic.FILING)).isEmpty();
   }
 
   @Test

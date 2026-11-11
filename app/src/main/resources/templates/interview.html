@@ -59,6 +59,7 @@
             </th:block>
           </dl>
           <p class="help">Diese Angaben gelten für jedes Jahr. Sie ändern sie bei der Person.</p>
+          <p class="error" th:if="${confirmError}" th:text="${confirmError}">Es fehlen Angaben.</p>
           <p class="form-buttons">
             <button name="answer" value="DONE">Ja, die Angaben stimmen</button>
             <a th:href="@{${personHref}}">Angaben ändern</a>

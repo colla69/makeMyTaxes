@@ -468,6 +468,7 @@ class FormController {
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
     model.addAttribute("formErrors", formErrors);
+    model.addAttribute("missing", form.missing(forms.answers(returnId, form.id())));
     if (form.id().equals(FilingCheckForm.ID) && errors.isEmpty()) {
       model.addAttribute("filing", filingOf(returnId, packOf(taxYear)));
     }

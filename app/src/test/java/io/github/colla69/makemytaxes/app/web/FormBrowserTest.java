@@ -551,18 +551,48 @@ class FormBrowserTest {
     assertThat(estimate.locator("#union-fees")).containsText("§ 9a Satz 3 EStG");
   }
 
+  /** The lines come from Anlage N 2023 in {@code law/forms/2023}, page 2 and 3 (2023AnlN032NET). */
   @Test
-  void aReturnWithoutAYearPackHasNoFormsYet() {
+  void aReturnOf2023ShowsAllTabsAndAFilledAnlageNReachesTheReview() {
     Page page = browser.newPage();
     openANewReturn(page, "2023");
 
-    assertThat(page.getByLabel("Datum")).isVisible();
-    assertThat(link(page, "Übersicht")).hasCount(0);
-    assertThat(link(page, "Anlage N")).hasCount(0);
-    assertThat(link(page, "Fragen")).hasCount(0);
-    assertThat(page.getByText(NO_RULES)).isVisible();
-    link(page, "Belege").click();
-    assertThat(page.getByText(NO_RULES)).isVisible();
+    assertThat(link(page, "Übersicht")).hasCount(1);
+    assertThat(link(page, "Fragen")).hasCount(1);
+    for (String form : FORM_TABS) {
+      assertThat(link(page, form)).hasCount(1);
+    }
+    assertThat(page.getByText(NO_RULES)).hasCount(0);
+
+    link(page, "Anlage N").click();
+    assertThat(page.locator("#lines-unknown")).hasCount(0);
+    fill(page, "employerName", "Made-up GmbH");
+    fill(page, "taxClass", "1");
+    fill(page, "grossWage", "2345,6");
+    fill(page, "commuteDays", "5");
+    fill(page, "commuteKm", "47");
+    field(page, "commuteTransport").selectOption("CAR");
+    fill(page, "homeOfficeDays", "10");
+    save(page);
+    assertThat(page.locator(".saved")).isVisible();
+
+    link(page, "Übersicht").click();
+
+    assertThat(page.locator("#form-year")).hasText("2023");
+    Locator anlageN =
+        page.locator(".review-form").filter(new Locator.FilterOptions().setHasText("Anlage N"));
+    assertThat(anlageN).containsText("2.345,60");
+    assertThat(anlageN.locator("tbody tr td:first-child"))
+        .hasText(new String[] {"", "4", "5", "32", "33", "34 bis 36", "61"});
+
+    // Home office 10 x 6,00 = 60,00 under § 4(5) no. 6c EStG.
+    Locator estimate = page.locator("#estimate");
+    assertThat(estimate).containsText("60,00");
+    assertThat(estimate.locator("#limit-home-office")).containsText("überwiegend zu Hause");
+    assertThat(estimate.locator("#limit-home-office")).containsText("§ 4 Abs. 5 Satz 1 Nr. 6c");
+    assertThat(estimate.locator("#limit-home-office"))
+        .containsText("Zeile 62, die die App nicht abdeckt");
+    assertThat(estimate.locator("#limit-home-office")).not().containsText("Nr. 6b");
   }
 
   @Test

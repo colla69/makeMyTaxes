@@ -127,6 +127,30 @@ class WageTaxCertificateReader2022Test {
   }
 
   @Test
+  @DisplayName(
+      "Sample of the Lohnsteuerbescheinigung 2023, print mark 3.22: the same lines, read for 2023")
+  void theLayoutOf2023ReadsACertificateFor2023() {
+    CertificateText text =
+        new CertificateText(PAGE.replace("für 2022", "für 2023"), LEFT, right(SOCIAL));
+
+    CertificateValues values = WageTaxCertificate2023.LAYOUT.read(text);
+
+    assertThat(values.found())
+        .containsEntry("employedFrom", "01.03.2023")
+        .containsEntry("employedTo", "31.12.2023")
+        .containsEntry("grossWage", "30.000,00")
+        .containsEntry("pensionEmployer", "2.890,00");
+  }
+
+  @Test
+  void theLayoutOf2023ReadsNothingFromACertificateFor2022() {
+    CertificateValues values =
+        WageTaxCertificate2023.LAYOUT.read(new CertificateText(PAGE, LEFT, right(SOCIAL)));
+
+    assertThat(values.found()).isEmpty();
+  }
+
+  @Test
   void aFieldWithoutAnAmountIsNotFound() {
     CertificateValues values = read(right(SOCIAL));
 

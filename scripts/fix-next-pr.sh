@@ -20,6 +20,7 @@ fi
 
 branch=$(gh pr view "$number" --repo "$REPO" --json headRefName --jq .headRefName)
 head=$(gh pr view "$number" --repo "$REPO" --json headRefOid --jq .headRefOid)
+body=$(gh pr view "$number" --repo "$REPO" --json body --jq .body)
 worktree=$base/fix-$number
 git -C "$root" fetch -q origin "$branch"
 prepare_worktree "$worktree" "origin/$branch"
@@ -39,13 +40,15 @@ status=0
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git fetch origin dev)" "Bash(git merge origin/dev:*)" \
     "Bash(git push:*)" \
-    "Bash(gh pr view:*)" "Bash(gh pr diff:*)" "Bash(gh pr checks:*)" "Bash(gh issue view:*)" \
+    "Bash(gh pr view:*)" "Bash(gh pr edit:*)" "Bash(gh pr diff:*)" "Bash(gh pr checks:*)" "Bash(gh issue view:*)" \
     "Bash(rm target-test.log)" \
     --disallowedTools "Bash(*--no-verify*)" "Bash(git push*--force*)" "Bash(git push*-f*)" "Bash(git push*+*)"
 ) || status=$?
 
 now=$(gh pr view "$number" --repo "$REPO" --json headRefOid --jq .headRefOid)
-if [[ "$now" != "$head" ]]; then
+now_body=$(gh pr view "$number" --repo "$REPO" --json body --jq .body)
+# A new commit or a new pull request body counts as a correction.
+if [[ "$now" != "$head" || "$now_body" != "$body" ]]; then
   set_pr_label "$number" needs-review changes-requested
   remove_worktree "$worktree"
   echo "Pull request $number: corrected, and back in the review queue."

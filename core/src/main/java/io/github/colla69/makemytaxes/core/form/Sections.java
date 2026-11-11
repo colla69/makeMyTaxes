@@ -22,9 +22,6 @@ public final class Sections {
   private static final String WORK_TITLE = "Werbungskosten";
   private static final String PRIVATE_TITLE = "Private Kranken- und Pflegeversicherung";
 
-  /** The home office days without another workplace, § 4(5) sentence 1 no. 6c sentence 2 EStG. */
-  public static final String NO_WORKPLACE_DAYS = "homeOfficeDaysNoWorkplace";
-
   /** Hauptvordruck: the tax office and the person. */
   public static final Section GENERAL =
       Section.once(
@@ -91,88 +88,94 @@ public final class Sections {
                       + " Aufstockungsbetrag (EUR)",
                   Kind.MONEY),
               optional("employerCommute", "", "", "Arbeitgeberleistungen (EUR)", Kind.MONEY)
-                  .withHelp("Die Summe der Beträge in Zeile 17 und Zeile 18."))
+                  .withHelp(
+                      "Die Summe der steuerfreien und der pauschal besteuerten"
+                          + " Arbeitgeberleistungen für Fahrten zur Arbeit."))
           .withCheck(Sections::checkPeriod);
 
-  private static final List<Field> COMMUTE_FIELDS =
-      List.of(
-          optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
-              .withHelp("Postleitzahl, Ort und Straße."),
-          optional(
-              "commuteDays",
-              WORK_TITLE,
-              "",
-              "Wege zur Arbeit: aufgesucht an Tagen",
-              Kind.WHOLE_NUMBER),
-          optional(
-                  "commuteKm",
+  /** Anlage N of 2022: the workplace, the way to work and the home office. */
+  public static final Section WORK = work("", HomeOfficeDay.help(2022));
+
+  /**
+   * Anlage N from 2023, for a year without known lines: the same fields, with the home office days
+   * of § 4(5) no. 6c EStG.
+   */
+  public static final Section WORK_FROM_2023 = work("", HomeOfficeDay.help(2023));
+
+  /**
+   * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and
+   * 31.12.2025. The work is done mostly at home, and the first place of work is not visited. The
+   * days of sentence 2, for a person with no other permanent place of work, go on line 59, which
+   * the app does not cover. Sentence 3 rules out the day allowance next to a deduction under no. 6b.
+   * Lines 31 to 33 split the distance by the means of transport (2025AnlN032NET).
+   */
+  public static final Section WORK_2025 =
+      work(
+          "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder"
+              + " überlassenem Kraftwagen in Anlage N Zeile 31, mit öffentlichen Verkehrsmitteln,"
+              + " Fahrrad, zu Fuß oder Carsharing in Zeile 33. Haben Sie mehrere Verkehrsmittel"
+              + " genutzt, teilen Sie die Kilometer auf diese Zeilen auf.",
+          "Tage, an denen Sie überwiegend zu Hause gearbeitet und Ihre erste Tätigkeitsstätte nicht"
+              + " aufgesucht haben (Anlage N Zeile 58). Das Finanzamt berechnet den Betrag. Steht"
+              + " Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gehören die Tage in"
+              + " Zeile 59, auch wenn Sie am selben Tag auswärts oder an der ersten"
+              + " Tätigkeitsstätte gearbeitet haben. Zeile 59 deckt die App nicht ab. Ziehen Sie"
+              + " ein häusliches Arbeitszimmer ab (Zeile 57), gibt es für denselben Zeitraum keine"
+              + " Tagespauschale.");
+
+  /**
+   * Anlage N 2023, line 61: the home office day of § 4(5) no. 6c sentence 1 EStG, versions
+   * 30.06.2023 and 31.12.2023, which § 52(6) sentence 12 EStG applies from 2023. The days of
+   * sentence 2, for a person with no other permanent place of work, go on line 62, which the app
+   * does not cover. Lines 34 to 36 split the distance by the means of transport (2023AnlN032NET).
+   */
+  public static final Section WORK_2023 =
+      work(
+          "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder zur"
+              + " Nutzung überlassenem PKW in Anlage N Zeile 34, mit öffentlichen Verkehrsmitteln,"
+              + " Motorrad, Fahrrad, zu Fuß oder als Mitfahrer in Zeile 36. Haben Sie mehrere"
+              + " Verkehrsmittel genutzt, teilen Sie die Kilometer auf diese Zeilen auf.",
+          "Tage, an denen Sie ganz oder überwiegend zu Hause gearbeitet und Ihre erste"
+              + " Tätigkeitsstätte nicht aufgesucht haben (Anlage N Zeile 61). Das Finanzamt"
+              + " berechnet den Betrag. Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur"
+              + " Verfügung, gehören die Tage in Zeile 62, auch wenn Sie am selben Tag auswärts"
+              + " oder an der ersten Tätigkeitsstätte gearbeitet haben. Zeile 62 deckt die App"
+              + " nicht ab. Ziehen Sie ein häusliches Arbeitszimmer ab (Zeile 60), gibt es für"
+              + " denselben Zeitraum keine Tagespauschale.");
+
+  private static Section work(String transportHelp, String homeOfficeHelp) {
+    return Section.once(
+              optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)
+                  .withHelp("Postleitzahl, Ort und Straße."),
+              optional(
+                  "commuteDays",
                   WORK_TITLE,
                   "",
-                  "Wege zur Arbeit: einfache Entfernung (km)",
-                  Kind.WHOLE_NUMBER)
-              .withHelp("Auf volle Kilometer abgerundet."),
-          optional(
-              "commuteTransport",
-              WORK_TITLE,
-              "",
-              "Wege zur Arbeit: zurückgelegt mit",
-              Kind.COMMUTE_TRANSPORT));
-
-  /**
-   * Anlage N until 2022: the workplace, the way to work and the home office. A home office day is
-   * a day of work only at home, § 4(5) sentence 1 no. 6b sentence 4 EStG.
-   */
-  public static final Section WORK =
-      Section.once(
-              Stream.concat(
-                      COMMUTE_FIELDS.stream(),
-                      Stream.of(
-                          optional(
-                                  "homeOfficeDays",
-                                  WORK_TITLE,
-                                  "",
-                                  "Homeoffice: Kalendertage",
-                                  Kind.WHOLE_NUMBER)
-                              .withHelp(
-                                  "Tage, an denen Sie nur zu Hause gearbeitet haben. Das Finanzamt"
-                                      + " berechnet den Betrag.")))
-                  .toArray(Field[]::new))
-          .withCheck(Sections::checkWork);
-
-  /**
-   * Anlage N from 2023: the workplace, the way to work and the day rate of § 4(5) sentence 1 no.
-   * 6c EStG. The form has a line for days with another workplace (sentence 1) and a line for days
-   * without one (sentence 2). A day goes on one line only.
-   */
-  public static final Section WORK_DAY_RATE =
-      Section.once(
-              Stream.concat(
-                      COMMUTE_FIELDS.stream(),
-                      Stream.of(
-                          optional(
-                                  "homeOfficeDays",
-                                  WORK_TITLE,
-                                  "",
-                                  "Homeoffice mit anderem Arbeitsplatz: Kalendertage",
-                                  Kind.WHOLE_NUMBER)
-                              .withHelp(
-                                  "Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht: Tage,"
-                                      + " an denen Sie ganz oder überwiegend zu Hause gearbeitet haben"
-                                      + " und nicht zur ersten Tätigkeitsstätte gefahren sind. Das"
-                                      + " Finanzamt berechnet den Betrag."),
-                          optional(
-                                  NO_WORKPLACE_DAYS,
-                                  WORK_TITLE,
-                                  "",
-                                  "Homeoffice ohne anderen Arbeitsplatz: Kalendertage",
-                                  Kind.WHOLE_NUMBER)
-                              .withHelp(
-                                  "Nur wenn Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung"
-                                      + " steht: Tage, an denen Sie auch zu Hause gearbeitet haben,"
-                                      + " auch mit einem Weg zur Arbeit am selben Tag. Zählen Sie"
-                                      + " diese Tage nicht im Feld davor.")))
-                  .toArray(Field[]::new))
-          .withCheck(Sections::checkWorkDayRate);
+                  "Wege zur Arbeit: aufgesucht an Tagen",
+                  Kind.WHOLE_NUMBER),
+              optional(
+                      "commuteKm",
+                      WORK_TITLE,
+                      "",
+                      "Wege zur Arbeit: einfache Entfernung (km)",
+                      Kind.WHOLE_NUMBER)
+                  .withHelp("Auf volle Kilometer abgerundet."),
+              optional(
+                      "commuteTransport",
+                      WORK_TITLE,
+                      "",
+                      "Wege zur Arbeit: zurückgelegt mit",
+                      Kind.COMMUTE_TRANSPORT)
+                  .withHelp(transportHelp),
+              optional(
+                      "homeOfficeDays",
+                      WORK_TITLE,
+                      "",
+                      "Homeoffice: Kalendertage",
+                      Kind.WHOLE_NUMBER)
+                  .withHelp(homeOfficeHelp))
+        .withCheck(Sections::checkWork);
+  }
 
   /**
    * Anlage Vorsorgeaufwand: the social insurance values of one Lohnsteuerbescheinigung, in the
@@ -271,41 +274,11 @@ public final class Sections {
           "Tage mit Wegen zur Arbeit und Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
               .formatted(days, pack.taxYear().value(), pack.daysInYear()));
     }
-    messages.addAll(checkTransport(answers));
-    return messages;
-  }
-
-  /**
-   * Days with another workplace exclude a trip to the first workplace (no. 6c sentence 1). Days
-   * without another workplace may have a trip (sentence 2), but a day goes on one line only.
-   */
-  private static List<String> checkWorkDayRate(Answers answers, int employer, YearPack pack) {
-    List<String> messages = new ArrayList<>();
-    long homeOfficeDays = answers.wholeNumber("homeOfficeDays");
-    long withCommute = answers.wholeNumber("commuteDays") + homeOfficeDays;
-    if (withCommute > pack.daysInYear()) {
-      messages.add(
-          ("Tage mit Wegen zur Arbeit und Homeoffice-Tage mit anderem Arbeitsplatz ergeben zusammen"
-                  + " %d, aber %d hat nur %d Tage.")
-              .formatted(withCommute, pack.taxYear().value(), pack.daysInYear()));
-    }
-    long homeOffice = homeOfficeDays + answers.wholeNumber(NO_WORKPLACE_DAYS);
-    if (homeOffice > pack.daysInYear()) {
-      messages.add(
-          "Die Homeoffice-Tage ergeben zusammen %d, aber %d hat nur %d Tage."
-              .formatted(homeOffice, pack.taxYear().value(), pack.daysInYear()));
-    }
-    messages.addAll(checkTransport(answers));
-    return messages;
-  }
-
-  /** The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer. */
-  private static List<String> checkTransport(Answers answers) {
+    // The limit of § 9(1) no. 4 EStG depends on the transport, so the amount needs this answer.
     if (answers.has("commuteDays") && !answers.has("commuteTransport")) {
-      return List.of(
-          "Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
+      messages.add("Wählen Sie, womit Sie zur Arbeit gefahren sind. Davon hängt der Höchstbetrag ab.");
     }
-    return List.of();
+    return messages;
   }
 
   private static Optional<LocalDate> dateOf(Answers answers, String fieldId) {

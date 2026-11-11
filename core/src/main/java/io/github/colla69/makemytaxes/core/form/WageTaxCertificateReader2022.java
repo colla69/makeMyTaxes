@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
  */
 public final class WageTaxCertificateReader2022 {
 
+  private static final int YEAR = 2022;
   private static final int LAST_LINE = 34;
 
   private static final Pattern TITLE =
@@ -45,25 +46,27 @@ public final class WageTaxCertificateReader2022 {
   /** Marks an amount that the reader must not use, such as a negative one. */
   private static final String UNUSABLE = "";
 
+  /** Line 15a of the sample for 2025: "(Saison-)Kurzarbeitergeld in 15. enthalten". */
+  private static final Pattern LINE_15A = Pattern.compile("(?:^|\\s)15a\\.\\s");
+
   private WageTaxCertificateReader2022() {}
 
   public static CertificateValues read(CertificateText text) {
-    return read(text, 2022);
+    return read(text, YEAR);
   }
 
   /**
-   * Reads a certificate of another year with the same lines as the sample of 2022. The sample of
-   * 2023 has the same lines: {@code WageTaxCertificate2023Test} names it.
-   *
-   * @param taxYear the year that the certificate must have in its title and its period
+   * Reads a certificate for the given year. The sample for 2025 has the same numbered lines for
+   * the fields of {@link WageTaxCertificate2025}, and adds line 15a, which the reader keeps apart
+   * from line 15.
    */
-  public static CertificateValues read(CertificateText text, int taxYear) {
+  public static CertificateValues read(CertificateText text, int year) {
     Map<String, String> found = new HashMap<>();
-    if (yearOf(text.page()).filter(year -> year == taxYear).isEmpty()) {
+    if (yearOf(text.page()).filter(printed -> printed == year).isEmpty()) {
       return new CertificateValues(found);
     }
     readLeftColumn(text.leftColumn(), found);
-    readRightColumn(text.rightColumn(), found, taxYear);
+    readRightColumn(text.rightColumn(), year, found);
     return new CertificateValues(found);
   }
 
@@ -92,7 +95,7 @@ public final class WageTaxCertificateReader2022 {
     return Optional.empty();
   }
 
-  private static void readRightColumn(String column, Map<String, String> found, int taxYear) {
+  private static void readRightColumn(String column, int year, Map<String, String> found) {
     Map<String, List<String>> amounts = new HashMap<>();
     List<String> periods = new ArrayList<>();
     int line = 0;
@@ -107,6 +110,9 @@ public final class WageTaxCertificateReader2022 {
       if (line >= 22 && line <= 24 && partMatcher.find()) {
         part = partMatcher.group(1);
       }
+      if (line == 15 && LINE_15A.matcher(text).find()) {
+        part = "a";
+      }
       if (line == 1) {
         Matcher period = PERIOD.matcher(text);
         while (period.find()) {
@@ -118,7 +124,7 @@ public final class WageTaxCertificateReader2022 {
         amounts.computeIfAbsent(line + part, key -> new ArrayList<>()).add(amountText(amount));
       }
     }
-    putPeriod(periods, found, taxYear);
+    putPeriod(periods, year, found);
     putAmounts(new Amounts(amounts), found);
   }
 
@@ -140,24 +146,23 @@ public final class WageTaxCertificateReader2022 {
   }
 
   /** Line 1 shows the period without the year, such as "01.01.-31.12.". */
-  private static void putPeriod(List<String> periods, Map<String, String> found, int taxYear) {
+  private static void putPeriod(List<String> periods, int year, Map<String, String> found) {
     if (periods.size() != 1) {
       return;
     }
     String[] dates = periods.getFirst().split("-");
-    Optional<LocalDate> from = dateOf(dates[0], taxYear);
-    Optional<LocalDate> to = dateOf(dates[1], taxYear);
+    Optional<LocalDate> from = dateOf(dates[0], year);
+    Optional<LocalDate> to = dateOf(dates[1], year);
     if (from.isPresent() && to.isPresent() && !from.get().isAfter(to.get())) {
       found.put("employedFrom", GermanFormats.format(from.get()));
       found.put("employedTo", GermanFormats.format(to.get()));
     }
   }
 
-  private static Optional<LocalDate> dateOf(String text, int taxYear) {
-    String withYear = text.endsWith(".") ? text + taxYear : text;
+  private static Optional<LocalDate> dateOf(String text, int year) {
+    String withYear = text.endsWith(".") ? text + year : text;
     try {
-      return Optional.of(GermanFormats.parseDate(withYear))
-          .filter(date -> date.getYear() == taxYear);
+      return Optional.of(GermanFormats.parseDate(withYear)).filter(date -> date.getYear() == year);
     } catch (IllegalArgumentException e) {
       return Optional.empty();
     }

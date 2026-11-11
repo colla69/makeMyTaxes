@@ -22,10 +22,8 @@ public record WorkExpenseEstimate(
             anlageN.wholeNumber("commuteKm"),
             Kind.CAR.equals(anlageN.text("commuteTransport")))
             .minusDownToZero(AnlageN.employerCommute(anlageN));
-    long homeOfficeDays =
-        anlageN.wholeNumber("homeOfficeDays") + anlageN.wholeNumber(Sections.NO_WORKPLACE_DAYS);
     Money homeOffice =
-        pack.homeOfficePerDay().times(homeOfficeDays).atMost(pack.homeOfficeLimit());
+        pack.homeOfficePerDay().times(anlageN.wholeNumber("homeOfficeDays")).atMost(pack.homeOfficeLimit());
     Money listed = Money.ofCents(0);
     for (Expense expense : expenses) {
       if (expense.purpose().topic().isWorkExpense()) {

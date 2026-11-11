@@ -6,7 +6,8 @@ import java.util.Map;
 
 /**
  * The forms of 2023: ESt 1 A, Anlage N and Anlage Vorsorgeaufwand, with the lines of the official
- * forms of 2023 in {@code law/forms/2023}.
+ * forms of 2023 in {@code law/forms/2023}. The sections are the ones of 2022, except the work
+ * section of Anlage N, which names the lines of the transport and the home office of 2023.
  */
 final class Definition2023 {
 
@@ -28,8 +29,8 @@ final class Definition2023 {
           Map.entry("notes", "37"));
 
   /**
-   * The name and the period of the employment have no line on Anlage N. The transport has no field
-   * of its own: the kilometres go again on line 34 for a car and on line 36 for other transport.
+   * The name and the period of the employment have no line on Anlage N. Lines 34 to 36 split the
+   * distance by the means of transport. The help of the field names the line for each choice.
    */
   private static final Map<String, String> ANLAGE_N_LINES =
       Map.ofEntries(
@@ -42,13 +43,11 @@ final class Definition2023 {
           Map.entry("workplace", "30"),
           Map.entry("commuteDays", "32"),
           Map.entry("commuteKm", "33"),
-          Map.entry("commuteTransport." + Kind.CAR, "34"),
-          Map.entry("commuteTransport." + Kind.OTHER_TRANSPORT, "36"),
+          Map.entry("commuteTransport", "34 bis 36"),
           Map.entry("employerCommute", "54"),
           Map.entry("WORK_ASSOCIATIONS", "56"),
           Map.entry("WORK_EQUIPMENT", "57"),
           Map.entry("homeOfficeDays", "61"),
-          Map.entry(Sections.NO_WORKPLACE_DAYS, "62"),
           Map.entry("WORK_TRAINING", "63"),
           Map.entry("WORK_OTHER", "65"));
 
@@ -67,11 +66,12 @@ final class Definition2023 {
                 certificate),
             AnlageN.ID,
             new FormLayout(
-                List.of(Sections.EMPLOYER, Sections.WORK_DAY_RATE), ANLAGE_N_LINES, certificate),
+                List.of(Sections.EMPLOYER, Sections.WORK_2023), ANLAGE_N_LINES, certificate),
             AnlageVorsorgeaufwand.ID,
             new FormLayout(
                 List.of(Sections.SOCIAL_INSURANCE, Sections.PRIVATE_HEALTH),
                 Map.of(),
-                certificate)));
+                certificate)),
+        true);
   }
 }

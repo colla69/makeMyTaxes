@@ -1,7 +1,6 @@
 package io.github.colla69.makemytaxes.core.form;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.expense.Expense;
@@ -109,9 +108,9 @@ class WageTaxCertificate2023Test {
     "anlage-n, workplace, 30",
     "anlage-n, commuteDays, 32",
     "anlage-n, commuteKm, 33",
+    "anlage-n, commuteTransport, 34 bis 36",
     "anlage-n, employerCommute, 54",
-    "anlage-n, homeOfficeDays, 61",
-    "anlage-n, homeOfficeDaysNoWorkplace, 62"
+    "anlage-n, homeOfficeDays, 61"
   })
   void theFieldsHaveTheLinesOfTheFormsOf2023(String formId, String fieldId, String line) {
     FormLayout layout = definition.layouts().get(formId);
@@ -131,70 +130,58 @@ class WageTaxCertificate2023Test {
     assertThat(definition.layouts().get(AnlageN.ID).line(topic)).isEqualTo(line);
   }
 
-  @Test
+  @ParameterizedTest(name = "{0} goes on line {1}")
   @DisplayName(
-      "§ 4(5) sentence 1 no. 6c sentence 1 EStG, version 31.12.2023: a day with another workplace"
-          + " counts only without a trip to the first workplace")
-  void aDayWithAnotherWorkplaceCannotAlsoBeACommuteDay() {
-    Answers answers =
-        new Answers(
-            Map.of("commuteDays", "230", "homeOfficeDays", "136", "commuteTransport", "CAR"));
+      "Anlage N 2023, mark 2023AnlN032NET, lines 34 to 36: the km line of each means of transport")
+  @CsvSource({
+    "PKW, Anlage N Zeile 34",
+    "öffentlichen Verkehrsmitteln, Zeile 36",
+  })
+  void theTransportHelpNamesTheLineOfEachChoice(String transport, String line) {
+    String help = anlageN.field("commuteTransport").orElseThrow().help();
 
-    assertThat(anlageN.check(answers))
-        .containsExactly(
-            "Tage mit Wegen zur Arbeit und Homeoffice-Tage mit anderem Arbeitsplatz ergeben"
-                + " zusammen 366, aber 2023 hat nur 365 Tage.");
+    assertThat(help).containsPattern(transport + "[^.:]*" + line);
   }
 
   @Test
   @DisplayName(
-      "§ 4(5) sentence 1 no. 6c sentence 2 EStG, version 31.12.2023: without another workplace, a"
-          + " day with a trip to work also counts")
-  void withoutAnotherWorkplaceACommuteDayAlsoCounts() {
-    Answers answers =
-        new Answers(
-            Map.of(
-                "commuteDays", "230",
-                Sections.NO_WORKPLACE_DAYS, "200",
-                "commuteTransport", "CAR"));
-
-    assertThat(anlageN.check(answers)).isEmpty();
+      "Anlage N 2023, lines 60 to 62, and § 4(5) sentence 1 no. 6c sentences 1 to 3 EStG, versions"
+          + " 30.06.2023 and 31.12.2023: the home office day, the days with no other permanent"
+          + " workplace and the study")
+  void theHomeOfficeHelpFollowsTheRuleAndTheLinesOf2023() {
+    assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
+        .contains(
+            "überwiegend zu Hause",
+            "erste Tätigkeitsstätte nicht",
+            "Zeile 61",
+            "dauerhaft kein anderer Arbeitsplatz",
+            "Zeile 62 deckt die App nicht ab",
+            "häusliches Arbeitszimmer ab (Zeile 60)");
   }
 
   @Test
-  @DisplayName("Official form Anlage N 2023, lines 61 and 62: a day goes on one line only")
-  void bothHomeOfficeLinesTogetherFitInTheYear() {
-    Answers answers =
-        new Answers(Map.of("homeOfficeDays", "200", Sections.NO_WORKPLACE_DAYS, "166"));
+  @DisplayName("The interview of 2023 does not ask for the home office days of 2022 only at home")
+  void theHomeOfficeQuestionOf2023DoesNotStateTheRuleOf2022() {
+    Interview.Question question =
+        definition.interview().find(new Answers(Map.of()), "homeOfficeDays").orElseThrow();
 
-    assertThat(anlageN.check(answers))
-        .containsExactly("Die Homeoffice-Tage ergeben zusammen 366, aber 2023 hat nur 365 Tage.");
+    assertThat(question.text()).doesNotContain("nur zu Hause");
   }
 
   @Test
-  @DisplayName(
-      "§ 4(5) sentence 1 no. 6c EStG, version 31.12.2023: 6 euros for each day of both lines,"
-          + " limit 1 260 euros")
-  void theEstimateCountsTheDaysOfBothLines() {
-    Answers answers =
-        new Answers(Map.of("homeOfficeDays", "10", Sections.NO_WORKPLACE_DAYS, "20"));
+  @DisplayName("§ 4(5) sentence 1 no. 6c EStG, version 31.12.2023: 6 euros for each day")
+  void theEstimateCountsSixEurosForEachHomeOfficeDay() {
+    Answers answers = new Answers(Map.of("homeOfficeDays", "10"));
 
     assertThat(WorkExpenseEstimate.of(definition.pack(), answers, List.of()).homeOffice())
-        .isEqualTo(Money.ofCents(180_00));
-  }
-
-  @Test
-  void theInterviewOf2023AsksForBothHomeOfficeLines() {
-    assertThat(definition.interview().questions(new Answers(Map.of())))
-        .extracting(Interview.Question::id)
-        .contains("homeOfficeDays", Sections.NO_WORKPLACE_DAYS);
+        .isEqualTo(Money.ofCents(60_00));
   }
 
   @Test
   @DisplayName(
-      "Official form Anlage N 2023 (2023AnlN032NET), lines 33 and 34: the kilometres by car go"
-          + " again on line 34")
-  void theKilometresByCarGoAgainOnLine34() {
+      "Official form Anlage N 2023 (2023AnlN032NET), lines 32 to 36: the transport follows the"
+          + " kilometres")
+  void theTransportFollowsTheKilometresOnTheReview() {
     Answers answers =
         new Answers(
             Map.of(
@@ -203,39 +190,8 @@ class WageTaxCertificate2023Test {
                 "commuteTransport", Kind.CAR,
                 "homeOfficeDays", "10"));
 
-    List<ReviewLine> lines = anlageN.review(answers, List.<Expense>of());
-
-    assertThat(lines)
-        .extracting(ReviewLine::line, ReviewLine::value)
-        .containsExactly(
-            tuple("32", "220"), tuple("33", "60"), tuple("34", "60"), tuple("61", "10"));
-    assertThat(lines.get(2).label()).contains("PKW");
-  }
-
-  @Test
-  @DisplayName(
-      "Official form Anlage N 2023 (2023AnlN032NET), lines 33 and 36: the kilometres by public"
-          + " transport, bike or on foot go again on line 36")
-  void theKilometresByOtherTransportGoAgainOnLine36() {
-    Answers answers =
-        new Answers(Map.of("commuteKm", "12", "commuteTransport", Kind.OTHER_TRANSPORT));
-
     assertThat(anlageN.review(answers, List.<Expense>of()))
-        .extracting(ReviewLine::line, ReviewLine::value)
-        .containsExactly(tuple("33", "12"), tuple("36", "12"));
-  }
-
-  @Test
-  void theTransportWithoutKilometresHasNoLineAndGoesLast() {
-    Answers answers =
-        new Answers(
-            Map.of("commuteDays", "220", "homeOfficeDays", "10", "commuteTransport", Kind.CAR));
-
-    assertThat(anlageN.review(answers, List.<Expense>of()))
-        .extracting(ReviewLine::line, ReviewLine::value)
-        .containsExactly(
-            tuple("32", "220"),
-            tuple("61", "10"),
-            tuple("", "Eigener oder zur Nutzung überlassener Kraftwagen"));
+        .extracting(ReviewLine::line)
+        .containsExactly("32", "33", "34 bis 36", "61");
   }
 }

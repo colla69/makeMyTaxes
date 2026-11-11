@@ -20,6 +20,7 @@ import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
+import io.github.colla69.makemytaxes.core.form.HomeOfficeDay;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
 import io.github.colla69.makemytaxes.core.form.Source;
@@ -96,7 +97,54 @@ class FormController {
   /** The rates and limits of the year pack that the estimate uses. The page names their source. */
   record LimitsView(
       String perKmFirst20, String perKmFrom21, String commuteLimit, String homeOfficePerDay,
-      String homeOfficeLimit, String homeOfficeCondition, String homeOfficeSource) {
+      String homeOfficeLimit, Sources sources) {
+
+    /**
+     * The legal sources of the rates. Until 2025, § 9(1) sentence 3 no. 4 sentence 8 EStG sets the
+     * higher rate from the 21st km. From 2026, sentence 2 sets one rate from the first km. From
+     * 2023, § 52(6) sentence 13 EStG applies the daily home office amount of § 4(5) no. 6c, with
+     * other days ({@link HomeOfficeDay}). From 2026, § 9a sentence 3 EStG counts union fees in
+     * addition to the employee lump sum.
+     */
+    record Sources(
+        Commute commute, String homeOffice, String homeOfficeDays, boolean unionFeesBesideLumpSum) {
+
+      /** The source of the commute rates, and whether one rate applies from the first km. */
+      record Commute(String source, boolean oneRate) {}
+
+      static Sources of(int year) {
+        Commute commute =
+            year >= 2026
+                ? new Commute("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG", true)
+                : new Commute("§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2 und 8 EStG", false);
+        String homeOffice =
+            year >= 2023
+                ? "§ 4 Abs. 5 Satz 1 Nr. 6c Satz 1 und 2 EStG"
+                : "§ 4 Abs. 5 Satz 1 Nr. 6b Satz 4 EStG";
+        return new Sources(commute, homeOffice, homeOfficeDays(year), year >= 2026);
+      }
+
+      /**
+       * The forms of 2023 and 2025 put the days of no. 6c sentence 1 on one line of Anlage N and the
+       * days of sentence 2 on the next line, which the app does not cover: lines 61 and 62 in 2023,
+       * lines 58 and 59 in 2025. Other years have no such lines here.
+       */
+      private static String homeOfficeDays(int year) {
+        return switch (year) {
+          case 2023 -> homeOfficeDaysOnLines("61", "62");
+          case 2025 -> homeOfficeDaysOnLines("58", "59");
+          default -> HomeOfficeDay.reviewText(year);
+        };
+      }
+
+      private static String homeOfficeDaysOnLines(String line, String lineWithoutWorkplace) {
+        return "Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte (Anlage N Zeile "
+            + line
+            + "; Tage ohne dauerhaft anderen Arbeitsplatz gehören in Zeile "
+            + lineWithoutWorkplace
+            + ", die die App nicht abdeckt)";
+      }
+    }
 
     static LimitsView of(YearPack pack) {
       return new LimitsView(
@@ -105,8 +153,7 @@ class FormController {
           GermanFormats.format(pack.commuteLimitWithoutCar()),
           GermanFormats.format(pack.homeOfficePerDay()),
           GermanFormats.format(pack.homeOfficeLimit()),
-          pack.homeOfficeRule().condition(),
-          pack.homeOfficeRule().source());
+          Sources.of(pack.taxYear().value()));
     }
   }
 
@@ -363,6 +410,7 @@ class FormController {
     attributes.put("tab", "review");
     attributes.put("taxYear", taxYear.value());
     attributes.put("forms", Forms.of(taxYear));
+    attributes.put("linesKnown", definitionOf(returnId).linesKnown());
     attributes.put("filing", filingOf(returnId, pack));
     attributes.put("reviews", reviews);
     attributes.put(
@@ -414,6 +462,7 @@ class FormController {
     model.addAttribute("tab", form.id());
     model.addAttribute("taxYear", taxYear.value());
     model.addAttribute("forms", Forms.of(taxYear));
+    model.addAttribute("linesKnown", definitionOf(returnId).linesKnown());
     model.addAttribute("form", form);
     model.addAttribute("fieldGroups", fieldGroups(returnId, form.fields(new Answers(values))));
     model.addAttribute("values", values);

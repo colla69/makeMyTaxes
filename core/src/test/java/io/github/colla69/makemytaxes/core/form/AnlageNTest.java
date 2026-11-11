@@ -23,6 +23,24 @@ class AnlageNTest {
       (AnlageN) Forms.find(new TaxYear(2022), AnlageN.ID).orElseThrow();
 
   @Test
+  void reviewWithoutLinesKeepsTheOrderOfTheFormAndPutsTheExpensesLast() {
+    AnlageN form2026 = (AnlageN) Forms.find(new TaxYear(2026), AnlageN.ID).orElseThrow();
+    var answers = new Answers(Map.of("grossWage", "1.000,00", "homeOfficeDays", "10"));
+    var laptop =
+        new Expense(
+            new Payment(LocalDate.of(2026, 2, 3), Money.ofCents(123_45)),
+            new Purpose(ExpenseTopic.WORK_EQUIPMENT, "Made-up laptop"),
+            "made-up-folder");
+
+    List<ReviewLine> lines = form2026.review(answers, List.of(laptop));
+
+    assertThat(lines).extracting(ReviewLine::line).containsOnly("");
+    assertThat(lines)
+        .extracting(ReviewLine::value)
+        .containsExactly("1.000,00", "10", "123,45", "123,45");
+  }
+
+  @Test
   void reviewFollowsTheLinesOfTheFormAndNamesTheEvidence() {
     var answers = new Answers(Map.of("grossWage", "1.000,00", "homeOfficeDays", "10"));
     var laptop =

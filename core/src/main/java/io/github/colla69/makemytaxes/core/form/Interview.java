@@ -2,7 +2,6 @@ package io.github.colla69.makemytaxes.core.form;
 
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.form.HouseholdServicesForm.Category;
-import io.github.colla69.makemytaxes.core.year.HomeOfficeRule;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -173,8 +172,23 @@ public final class Interview {
   private record EmployerQuestion(String fieldId, String text) {}
 
   private EmployerQuestion amountQuestion(String fieldId, String name) {
-    return new EmployerQuestion(
-        fieldId, "Welcher Betrag steht in %s, %s?".formatted(certificate.line(fieldId), name));
+    String place =
+        certificate
+            .lineOf(fieldId)
+            .map(line -> "in " + line)
+            .orElse("auf der Lohnsteuerbescheinigung");
+    return new EmployerQuestion(fieldId, "Welcher Betrag steht %s, %s?".formatted(place, name));
+  }
+
+  /**
+   * "Zeile 1 der Lohnsteuerbescheinigung", or only "Lohnsteuerbescheinigung" for a certificate
+   * whose lines are not known yet.
+   */
+  private String certificatePlace(String fieldId) {
+    return certificate
+        .lineOf(fieldId)
+        .map(line -> line + " der Lohnsteuerbescheinigung")
+        .orElse("Lohnsteuerbescheinigung");
   }
 
   /** One question for each line of the Lohnsteuerbescheinigung, in the order of the form. */
@@ -183,13 +197,12 @@ public final class Interview {
           new EmployerQuestion("employerName", "Wie heißt der Arbeitgeber?"),
           new EmployerQuestion(
               "employedFrom",
-              certificate.line("employedFrom")
-                  + " der Lohnsteuerbescheinigung: Ab welchem Tag dauerte das Dienstverhältnis?"),
+              certificatePlace("employedFrom")
+                  + ": Ab welchem Tag dauerte das Dienstverhältnis?"),
           new EmployerQuestion(
               "employedTo",
-              certificate.line("employedTo")
-                  + " der Lohnsteuerbescheinigung: Bis zu welchem Tag dauerte das"
-                  + " Dienstverhältnis?"),
+              certificatePlace("employedTo")
+                  + ": Bis zu welchem Tag dauerte das Dienstverhältnis?"),
           new EmployerQuestion(
               "taxClass", "Welche Steuerklasse steht auf der Lohnsteuerbescheinigung?"),
           amountQuestion("grossWage", "Bruttoarbeitslohn"),
@@ -202,8 +215,12 @@ public final class Interview {
                   + " Aufstockungsbetrag"),
           new EmployerQuestion(
               "employerCommute",
-              "Wie hoch ist die Summe von Zeile 17 und Zeile 18, Arbeitgeberleistungen für Fahrten"
-                  + " zur Arbeit?"));
+              "Wie hoch ist die Summe %s, Arbeitgeberleistungen für Fahrten zur Arbeit?"
+                  .formatted(
+                      certificate
+                          .lineOf("employerCommute")
+                          .map(line -> "von " + line)
+                          .orElse("auf der Lohnsteuerbescheinigung"))));
   }
 
   private static final List<Question> JOB_AND_COMMUTE =
@@ -227,34 +244,8 @@ public final class Interview {
               Topic.COMMUTE,
               "An wie vielen Tagen sind Sie zur ersten Tätigkeitsstätte gefahren?"));
 
-  /** The home office questions until 2022: § 4(5) sentence 1 no. 6b sentence 4 EStG. */
-  private static final List<Question> HOME_OFFICE_ONLY_AT_HOME =
-      List.of(
-          Question.field(
-              AnlageN.ID,
-              "homeOfficeDays",
-              Topic.COMMUTE,
-              "An wie vielen Tagen haben Sie nur zu Hause gearbeitet?"));
-
-  /** The home office questions from 2023: § 4(5) sentence 1 no. 6c sentences 1 and 2 EStG. */
-  private static final List<Question> HOME_OFFICE_DAY_RATE =
-      List.of(
-          Question.field(
-              AnlageN.ID,
-              "homeOfficeDays",
-              Topic.COMMUTE,
-              "Falls Ihnen ein anderer Arbeitsplatz zur Verfügung steht: An wie vielen Tagen haben"
-                  + " Sie ganz oder überwiegend zu Hause gearbeitet und sind nicht zur ersten"
-                  + " Tätigkeitsstätte gefahren?"),
-          Question.field(
-              AnlageN.ID,
-              Sections.NO_WORKPLACE_DAYS,
-              Topic.COMMUTE,
-              "Falls Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung steht: An wie vielen"
-                  + " Tagen haben Sie auch zu Hause gearbeitet, auch mit einem Weg zur Arbeit am"
-                  + " selben Tag?"));
-
-  private static final List<Question> WORK_EXPENSES =
+  /** The questions after the home office question, which depends on the year. */
+  private static final List<Question> WORK_COSTS =
       List.of(
           Question.yesNo(
               "workEquipment",
@@ -343,15 +334,15 @@ public final class Interview {
               Step.expenses(ExpenseTopic.DONATIONS_AND_PENSIONS)));
 
   private final WageTaxCertificate certificate;
-  private final HomeOfficeRule homeOfficeRule;
+  private final int year;
 
   /**
-   * The interview of a year. The questions name the lines of the certificate of that year, and
-   * ask for the home office days that the rule of that year counts.
+   * The interview of a year. The questions name the lines of the certificate of that year, and the
+   * home office days of that year.
    */
-  public Interview(WageTaxCertificate certificate, HomeOfficeRule homeOfficeRule) {
+  public Interview(WageTaxCertificate certificate, int year) {
     this.certificate = certificate;
-    this.homeOfficeRule = homeOfficeRule;
+    this.year = year;
   }
 
   /**
@@ -366,11 +357,9 @@ public final class Interview {
       questions.addAll(employerQuestions(answers, employer));
     }
     questions.addAll(JOB_AND_COMMUTE);
-    questions.addAll(
-        homeOfficeRule == HomeOfficeRule.DAY_RATE
-            ? HOME_OFFICE_DAY_RATE
-            : HOME_OFFICE_ONLY_AT_HOME);
-    questions.addAll(WORK_EXPENSES);
+    questions.add(
+        Question.field(AnlageN.ID, "homeOfficeDays", Topic.COMMUTE, HomeOfficeDay.question(year)));
+    questions.addAll(WORK_COSTS);
     questions.add(HEALTH_INSURANCE_QUESTION);
     questions.addAll(insuranceQuestions(answers.text(HEALTH_INSURANCE), employers));
     questions.addAll(INSURANCE_REST);

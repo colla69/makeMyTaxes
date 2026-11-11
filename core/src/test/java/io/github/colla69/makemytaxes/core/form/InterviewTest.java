@@ -116,6 +116,30 @@ class InterviewTest {
   }
 
   @Test
+  void twoUploadedCertificatesAnswerTheQuestionsOfTwoEmployersAndLeaveAThirdOneOpen() {
+    Answers answers = new Answers(Interview.certificateAnswers(List.of(7L, 9L)));
+
+    assertThat(Interview.certificateDocument(answers, "grossWage")).hasValue(7);
+    assertThat(Interview.certificateDocument(answers, "employer2-grossWage")).hasValue(9);
+    assertThat(answers.text("anotherEmployer")).isEqualTo(Interview.YES);
+    assertThat(answers.has("employer2-anotherEmployer")).isFalse();
+    assertThat(Interview.certificateAnswers(List.of())).isEmpty();
+  }
+
+  @Test
+  void aPrefilledValueThatTheUserChangedIsTheUsersOwnStatement() {
+    Map<String, String> values = new LinkedHashMap<>(Interview.certificateAnswers(List.of(7L)));
+    values.put("grossWage", Interview.OWN);
+    values.put(Interview.PREFILLED, Interview.prefilledText(List.of("employed", "wageTax")));
+    Answers answers = new Answers(values);
+
+    assertThat(Interview.certificateDocument(answers, "grossWage")).isEmpty();
+    assertThat(Interview.certificateDocument(answers, "wageTax")).hasValue(7);
+    assertThat(Interview.prefilled(answers)).containsExactly("employed", "wageTax");
+    assertThat(Interview.prefilled(new Answers(Map.of()))).isEmpty();
+  }
+
+  @Test
   void aNoToTheCertificateIgnoresADocumentFromAnEarlierAnswer() {
     Answers answers =
         new Answers(

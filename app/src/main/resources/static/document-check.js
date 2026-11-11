@@ -82,6 +82,12 @@
     check.closest("form").addEventListener("change", () => markAnswer(check));
   });
 
+  // The step "Dokumente hochladen" shows the same rows in the page, not in a dialog.
+  document.querySelectorAll(".upload-check").forEach((section) => {
+    section.querySelectorAll("tr[data-field]").forEach(mark);
+    section.addEventListener("input", (event) => mark(event.target.closest("tr")));
+  });
+
   document.addEventListener("click", (event) => {
     const button = event.target.closest?.("[data-document-check]");
     if (button) {

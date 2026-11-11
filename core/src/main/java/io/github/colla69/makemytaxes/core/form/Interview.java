@@ -3,10 +3,14 @@ package io.github.colla69.makemytaxes.core.form;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.form.HouseholdServicesForm.Category;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 
 /**
  * The questionnaire: questions by life topic, one at a time. A yes/no question tells the user
@@ -27,6 +31,18 @@ public final class Interview {
    * answered: the value of a field question stays in its form.
    */
   public static final String DONE = "DONE";
+
+  /**
+   * The interview answer of a field question whose value the user changed after a document
+   * prefilled it. The value is then the user's own statement, not the document's.
+   */
+  public static final String OWN = "OWN";
+
+  /** The key of the step "Dokumente hochladen". It has a value once the user leaves that step. */
+  public static final String DOCUMENTS_STEP = "documentsStep";
+
+  /** The key of the IDs of the questions that the uploaded documents answered, comma-separated. */
+  public static final String PREFILLED = "prefilled";
 
   /** The life topics, in the order of the interview. */
   public enum Topic {
@@ -476,8 +492,43 @@ public final class Interview {
     boolean fromCertificate =
         Sections.isOnCertificate(fieldId.substring(fieldId.indexOf('-') + 1))
             && YES.equals(answers.text(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE)))
-            && !document.isEmpty();
+            && !document.isEmpty()
+            && !OWN.equals(answers.text(fieldId));
     return fromCertificate ? OptionalLong.of(Long.parseLong(document)) : OptionalLong.empty();
+  }
+
+  /**
+   * The interview answers that one uploaded certificate for each employer gives: the user is
+   * employed, and employer {@code n} has the {@code n}-th certificate. The question for one more
+   * employer after the last certificate stays open.
+   */
+  public static Map<String, String> certificateAnswers(List<Long> certificates) {
+    Map<String, String> values = new LinkedHashMap<>();
+    if (certificates.isEmpty()) {
+      return values;
+    }
+    values.put(EMPLOYED, YES);
+    for (int employer = 1; employer <= certificates.size(); employer++) {
+      values.put(AnlageN.employerFieldId(employer, WAGE_CERTIFICATE), YES);
+      values.put(
+          AnlageN.employerFieldId(employer, WAGE_CERTIFICATE_DOCUMENT),
+          Long.toString(certificates.get(employer - 1)));
+      if (employer < certificates.size()) {
+        values.put(anotherEmployerId(employer), YES);
+      }
+    }
+    return values;
+  }
+
+  /** The IDs of the questions that the uploaded documents answered. */
+  public static Set<String> prefilled(Answers answers) {
+    String ids = answers.text(PREFILLED);
+    return ids.isEmpty() ? Set.of() : new LinkedHashSet<>(List.of(ids.split(",")));
+  }
+
+  /** The text of {@link #PREFILLED} for these question IDs. */
+  public static String prefilledText(Collection<String> ids) {
+    return String.join(",", ids);
   }
 
   /** The ID of the question after invoice {@code entry} of a category. */

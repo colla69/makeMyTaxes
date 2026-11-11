@@ -85,7 +85,7 @@ class Definition2024Test {
   @DisplayName(
       "Anlage N 2024, mark 2024AnlN032NET, lines 34 to 36: the km line of each means of transport")
   @CsvSource({
-    "Kraftwagen, Anlage N Zeile 34",
+    "PKW, Anlage N Zeile 34",
     "Sammelbeförderung des Arbeitgebers, Zeile 35",
     "öffentlichen Verkehrsmitteln, Zeile 36",
     "Motorrad, Zeile 36",
@@ -104,7 +104,7 @@ class Definition2024Test {
   void homeOfficeHelpFollowsTheRuleFrom2023() {
     assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
         .contains("ganz oder überwiegend zu Hause")
-        .contains("keine erste Tätigkeitsstätte aufgesucht");
+        .contains("erste Tätigkeitsstätte nicht aufgesucht");
   }
 
   @Test
@@ -113,9 +113,17 @@ class Definition2024Test {
           + " version 31.12.2024: line 61 only with another workplace; line 62 is not supported")
   void homeOfficeHelpNamesTheConditionOfLine61() {
     assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
-        .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61)")
-        .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gilt Zeile 62")
-        .contains("die App noch nicht unterstützt");
+        .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Anlage N Zeile 61)")
+        .contains("dauerhaft kein anderer Arbeitsplatz zur Verfügung, gehören die Tage in Zeile 62")
+        .contains("Zeile 62 deckt die App nicht ab");
+  }
+
+  @Test
+  @DisplayName(
+      "Anlage N 2023 and 2024 have the same lines 34 to 36 and 60 to 62, and § 4(5) sentence 1"
+          + " no. 6c EStG has the same text in 2023 and 2024: both years use one section")
+  void theWorkSectionIsTheSameAsIn2023() {
+    assertThat(anlageNLayout.sections()).contains(Sections.WORK_2023);
   }
 
   @Test
@@ -124,8 +132,9 @@ class Definition2024Test {
           + " 2024 line 60: no day allowance next to an Arbeitszimmer or a double household")
   void homeOfficeHelpNamesTheExclusionsOfSentence3() {
     assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
-        .contains("häusliches Arbeitszimmer ab (Zeile 60), gibt es für denselben Zeitraum keine")
-        .contains("Unterkunftskosten einer doppelten Haushaltsführung");
+        .contains("keine Tagespauschale, soweit Sie ein häusliches Arbeitszimmer abziehen (Zeile 60)")
+        .contains("Unterkunftskosten einer doppelten Haushaltsführung")
+        .doesNotContain("denselben Zeitraum");
   }
 
   @Test

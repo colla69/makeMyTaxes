@@ -32,6 +32,71 @@
         </p>
       </form>
 
+      <h2>Lohnabrechnungen</h2>
+      <form id="payslip-form"
+            class="fields"
+            method="post"
+            enctype="multipart/form-data"
+            th:action="@{/returns/{id}/payslips(id=${returnId})}">
+        <p class="error" th:if="${payslipError}" th:text="${payslipError}">Fehler</p>
+        <div th:replace="~{fields :: field(name='month', label='Monat', options=${months})}"></div>
+        <div class="field">
+          <label>
+            <span class="field-label">Abrechnung</span>
+            <input type="file" name="file" required
+                   accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
+          </label>
+          <p class="help">
+            Eine Lohnabrechnung pro Monat. Eine neue Abrechnung ersetzt die alte des Monats, und die
+            alte bleibt unter „Dokumente“. Die App liest nur eine PDF mit Text.
+          </p>
+        </div>
+        <p class="form-buttons">
+          <button>Abrechnung speichern</button>
+        </p>
+      </form>
+
+      <table id="payslips">
+        <thead>
+          <tr><th>Monat</th><th>Lohnabrechnung</th><th>Steuer-Brutto</th><th>Lohnsteuer</th></tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${payslipMonths}" th:data-month="${row.month}"
+              th:classappend="${row.payslip == null} ? 'missing'">
+            <td th:text="${row.month}">Januar</td>
+            <td th:if="${row.payslip == null}">fehlt</td>
+            <td th:if="${row.payslip != null}">
+              <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.payslip.stored.documentId})}"
+                 target="_blank" rel="noopener"
+                 th:text="${row.payslip.stored.fileName}">abrechnung.pdf</a>
+            </td>
+            <td class="amount" th:text="${row.payslip == null} ? '' : ${row.taxableGross}">1,00</td>
+            <td class="amount" th:text="${row.payslip == null} ? '' : ${row.wageTax}">1,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <section th:if="${payslipChecks}" id="payslip-check">
+        <h3>Vergleich mit der Lohnsteuerbescheinigung</h3>
+        <p class="help">
+          Die Summen enthalten nur die vorhandenen Monate. Die App ändert keinen Wert der Erklärung.
+        </p>
+        <p class="note" th:if="${certificateNote}" th:text="${certificateNote}">Hinweis</p>
+        <table>
+          <thead>
+            <tr><th>Betrag</th><th>Summe der Lohnabrechnungen</th><th>Lohnsteuerbescheinigung</th><th>Ergebnis</th></tr>
+          </thead>
+          <tbody>
+            <tr th:each="row : ${payslipChecks}">
+              <td th:text="${row.amount}">Lohnsteuer</td>
+              <td class="amount" th:text="${row.sum}">1,00</td>
+              <td class="amount" th:text="${row.certificate}">1,00</td>
+              <td th:text="${row.result}">stimmt überein</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <h2>Dokumente</h2>
       <table id="documents">
         <thead>

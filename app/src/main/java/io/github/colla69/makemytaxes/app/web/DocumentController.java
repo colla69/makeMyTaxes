@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.web;
 
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewPayslip;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -53,10 +55,12 @@ class DocumentController {
 
   private final HouseholdStore household;
   private final DocumentStore documents;
+  private final PayslipOverview payslips;
 
-  DocumentController(HouseholdStore household, DocumentStore documents) {
+  DocumentController(HouseholdStore household, DocumentStore documents, PayslipOverview payslips) {
     this.household = household;
     this.documents = documents;
+    this.payslips = payslips;
   }
 
   @GetMapping("/returns/{returnId}/documents")
@@ -74,9 +78,35 @@ class DocumentController {
       throws IOException {
     taxYearOf(returnId);
     try {
+      if (kind == DocumentKind.PAYSLIP) {
+        throw new IllegalArgumentException("Eine Lohnabrechnung gehört in die Liste der Monate.");
+      }
       documents.add(returnId, toNewDocument(kind, file), LocalDate.now());
     } catch (IllegalArgumentException e) {
       model.addAttribute("error", e.getMessage());
+      fillPage(returnId, model);
+      return "documents";
+    }
+    return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  @PostMapping("/returns/{returnId}/payslips")
+  String uploadPayslip(
+      @PathVariable long returnId,
+      @RequestParam int month,
+      @RequestParam MultipartFile file,
+      Model model)
+      throws IOException {
+    taxYearOf(returnId);
+    try {
+      if (month < 1 || month > 12) {
+        throw new IllegalArgumentException("Bitte einen Monat wählen.");
+      }
+      NewPayslip payslip =
+          new NewPayslip(Month.of(month), toNewDocument(DocumentKind.PAYSLIP, file));
+      documents.addPayslip(returnId, payslip, LocalDate.now());
+    } catch (IllegalArgumentException e) {
+      model.addAttribute("payslipError", e.getMessage());
       fillPage(returnId, model);
       return "documents";
     }
@@ -199,10 +229,12 @@ class DocumentController {
     model.addAttribute("kinds", kindOptions());
     model.addAttribute(
         "rows", documents.documentsOf(returnId).stream().map(DocumentRow::of).toList());
+    payslips.fill(returnId, taxYear, model);
   }
 
   private static List<Kind.Option> kindOptions() {
     return Arrays.stream(DocumentKind.values())
+        .filter(kind -> kind != DocumentKind.PAYSLIP)
         .map(kind -> new Kind.Option(kind.name(), kind.label()))
         .toList();
   }

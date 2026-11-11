@@ -6,8 +6,11 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.Month;
+import java.time.format.TextStyle;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -62,6 +65,48 @@ public class DocumentStore {
         .params(documentId, document.bytes())
         .update();
     return documentId;
+  }
+
+  /** A payslip and the month that it is for. */
+  public record NewPayslip(Month month, NewDocument document) {}
+
+  /** A stored payslip: its month, and the ID and the file name of its document. */
+  public record StoredPayslip(Month month, long documentId, String fileName) {}
+
+  /**
+   * Stores a payslip as a document of the return. A new payslip for a month replaces the old one
+   * as the payslip of that month. The old document stays, because an expense can link to it.
+   */
+  @Transactional
+  public long addPayslip(long returnId, NewPayslip payslip, LocalDate uploadedOn) {
+    jdbc.sql("delete from payslip where tax_return_id = ? and month = ?")
+        .params(returnId, payslip.month().getValue())
+        .update();
+    long documentId = add(returnId, payslip.document(), uploadedOn);
+    jdbc.sql("insert into payslip(document_id, tax_return_id, month) values (?, ?, ?)")
+        .params(documentId, returnId, payslip.month().getValue())
+        .update();
+    return documentId;
+  }
+
+  public List<StoredPayslip> payslipsOf(long returnId) {
+    return jdbc.sql(
+            """
+            select p.month, d.id, d.file_name
+            from payslip p join document d on d.id = p.document_id
+            where p.tax_return_id = ?
+            order by p.month
+            """)
+        .param(returnId)
+        .query(
+            (row, rowNumber) ->
+                new StoredPayslip(
+                    Month.of(row.getInt("month")), row.getLong("id"), row.getString("file_name")))
+        .list();
+  }
+
+  public static String monthName(Month month) {
+    return month.getDisplayName(TextStyle.FULL, Locale.GERMAN);
   }
 
   public List<StoredDocument> documentsOf(long returnId) {

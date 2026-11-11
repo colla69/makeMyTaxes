@@ -49,15 +49,6 @@ class Definition2024Test {
     assertThat(main.field(fieldId).orElseThrow().line()).isEqualTo(line);
   }
 
-  @Test
-  @DisplayName("Hauptvordruck 2024: the occupation comes before the address")
-  void occupationComesBeforeTheAddress() {
-    assertThat(main.fields().stream().map(Field::id).toList())
-        .containsSubsequence("firstName", "occupation", "street");
-    assertThat(Sections.GENERAL_OCCUPATION_FIRST.fields())
-        .containsExactlyInAnyOrderElementsOf(Sections.GENERAL.fields());
-  }
-
   @ParameterizedTest(name = "{0} is on line {1}")
   @DisplayName("Anlage N 2024, 2024AnlN031NET to 033NET: the line of each field")
   @CsvSource({
@@ -125,6 +116,16 @@ class Definition2024Test {
         .contains("Nur wenn Ihnen ein anderer Arbeitsplatz zur Verfügung steht (Zeile 61)")
         .contains("Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur Verfügung, gilt Zeile 62")
         .contains("die App noch nicht unterstützt");
+  }
+
+  @Test
+  @DisplayName(
+      "§ 4(5) sentence 1 no. 6c sentence 3 EStG, versions 30.06.2024 and 31.12.2024, and Anlage N"
+          + " 2024 line 60: no day allowance next to an Arbeitszimmer or a double household")
+  void homeOfficeHelpNamesTheExclusionsOfSentence3() {
+    assertThat(anlageN.field("homeOfficeDays").orElseThrow().help())
+        .contains("häusliches Arbeitszimmer ab (Zeile 60), gibt es für denselben Zeitraum keine")
+        .contains("Unterkunftskosten einer doppelten Haushaltsführung");
   }
 
   @Test

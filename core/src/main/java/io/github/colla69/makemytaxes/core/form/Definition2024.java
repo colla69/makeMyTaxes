@@ -6,9 +6,9 @@ import java.util.Map;
 
 /**
  * The forms of 2024: ESt 1 A, Anlage N and Anlage Vorsorgeaufwand, with the lines of the official
- * forms in {@code law/forms/2024}. The sections are those of 2022, with two changes: the
- * Hauptvordruck asks the occupation before the address, and the home office days follow § 4(5)
- * sentence 1 no. 6c EStG.
+ * forms in {@code law/forms/2024}. The sections are those of 2022, except that Anlage N splits the
+ * distance by the means of transport and the home office days follow § 4(5) sentence 1 no. 6c
+ * EStG.
  */
 final class Definition2024 {
 
@@ -63,7 +63,7 @@ final class Definition2024 {
             MainForm.ID,
             new FormLayout(
                 List.of(
-                    Sections.GENERAL_OCCUPATION_FIRST,
+                    Sections.GENERAL,
                     Sections.BANK,
                     Sections.BENEFITS,
                     Sections.NOTES),

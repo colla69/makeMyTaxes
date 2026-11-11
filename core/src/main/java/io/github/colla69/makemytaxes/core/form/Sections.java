@@ -40,26 +40,6 @@ public final class Sections {
           required("city", GENERAL_TITLE, "", "Wohnort", Kind.TEXT),
           required("occupation", GENERAL_TITLE, "", "Ausgeübter Beruf", Kind.TEXT));
 
-  /** Hauptvordruck from 2024: the same fields, with the occupation (line 12) before the address. */
-  public static final Section GENERAL_OCCUPATION_FIRST =
-      new Section(
-          false,
-          Stream.of(
-                  "taxNumber",
-                  "taxOffice",
-                  "taxId",
-                  "birthDate",
-                  "lastName",
-                  "firstName",
-                  "occupation",
-                  "street",
-                  "houseNumber",
-                  "postalCode",
-                  "city")
-              .flatMap(id -> GENERAL.fields().stream().filter(field -> field.id().equals(id)))
-              .toList(),
-          Section.Check.NONE);
-
   /** Hauptvordruck: the bank account for a refund. */
   public static final Section BANK =
       Section.once(required("iban", "Bankverbindung", "", "IBAN", Kind.IBAN));
@@ -126,7 +106,9 @@ public final class Sections {
    * Anlage N 2024, line 61: the home office days of § 4(5) sentence 1 no. 6c sentence 1 EStG,
    * versions 30.06.2024 and 31.12.2024. A day counts if the work was mostly at home and the first
    * place of work was not visited. The exception of sentence 2, for a person who permanently has no
-   * other workplace, is line 62 of Anlage N 2024, which the app does not have yet. Lines 34 to 36
+   * other workplace, is line 62 of Anlage N 2024, which the app does not have yet. Sentence 3 rules
+   * out the day allowance next to a deduction under no. 6b (line 60) and for a home whose costs
+   * count under no. 6a or § 9(1) sentence 3 no. 5 (double household). Lines 34 to 36
    * split the distance by the means of transport (2024AnlN032NET).
    */
   public static final Section WORK_2024 =
@@ -141,7 +123,10 @@ public final class Sections {
               + " denen Sie ganz oder überwiegend zu Hause gearbeitet und keine erste"
               + " Tätigkeitsstätte aufgesucht haben. Steht Ihnen dauerhaft kein anderer"
               + " Arbeitsplatz zur Verfügung, gilt Zeile 62, die die App noch nicht unterstützt."
-              + " Das Finanzamt berechnet den Betrag.");
+              + " Das Finanzamt berechnet den Betrag. Ziehen Sie ein häusliches Arbeitszimmer ab"
+              + " (Zeile 60), gibt es für denselben Zeitraum keine Tagespauschale. Das gilt auch,"
+              + " soweit Sie für diese Wohnung Unterkunftskosten einer doppelten Haushaltsführung"
+              + " abziehen können.");
 
   /**
    * Anlage N 2025, line 58: the home office day of § 4(5) no. 6c EStG, versions 30.06.2025 and

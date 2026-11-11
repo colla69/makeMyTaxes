@@ -125,15 +125,24 @@ class FormController {
       }
 
       /**
-       * The forms of 2025 put the days of no. 6c sentence 1 on Anlage N line 58 and the days of
-       * sentence 2 on line 59, which the app does not cover. Other years have no such lines here.
+       * The forms of 2023 and 2025 put the days of no. 6c sentence 1 on one line of Anlage N and the
+       * days of sentence 2 on the next line, which the app does not cover: lines 61 and 62 in 2023,
+       * lines 58 and 59 in 2025. Other years have no such lines here.
        */
       private static String homeOfficeDays(int year) {
-        return year == 2025
-            ? "Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte (Anlage N Zeile 58;"
-                + " Tage ohne dauerhaft anderen Arbeitsplatz gehören in Zeile 59, die die App nicht"
-                + " abdeckt)"
-            : HomeOfficeDay.reviewText(year);
+        return switch (year) {
+          case 2023 -> homeOfficeDaysOnLines("61", "62");
+          case 2025 -> homeOfficeDaysOnLines("58", "59");
+          default -> HomeOfficeDay.reviewText(year);
+        };
+      }
+
+      private static String homeOfficeDaysOnLines(String line, String lineWithoutWorkplace) {
+        return "Tag überwiegend zu Hause ohne Besuch der ersten Tätigkeitsstätte (Anlage N Zeile "
+            + line
+            + "; Tage ohne dauerhaft anderen Arbeitsplatz gehören in Zeile "
+            + lineWithoutWorkplace
+            + ", die die App nicht abdeckt)";
       }
     }
 

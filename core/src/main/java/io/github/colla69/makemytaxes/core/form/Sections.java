@@ -123,6 +123,26 @@ public final class Sections {
               + " ein häusliches Arbeitszimmer ab (Zeile 57), gibt es für denselben Zeitraum keine"
               + " Tagespauschale.");
 
+  /**
+   * Anlage N 2023, line 61: the home office day of § 4(5) no. 6c sentence 1 EStG, versions
+   * 30.06.2023 and 31.12.2023, which § 52(6) sentence 12 EStG applies from 2023. The days of
+   * sentence 2, for a person with no other permanent place of work, go on line 62, which the app
+   * does not cover. Lines 34 to 36 split the distance by the means of transport (2023AnlN032NET).
+   */
+  public static final Section WORK_2023 =
+      work(
+          "Tragen Sie die Kilometer in die Zeile des Verkehrsmittels ein: mit eigenem oder zur"
+              + " Nutzung überlassenem PKW in Anlage N Zeile 34, mit öffentlichen Verkehrsmitteln,"
+              + " Motorrad, Fahrrad, zu Fuß oder als Mitfahrer in Zeile 36. Haben Sie mehrere"
+              + " Verkehrsmittel genutzt, teilen Sie die Kilometer auf diese Zeilen auf.",
+          "Tage, an denen Sie ganz oder überwiegend zu Hause gearbeitet und Ihre erste"
+              + " Tätigkeitsstätte nicht aufgesucht haben (Anlage N Zeile 61). Das Finanzamt"
+              + " berechnet den Betrag. Steht Ihnen dauerhaft kein anderer Arbeitsplatz zur"
+              + " Verfügung, gehören die Tage in Zeile 62, auch wenn Sie am selben Tag auswärts"
+              + " oder an der ersten Tätigkeitsstätte gearbeitet haben. Zeile 62 deckt die App"
+              + " nicht ab. Es gibt keine Tagespauschale, soweit Sie ein häusliches"
+              + " Arbeitszimmer abziehen (Zeile 60).");
+
   private static Section work(String transportHelp, String homeOfficeHelp) {
     return Section.once(
               optional("workplace", WORK_TITLE, "", "Erste Tätigkeitsstätte", Kind.TEXT)

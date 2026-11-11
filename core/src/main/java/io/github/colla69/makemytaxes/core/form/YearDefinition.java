@@ -22,7 +22,11 @@ public record YearDefinition(
     boolean linesKnown) {
 
   private static final Map<Integer, Function<YearPack, YearDefinition>> DEFINITIONS =
-      Map.of(2022, Definition2022::of, 2025, Definition2025::of, 2026, Definition2026::of);
+      Map.of(
+          2022, Definition2022::of,
+          2023, Definition2023::of,
+          2025, Definition2025::of,
+          2026, Definition2026::of);
 
   public static Optional<YearDefinition> of(TaxYear taxYear) {
     return Optional.ofNullable(DEFINITIONS.get(taxYear.value()))

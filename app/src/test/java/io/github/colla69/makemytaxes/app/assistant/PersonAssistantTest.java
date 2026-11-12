@@ -34,6 +34,8 @@ class PersonAssistantTest {
 
   @Autowired private HouseholdStore household;
 
+  @Autowired private ReturnChat chat;
+
   /** Each process that the assistant would start. The starter never starts a real one. */
   private final List<ProcessBuilder> started = new ArrayList<>();
 
@@ -67,7 +69,7 @@ class PersonAssistantTest {
   @Test
   void noProcessStartsWhileThePersonHasTheAssistantOff() {
     long personId = addPerson();
-    PersonAssistant assistant = new PersonAssistant(household, claudeCode);
+    PersonAssistant assistant = new PersonAssistant(household, claudeCode, chat);
 
     assertFalse(household.assistantOn(personId));
     assertThrows(AssistantException.class, () -> assistant.ask(personId, "Made-up question"));
@@ -80,7 +82,7 @@ class PersonAssistantTest {
     household.switchAssistant(personId, true);
     household.switchAssistant(personId, false);
 
-    PersonAssistant assistant = new PersonAssistant(household, claudeCode);
+    PersonAssistant assistant = new PersonAssistant(household, claudeCode, chat);
     assertThrows(AssistantException.class, () -> assistant.ask(personId, "Made-up question"));
     assertEquals(0, started.size());
   }
@@ -91,7 +93,7 @@ class PersonAssistantTest {
     long off = addPerson();
     household.switchAssistant(on, true);
 
-    PersonAssistant assistant = new PersonAssistant(household, claudeCode);
+    PersonAssistant assistant = new PersonAssistant(household, claudeCode, chat);
     assertThrows(AssistantException.class, () -> assistant.ask(off, "Made-up question"));
     assertEquals(0, started.size());
   }
@@ -101,7 +103,7 @@ class PersonAssistantTest {
     long personId = addPerson();
     household.switchAssistant(personId, true);
 
-    PersonAssistant assistant = new PersonAssistant(household, claudeCode);
+    PersonAssistant assistant = new PersonAssistant(household, claudeCode, chat);
     assertThrows(AssistantException.class, () -> assistant.ask(personId, "Made-up question"));
 
     assertEquals(1, started.size());
@@ -134,7 +136,7 @@ class PersonAssistantTest {
     household.switchAssistant(personId, true);
 
     assertFalse(withoutToken.available());
-    PersonAssistant assistant = new PersonAssistant(household, withoutToken);
+    PersonAssistant assistant = new PersonAssistant(household, withoutToken, chat);
     assertThrows(AssistantException.class, () -> assistant.ask(personId, "Made-up question"));
     assertEquals(0, started.size());
   }

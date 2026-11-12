@@ -26,6 +26,7 @@ git -C "$root" fetch -q origin "$branch"
 prepare_worktree "$worktree" "origin/$branch"
 git -C "$worktree" switch -q -C "$branch" "origin/$branch"
 
+# The worker has internet access, as in scripts/work-next-issue.sh, to test a script against its real source.
 status=0
 (
   cd "$worktree"
@@ -33,9 +34,10 @@ status=0
     --effort "$EFFORT" \
     --max-budget-usd "$BUDGET" \
     --permission-mode acceptEdits \
-    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Skill" \
+    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Skill" "WebSearch" "WebFetch" \
     "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
+    "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git fetch origin dev)" "Bash(git merge origin/dev:*)" \

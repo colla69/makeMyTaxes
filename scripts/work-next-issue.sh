@@ -35,7 +35,9 @@ git -C "$worktree" switch -q -C "$branch"
 gh issue edit "$issue" --repo "$REPO" --add-label in-progress >/dev/null
 
 # Only the listed tools run, so the worker cannot merge.
-# WebSearch and WebFetch are listed, so the worker can send search text and URLs off the machine.
+# The worker has internet access (WebSearch, WebFetch and curl), so it can send search text and URLs
+# off the machine. The owner allows this, so that the worker can test a script against its real source.
+# It can run the Java scripts and the script tests, but not the other scripts, such as the deploy.
 status=0
 (
   cd "$worktree"
@@ -46,6 +48,7 @@ status=0
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Agent" "Skill" "WebSearch" "WebFetch" \
     "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
+    "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git push:*)" \

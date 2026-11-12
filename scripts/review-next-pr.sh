@@ -4,6 +4,7 @@
 # It runs the review from dev and not from the pull request, so a pull request cannot change its
 # own reviewer. With no waiting pull request, it stops before any call to Claude.
 # Usage: scripts/review-next-pr.sh
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 EFFORT=${REVIEWER_EFFORT:-high}
@@ -130,3 +131,5 @@ case "$verdict" in
     hand_to_owner "the review ended without a clear verdict."
     ;;
 esac
+exit
+}

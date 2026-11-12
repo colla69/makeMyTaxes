@@ -3,6 +3,7 @@
 # An issue waits until each issue that blocks it is on dev or closed. A number given by hand skips this check.
 # With no waiting issue, it stops before any call to Claude, so a run costs nothing.
 # Usage: scripts/work-next-issue.sh [issue number]
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 LABEL=agent-ready
@@ -70,3 +71,5 @@ else
   echo "Issue $issue: no pull request. The worktree stays at $worktree." >&2
   exit 1
 fi
+exit
+}

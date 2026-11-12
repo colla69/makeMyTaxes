@@ -4,6 +4,7 @@
 # This runs before the review, so the review reads a branch that holds the latest dev.
 # It does not call Claude.
 # Usage: scripts/update-pr-branches.sh
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 source "$(dirname "$0")/agent-lib.sh"
@@ -39,3 +40,5 @@ while IFS=$'\t' read -r number branch mergeable labels; do
     *) ;; # GitHub still computes the state. The next round checks again.
   esac
 done <<<"$prs"
+exit
+}

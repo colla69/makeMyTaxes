@@ -1,0 +1,13 @@
+# Editions of the official handbooks of the BMF: esth (EStR and EStH) and lsth (LStR and LStH).
+# To change the list, edit it and run: java scripts/FetchHandbooks.java --pin
+# An edition that does not exist yet is written as a gap in law/handbooks.tsv.
+esth 2022
+esth 2023
+esth 2024
+esth 2025
+esth 2026
+lsth 2022
+lsth 2023
+lsth 2024
+lsth 2025
+lsth 2026

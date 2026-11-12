@@ -36,6 +36,10 @@ owner's machine.
 | Build the law library, once per clone | `java scripts/FetchLaws.java` |
 | Check the law library | `scripts/law-check.sh` |
 | Read a provision for a tax year | `scripts/law.sh 2022 estg "§ 35a"` |
+| Build the official handbooks, once per clone | `java scripts/FetchHandbooks.java` |
+| Pin the handbook pages again, on the owner's machine | `java scripts/FetchHandbooks.java --pin` |
+| Read a guideline or note for a tax year | `scripts/handbook.sh 2026 "R 9.13 LStR"` |
+| Test the handbook parsing | `scripts/fetch-handbooks-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
@@ -52,7 +56,9 @@ Write the output of a long check to a file and read only the failures, so that t
 out of the session.
 
 CI runs the build, the browser tests and the law library check on each pull request. The Java
-version of CI is `java.version` in `pom.xml`.
+version of CI is `java.version` in `pom.xml`. CI does not download the handbooks, so as not to load
+the BMF servers: it runs only the handbook parsing test, and `scripts/law-check.sh` skips the
+handbook checks. The owner builds the handbooks and runs that check on this machine.
 
 ## Working loop
 
@@ -145,8 +151,13 @@ not switch to a cheaper model.
   3. Read the `Stand` and `Hinweis` lines at the top of the file. They name changes that the
      text does not hold yet.
   4. Cite the provision and the date of the version.
-- The law library does not hold BMF letters, the EStR guidelines or court rulings. A rule that
-  depends on them needs its own source.
+- The law library also holds the official handbooks of the BMF for each year: the
+  Einkommensteuer-Handbuch (EStR and EStH, with the BMF letters in its annexes) and the
+  Lohnsteuer-Handbuch (LStR and LStH). Read a guideline or a note with
+  `scripts/handbook.sh 2026 "R 9.13 LStR"`, and cite it with the edition year. An edition that
+  does not exist yet, such as the EStH 2026, is listed as a gap. Do not fill a gap from memory.
+- The law library does not hold other BMF letters or court rulings. A rule that depends on them
+  needs its own source.
 - The owner reviews every change that could send data off the machine. The automatic review does
   not merge such a change.
 - The UI and the adapters depend on the core. The core does not depend on them. The Maven

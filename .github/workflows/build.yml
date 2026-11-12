@@ -65,6 +65,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
+      - name: Test the handbook parsing on a saved page
+        run: scripts/fetch-handbooks-test.sh
       - name: Build the law library from the pinned sources
         run: java scripts/FetchLaws.java
       - name: Check wording that differs between versions

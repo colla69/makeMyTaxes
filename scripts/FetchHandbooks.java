@@ -232,6 +232,7 @@ public class FetchHandbooks {
       "(?is)<!--.*?-->|<![^>]*>|<\\?[^>]*>|<(script|style|noscript|head|nav|header|footer|form)\\b.*?</\\1\\s*>");
   private static final Pattern MAIN = Pattern.compile("(?is)<main\\b[^>]*>(.*)</main\\s*>");
   private static final Pattern TAG = Pattern.compile("(?s)<(/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>");
+  private static final Pattern BASE = Pattern.compile("(?is)<base\\b[^>]*?\\bhref\\s*=\\s*[\"']([^\"']+)[\"']");
   private static final Pattern HREF = Pattern.compile("(?is)<a\\b[^>]*?\\bhref\\s*=\\s*[\"']([^\"']+)[\"']");
   private static final Pattern ENTITY = Pattern.compile("&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);");
   private static final Set<String> BLOCKS = Set.of(
@@ -250,9 +251,10 @@ public class FetchHandbooks {
   /** Converts one handbook page to text and lists its links as absolute paths, in page order. */
   static Page convert(String html, URI url) {
     List<String> links = new ArrayList<>();
+    URI base = baseOf(html, url);
     Matcher href = HREF.matcher(html);
     while (href.find()) {
-      String link = resolve(url, decodeEntities(href.group(1)));
+      String link = resolve(base, decodeEntities(href.group(1)));
       if (link != null && !links.contains(link)) {
         links.add(link);
       }
@@ -298,6 +300,19 @@ public class FetchHandbooks {
       }
     }
     return String.join("\n", lines);
+  }
+
+  /** The page's {@code <base href>}, resolved against its URL, or the URL when it has none. */
+  private static URI baseOf(String html, URI url) {
+    Matcher base = BASE.matcher(html);
+    if (!base.find()) {
+      return url;
+    }
+    try {
+      return url.resolve(decodeEntities(base.group(1)).replace(" ", "%20"));
+    } catch (IllegalArgumentException e) {
+      return url;
+    }
   }
 
   private static String resolve(URI page, String href) {

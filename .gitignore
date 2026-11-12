@@ -23,6 +23,9 @@ deploy/.env.dev
 # The law library is rebuilt from law/sources.tsv
 law/text/
 
+# The BMF letters and form instructions are downloaded from law/guidance.tsv
+law/guidance/
+
 # IDE settings
 .idea/
 

@@ -36,6 +36,11 @@ owner's machine.
 | Build the law library, once per clone | `java scripts/FetchLaws.java` |
 | Check the law library | `scripts/law-check.sh` |
 | Read a provision for a tax year | `scripts/law.sh 2022 estg "§ 35a"` |
+| Get the BMF letters and form instructions, once per clone | `scripts/guidance.sh fetch --pin` |
+| Check the BMF letters and form instructions | `scripts/guidance.sh check` |
+| List the letters and instructions for a tax year | `scripts/guidance.sh list 2022` |
+| Read a letter or a form instruction | `scripts/guidance.sh show bmf-2016-11-09-35a` |
+| Test the guidance script | `scripts/guidance-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
@@ -135,8 +140,10 @@ not switch to a cheaper model.
   3. Read the `Stand` and `Hinweis` lines at the top of the file. They name changes that the
      text does not hold yet.
   4. Cite the provision and the date of the version.
-- The law library does not hold BMF letters, the EStR guidelines or court rulings. A rule that
-  depends on them needs its own source.
+- The law library does not hold BMF letters, the EStR guidelines or court rulings. 
+  `scripts/guidance.sh` prints the BMF letters and the official form instructions that
+  `law/guidance.tsv` lists. A rule that depends on another letter, a guideline or a ruling needs
+  its own source.
 - The owner reviews every change that could send data off the machine. The automatic review does
   not merge such a change.
 - The UI and the adapters depend on the core. The core does not depend on them. The Maven

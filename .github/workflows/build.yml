@@ -41,6 +41,10 @@ jobs:
         run: scripts/privacy-scan-test.sh
       - name: Test the deploy script
         run: scripts/deploy-live-test.sh
+      - name: Install pdftotext for the guidance test
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends poppler-utils
+      - name: Test the guidance library script
+        run: scripts/guidance-test.sh
 
   live-container:
     runs-on: ubuntu-latest

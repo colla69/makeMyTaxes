@@ -24,6 +24,10 @@ java "$root/scripts/FetchHandbooks.java" --convert "$data/page.html" \
   "https://lsth.bundesfinanzministerium.de/lsth/2026/A/R-9-1/inhalt.html" > "$work/page.txt"
 check "the page converts to the expected text and links" diff -u "$data/page.expected.txt" "$work/page.txt"
 
+java "$root/scripts/FetchHandbooks.java" --convert "$data/page-base.html" \
+  "https://esth.bundesfinanzministerium.de/esth/2025/home.html" > "$work/page-base.txt"
+check "links resolve against the base tag of the page" diff -u "$data/page-base.expected.txt" "$work/page-base.txt"
+
 {
   echo "# Amtliches Lohnsteuer-Handbuch 2026"
   echo

@@ -24,6 +24,8 @@ IBAN_CANDIDATE='(?<![A-Za-z0-9])[A-Za-z]{2}[0-9]{2}( ?[A-Za-z0-9]{4}){2,7}( ?[A-
 # A dot or comma after the number ends a sentence, unless a digit follows it.
 TAX_ID_CANDIDATE='(?<![0-9A-Za-z.,/-])[1-9][0-9]( ?[0-9]{3}){3}(?![0-9A-Za-z/-]|[.,][0-9])'
 ALLOW_MARKER='privacy-scan:allow'
+# The license names the copyright holder, so the private terms do not apply to it. The other checks do.
+NAMED_HOLDER_FILES='^LICENSE$'
 
 root=$(git rev-parse --show-toplevel)
 APPROVED_LIST="$root/scripts/privacy-scan-approved.sha256"
@@ -119,13 +121,13 @@ check_private_terms() { # location, file
   done < <(grep -naiF -f "$work/terms.clean" "$2" || true)
 }
 
-check_content() { # location, file
+check_content() { # location, file, path in the repository (none for a commit message)
   # A Latin-1 file is invalid UTF-8, and -P refuses it, so the pattern checks read bytes.
   is_binary "$2" && return 0
   LC_ALL=C check_ibans "$1" "$2"
   check_pattern "$1" "$2" "$TAX_NUMBER" "looks like a tax number (Steuernummer)"
   LC_ALL=C check_tax_ids "$1" "$2"
-  check_private_terms "$1" "$2"
+  [[ ${3:-} =~ $NAMED_HOLDER_FILES ]] || check_private_terms "$1" "$2"
 }
 
 is_approved() { # file
@@ -149,7 +151,7 @@ scan_staged() {
   while IFS= read -r -d '' path; do
     git show ":$path" >"$work/blob"
     check_path "$path" "$work/blob"
-    check_content "$path" "$work/blob"
+    check_content "$path" "$work/blob" "$path"
   done < <(git diff --cached --name-only --diff-filter=ACMR -z)
 }
 
@@ -158,7 +160,7 @@ scan_tracked() {
   while IFS= read -r -d '' path; do
     [[ -f "$root/$path" ]] || continue
     check_path "$path" "$root/$path"
-    check_content "$path" "$root/$path"
+    check_content "$path" "$root/$path" "$path"
   done < <(git ls-files -z)
 }
 
@@ -169,7 +171,7 @@ scan_history() {
     [[ $(git cat-file -t "$blob") == blob ]] || continue
     git cat-file blob "$blob" >"$work/blob"
     check_path "$path" "$work/blob"
-    check_content "$path (blob ${blob:0:8})" "$work/blob"
+    check_content "$path (blob ${blob:0:8})" "$work/blob" "$path"
   done < <(git rev-list --all --objects)
 
   local commit

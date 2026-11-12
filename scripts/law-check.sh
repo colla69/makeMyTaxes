@@ -34,6 +34,26 @@ expect 2022-12-31 estg "in der Fassung des Artikels 1 des Gesetzes vom 16. Dezem
 count=$(grep -c '^## § ' "$root/law/text/2022-12-31/ao_1977.md")
 if [ "$count" -gt 400 ]; then echo "ok: the AO has $count provisions"; else echo "FAILED: the AO has $count provisions" >&2; failures=$((failures + 1)); fi
 
+# The official handbooks, built by java scripts/FetchHandbooks.java from law/handbooks.tsv.
+# The guideline and the note are the examples that the issue on the handbooks names.
+if ! grep -qv '^#' "$root/law/handbooks.tsv"; then
+  echo "skipped: the handbooks are not pinned yet. Run: java scripts/FetchHandbooks.java --pin"
+else
+  for year in 2022 2023 2024 2025 2026; do
+    for wanted in "lsth R 9.13 LStR" "esth H 35a EStH"; do
+      handbook=${wanted%% *} id=${wanted#* }
+      if grep -qP "^$handbook\t$year\tgap\t" "$root/law/handbooks.tsv"; then
+        echo "gap: no $handbook edition for $year"
+      elif "$root/scripts/handbook.sh" "$year" "$id" > /dev/null; then
+        echo "ok: $id is in the handbook for $year"
+      else
+        echo "FAILED: $id is not in the handbook for $year" >&2
+        failures=$((failures + 1))
+      fi
+    done
+  done
+fi
+
 if [ "$failures" -ne 0 ]; then
   echo "law-check: $failures failure(s)" >&2
   exit 1

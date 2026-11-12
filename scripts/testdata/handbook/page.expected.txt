@@ -1,0 +1,17 @@
+## § 9 Werbungskosten
+Text des Paragrafen mit Umlauten: äöüß und € und Leerzeichen.
+### R 9.1 Beispielrichtlinie
+Erster Absatz der Richtlinie siehe R 9.2.
+- Punkt eins
+- Punkt zwei
+### R 9.13 Zweite Beispielrichtlinie
+Text der zweiten Richtlinie.
+Spalte | Wert |
+A | 1 |
+### H 9.13 Hinweise
+Text des Hinweises extern Skript Anhang.
+Link: /lsth/2026/home.html
+Link: /lsth/2025/home.html
+Link: /lsth/2026/A/R-9-2/inhalt.html
+Link: /lsth/2026/A/R-9-1/B-Anhaenge/anhang.html
+Link: /impressum.html

@@ -84,6 +84,9 @@ expect_staged 1 "a private term fails" a.md "Name: $PRIVATE_TERM"
 expect_staged 1 "a private term in another case fails" a.md "Name: ${PRIVATE_TERM^^}"
 expect_staged 1 "a private term cannot be allowed" a.md "$PRIVATE_TERM privacy-scan:allow"
 expect_staged 1 "a private term in a file name fails" "$PRIVATE_TERM.md" "nothing"
+expect_staged 0 "a private term in the license passes" LICENSE "Copyright (c) 2026 $PRIVATE_TERM"
+expect_staged 1 "a private term in a license in a subfolder fails" docs/LICENSE "Copyright $PRIVATE_TERM"
+expect_staged 1 "a tax ID in the license fails" LICENSE "ID: $VALID_TAX_ID"
 
 stage a.md "Name: $PRIVATE_TERM"
 expect 1 "a private term fails again" --staged

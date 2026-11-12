@@ -1,0 +1,2 @@
+# An empty stand-in for Claude Code. The containers mount it when MAKEMYTAXES_CLAUDE_CODE is not set.
+# It is not executable, so the assistant is not available.

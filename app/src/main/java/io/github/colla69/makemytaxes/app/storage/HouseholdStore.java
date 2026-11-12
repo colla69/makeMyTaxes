@@ -49,6 +49,19 @@ public class HouseholdStore {
     jdbc.sql("update person set name = ? where id = ?").params(name, personId).update();
   }
 
+  /** True if the person turned the assistant on. A person that does not exist has it off. */
+  public boolean assistantOn(long personId) {
+    return jdbc.sql("select assistant_on from person where id = ?")
+        .param(personId)
+        .query(Boolean.class)
+        .optional()
+        .orElse(false);
+  }
+
+  public void switchAssistant(long personId, boolean on) {
+    jdbc.sql("update person set assistant_on = ? where id = ?").params(on, personId).update();
+  }
+
   /** The personal details, such as the address. They hold for every year of the person. */
   public Answers detailsOf(long personId) {
     Map<String, String> values = new LinkedHashMap<>();

@@ -17,5 +17,21 @@ services:
       MAKEMYTAXES_DATABASE_PASSPHRASE: ${MAKEMYTAXES_DATABASE_PASSPHRASE:?Set it in deploy/.env}
       MAKEMYTAXES_DATABASE_PATH: /data/makemytaxes.db
       SERVER_PORT: "9090"
+      # The assistant. See the commands section of CLAUDE.md. Claude Code keeps its settings in its own
+      # volume, so it never sees the user's own Claude Code settings.
+      MAKEMYTAXES_ASSISTANT_COMMAND: /opt/claude-code/claude
+      CLAUDE_CONFIG_DIR: /claude-config
+    # The token for Claude Code: a file outside the repository with the line
+    # CLAUDE_CODE_OAUTH_TOKEN=<token>. Without the file, the assistant is not available.
+    env_file:
+      - path: ${MAKEMYTAXES_ASSISTANT_TOKEN_FILE:-${HOME}/.config/makemytaxes/assistant.env}
+        required: false
     volumes:
       - ./data:/data
+      # The Claude Code of the host, read-only, so nothing of it enters the image. The default is an
+      # empty file, so that the assistant is not available.
+      - ${MAKEMYTAXES_CLAUDE_CODE:-./no-claude-code}:/opt/claude-code/claude:ro
+      - claude-config:/claude-config
+
+volumes:
+  claude-config:

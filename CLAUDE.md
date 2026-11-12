@@ -40,6 +40,13 @@ owner's machine.
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
 | Build origin/dev and start the dev container | `scripts/deploy-dev.sh` |
+| Create the token for the assistant, once per machine | `claude setup-token` |
+
+The assistant runs Claude Code from the app. To turn it on for a container, put the token from
+`claude setup-token` in `~/.config/makemytaxes/assistant.env`, as the line
+`CLAUDE_CODE_OAUTH_TOKEN=<token>`, and run `chmod 600` on the file. The token must never enter the
+repository. Set `MAKEMYTAXES_CLAUDE_CODE` to the path of the Claude Code program on the host, in
+`deploy/.env` for the live container and in `deploy/.env.dev` for the dev container. Without the token or the program, the app works as before.
 
 Write the output of a long check to a file and read only the failures, so that the output stays
 out of the session.
@@ -102,8 +109,8 @@ not switch to a cheaper model.
 - Year packs hold values such as limits and rates. Logic is plain Java, with no custom
   rules language.
 - Every number on a return traces back to its evidence: a receipt, a stated basis or a
-  legal source. The app never suggests a change to an amount, a date or a day count to get
-  a better result.
+  legal source. The app gives advice for the best legal result within the facts. It never
+  suggests a change to an amount, a date, a day count or another fact to get a better result.
 - The first target is a return for one employee, using the main form, Anlage N, Anlage
   Vorsorgeaufwand, Sonderausgaben and Haushaltsnahe Aufwendungen. Other forms come in later
   year packs.
@@ -121,8 +128,11 @@ not switch to a cheaper model.
   push is too late. Do not skip the hook with `--no-verify`.
 - Claude can read real data that the owner gives to a session, to analyse it. Do not copy the
   values anywhere else.
-- The app binds to `127.0.0.1` and does not call cloud services. `LocalOnlyArchitectureTest`
-  checks the project's own classes, but not the libraries.
+- The app binds to `127.0.0.1` and does not call cloud services, with one exception: the
+  assistant in the package `app.assistant` starts Claude Code, which sends the prompt to Anthropic.
+  The assistant is off by default, and each person turns it on for their own returns. Only
+  `PersonAssistant` may call it. `LocalOnlyArchitectureTest` checks the project's own classes, but
+  not the libraries. It allows a process only in the package of the assistant.
 - Every feature that a user can see ships with a Playwright test in the same commit. The test
   must fail if the feature breaks.
 - A tax rule needs a test case that cites an official source. A reviewer's approval is not

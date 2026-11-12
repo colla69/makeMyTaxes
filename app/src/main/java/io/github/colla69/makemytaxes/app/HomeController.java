@@ -1,5 +1,6 @@
 package io.github.colla69.makemytaxes.app;
 
+import io.github.colla69.makemytaxes.app.assistant.PersonAssistant;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.form.Answers;
@@ -28,9 +29,11 @@ class HomeController {
   private static final List<Integer> YEARS = List.of(2022, 2023, 2024, 2025, 2026);
 
   private final HouseholdStore household;
+  private final PersonAssistant assistant;
 
-  HomeController(HouseholdStore household) {
+  HomeController(HouseholdStore household, PersonAssistant assistant) {
     this.household = household;
+    this.assistant = assistant;
   }
 
   @GetMapping("/")
@@ -118,6 +121,16 @@ class HomeController {
     return ResponseEntity.ok("");
   }
 
+  /** Turns the assistant on or off for the returns of this person. */
+  @PostMapping("/persons/{personId}/assistant")
+  String switchAssistant(@PathVariable long personId, @RequestParam boolean on) {
+    if (!household.hasPerson(personId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    }
+    household.switchAssistant(personId, on);
+    return "redirect:/persons/" + personId;
+  }
+
   @PostMapping("/persons/{personId}/returns")
   String addReturn(@PathVariable long personId, @RequestParam int taxYear) {
     if (!household.hasPerson(personId)) {
@@ -153,6 +166,8 @@ class HomeController {
     model.addAttribute("requiredFields", List.of());
     model.addAttribute("values", values);
     model.addAttribute("errors", errors);
+    model.addAttribute("assistantOn", household.assistantOn(personId));
+    model.addAttribute("assistantAvailable", assistant.available());
   }
 
   /** The name that the app shows: first name, then surname. Empty if the user entered neither. */

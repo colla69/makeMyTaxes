@@ -24,6 +24,25 @@
         <button>Speichern</button>
       </p>
     </form>
+
+    <section id="assistant">
+      <h2>Steuer-Assistent</h2>
+      <p>Der Assistent beantwortet Fragen zu den Steuererklärungen dieser Person. Er nutzt Claude,
+        ein KI-Modell der Firma Anthropic in den USA.</p>
+      <p>Wenn Sie ihn einschalten, schickt die App Ihre Fragen und Daten aus den Steuererklärungen
+        dieser Person an Anthropic, zum Beispiel persönliche Angaben, Beträge, Daten und Angaben
+        aus Belegen. Solange der Assistent aus ist, schickt die App keine Daten dieser Person an
+        Anthropic. Jede Person schaltet ihn nur für sich selbst ein.</p>
+      <p class="assistant-state" th:text="${assistantOn} ? 'Der Assistent ist an.' : 'Der Assistent ist aus.'">
+        Der Assistent ist aus.</p>
+      <p class="assistant-unavailable" th:unless="${assistantAvailable}">Der Assistent ist auf
+        diesem Rechner nicht verfügbar, weil Claude Code oder das Token fehlt. Die App
+        funktioniert ohne ihn wie bisher.</p>
+      <form method="post" th:action="@{/persons/{id}/assistant(id=${personId})}">
+        <input type="hidden" name="on" th:value="${!assistantOn}">
+        <button th:text="${assistantOn} ? 'Assistent ausschalten' : 'Assistent einschalten'">Assistent einschalten</button>
+      </form>
+    </section>
     </main>
   </body>
 </html>

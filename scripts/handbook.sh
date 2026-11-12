@@ -30,7 +30,9 @@ if [ ! -f "$file" ]; then
 fi
 
 # A section starts at a heading that begins with the wanted id, followed by a space, a dot or the
-# end. It ends at the next heading of another guideline, note or paragraph, or at the next page.
+# end. The real pages put the id on a line of its own, such as "H 35a" before "### Hinweise", so
+# such a line counts as a heading too. A section ends at the next heading of another guideline,
+# note or paragraph, or at the next page.
 awk -v id="$id" '
   function starts(line, rest) {
     if (index(line, id) != 1) return 0
@@ -38,6 +40,10 @@ awk -v id="$id" '
     return rest == "" || rest ~ /^[ .:]/ && rest !~ /^\.[0-9]/
   }
   /^Source: / { page = $0; on = 0; next }
+  /^(R|H) [0-9]+[a-z]?(\.[0-9]+[a-z]?)*\.?$/ {
+    if (starts($0)) { on = 1; found = 1; print page; print; next }
+    on = 0
+  }
   /^#+ / {
     heading = $0
     sub(/^#+ /, "", heading)

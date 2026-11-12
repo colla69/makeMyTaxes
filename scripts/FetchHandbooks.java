@@ -104,11 +104,16 @@ public class FetchHandbooks {
         rows.add(String.join("\t", edition.handbook(), String.valueOf(edition.year()), GAP, "-"));
         continue;
       }
+      // Two links can lead to the same page. Its text is pinned once, at its first place.
+      Set<String> hashes = new HashSet<>();
       for (var page : pages.entrySet()) {
+        if (!hashes.add(sha256(page.getValue()))) {
+          continue;
+        }
         rows.add(String.join(
             "\t", edition.handbook(), String.valueOf(edition.year()), page.getKey(), sha256(page.getValue())));
       }
-      System.out.println("Pinned " + pages.size() + " pages of " + edition.handbook() + " " + edition.year());
+      System.out.println("Pinned " + hashes.size() + " pages of " + edition.handbook() + " " + edition.year());
     }
     Files.write(PINS, rows);
   }
@@ -128,6 +133,10 @@ public class FetchHandbooks {
         continue;
       }
       HttpResponse<byte[]> response = get(edition.host() + path);
+      if (busy(response.statusCode())) {
+        throw new IllegalStateException("The server stays busy (HTTP " + response.statusCode() + ") for "
+            + path + ". Nothing was pinned. Run the pin again later.");
+      }
       if (response.statusCode() != 200) {
         System.out.println("Skipped HTTP " + response.statusCode() + " for " + path);
         continue;
@@ -229,7 +238,9 @@ public class FetchHandbooks {
   // ---- HTML to text ----
 
   private static final Pattern DROP = Pattern.compile(
-      "(?is)<!--.*?-->|<![^>]*>|<\\?[^>]*>|<(script|style|noscript|head|nav|header|footer|form)\\b.*?</\\1\\s*>");
+      "(?is)<!--.*?-->|<![^>]*>|<\\?[^>]*>|<(script|style|noscript|head|nav|header|footer|form)\\b.*?</\\1\\s*>"
+          // The toggle of the table of contents holds only the button labels "aufklappen Zuklappen".
+          + "|<a\\b[^>]*\\bclass\\s*=\\s*[\"'][^\"']*\\btoc-toggle\\b[^>]*>.*?</a\\s*>");
   private static final Pattern MAIN = Pattern.compile("(?is)<main\\b[^>]*>(.*)</main\\s*>");
   private static final Pattern TAG = Pattern.compile("(?s)<(/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>");
   private static final Pattern BASE = Pattern.compile("(?is)<base\\b[^>]*?\\bhref\\s*=\\s*[\"']([^\"']+)[\"']");
@@ -380,13 +391,30 @@ public class FetchHandbooks {
   }
 
   /** Sends one request at a time, after a short pause, so that the BMF servers are not flooded. */
+  /** The waits before each new try, when the server is busy (HTTP 429 or 5xx). */
+  private static final List<Duration> RETRIES =
+      List.of(Duration.ofSeconds(5), Duration.ofSeconds(30), Duration.ofSeconds(120));
+
   private static HttpResponse<byte[]> get(String url) throws Exception {
     Thread.sleep(PAUSE);
     HttpRequest request = HttpRequest.newBuilder(URI.create(url))
         .header("User-Agent", USER_AGENT)
         .timeout(Duration.ofSeconds(60))
         .build();
-    return HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
+    HttpResponse<byte[]> response = HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
+    for (Duration wait : RETRIES) {
+      if (!busy(response.statusCode())) {
+        break;
+      }
+      System.out.println("HTTP " + response.statusCode() + " for " + url + ", trying again in " + wait.toSeconds() + " s");
+      Thread.sleep(wait);
+      response = HTTP.send(request, HttpResponse.BodyHandlers.ofByteArray());
+    }
+    return response;
+  }
+
+  private static boolean busy(int status) {
+    return status == 429 || status >= 500;
   }
 
   private static String sha256(String text) throws Exception {

@@ -53,6 +53,14 @@ lookup 2026 "H 9.13 LStH" > "$work/h913.txt"
 check "H 9.13 holds its text" grep -qF "Text des Hinweises" "$work/h913.txt"
 check "H 9.13 stops at the next page" bash -c "! grep -qF 'Folgeseite' '$work/h913.txt'"
 
+cp "$data/real-shape.md" "$work/esth-2025.md"
+lookup 2025 "H 35a EStH" > "$work/h35a.txt"
+check "an id on a line of its own starts a note" grep -qF "Text des Beispielhinweises" "$work/h35a.txt"
+check "the note stops before the next guideline" bash -c "! grep -qF 'nächsten Richtlinie' '$work/h35a.txt'"
+check "the note holds no text of the guideline before it" bash -c "! grep -qF 'Beispielrichtlinie' '$work/h35a.txt'"
+lookup 2025 "R 35a EStR" > "$work/r35a.txt"
+check "an id with a dot starts a guideline" grep -qF "Text der Beispielrichtlinie" "$work/r35a.txt"
+
 check "an unknown guideline fails" bash -c "! HANDBOOK_TEXT='$work' '$root/scripts/handbook.sh' 2026 'R 99.9 LStR' 2>/dev/null"
 check "a year without text fails" bash -c "! HANDBOOK_TEXT='$work' '$root/scripts/handbook.sh' 2026 'H 35a EStH' 2>/dev/null"
 

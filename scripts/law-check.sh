@@ -55,6 +55,13 @@ else
       fi
     done
   done
+  # The BMF letters in the handbook annexes and the form instructions in law/guidance.tsv.
+  if bash "$root/scripts/guidance.sh" check; then
+    echo "ok: the BMF letters and form instructions match law/guidance.tsv"
+  else
+    echo "FAILED: the BMF letters and form instructions, see above" >&2
+    failures=$((failures + 1))
+  fi
 fi
 
 if [ "$failures" -ne 0 ]; then

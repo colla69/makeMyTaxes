@@ -49,7 +49,9 @@ Write the output of a long check to a file and read only the failures, so that t
 out of the session.
 
 CI runs the build, the browser tests and the law library check on each pull request. The Java
-version of CI is `java.version` in `pom.xml`.
+version of CI is `java.version` in `pom.xml`. CI does not download the handbooks, so as not to load
+the BMF servers: it runs only the handbook parsing test, and `scripts/law-check.sh` skips the
+handbook checks. The owner builds the handbooks and runs that check on this machine.
 
 ## Working loop
 

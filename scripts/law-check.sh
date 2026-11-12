@@ -38,6 +38,9 @@ if [ "$count" -gt 400 ]; then echo "ok: the AO has $count provisions"; else echo
 # The guideline and the note are the examples that the issue on the handbooks names.
 if ! grep -qv '^#' "$root/law/handbooks.tsv"; then
   echo "skipped: the handbooks are not pinned yet. Run: java scripts/FetchHandbooks.java --pin"
+elif ! compgen -G "$root/law/text/[el]sth-*.md" > /dev/null; then
+  # CI does not build the handbooks, to spare the BMF servers. The owner runs this check locally.
+  echo "skipped: the handbook text is not built. Run: java scripts/FetchHandbooks.java"
 else
   for year in 2022 2023 2024 2025 2026; do
     for wanted in "lsth R 9.13 LStR" "esth H 35a EStH"; do

@@ -16,9 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,6 +46,8 @@ public class FetchHandbooks {
   private static final String GAP = "gap";
   private static final String USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
+
+  private static final Duration PAUSE = Duration.ofMillis(200);
 
   private static final HttpClient HTTP =
       HttpClient.newBuilder()
@@ -211,17 +210,11 @@ public class FetchHandbooks {
   }
 
   private static List<String> fetchAll(List<Pin> pins) throws Exception {
-    try (ExecutorService pool = Executors.newFixedThreadPool(4)) {
-      List<Future<String>> futures = new ArrayList<>();
-      for (Pin pin : pins) {
-        futures.add(pool.submit(() -> checkedText(pin)));
-      }
-      List<String> texts = new ArrayList<>();
-      for (Future<String> future : futures) {
-        texts.add(future.get());
-      }
-      return texts;
+    List<String> texts = new ArrayList<>();
+    for (Pin pin : pins) {
+      texts.add(checkedText(pin));
     }
+    return texts;
   }
 
   private static String checkedText(Pin pin) throws Exception {
@@ -371,7 +364,9 @@ public class FetchHandbooks {
     return new String(response.body(), latin ? StandardCharsets.ISO_8859_1 : StandardCharsets.UTF_8);
   }
 
+  /** Sends one request at a time, after a short pause, so that the BMF servers are not flooded. */
   private static HttpResponse<byte[]> get(String url) throws Exception {
+    Thread.sleep(PAUSE);
     HttpRequest request = HttpRequest.newBuilder(URI.create(url))
         .header("User-Agent", USER_AGENT)
         .timeout(Duration.ofSeconds(60))

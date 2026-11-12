@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="'Übersicht ' + ${taxYear}">Übersicht</title>
     <link rel="stylesheet" th:unless="${export}" th:href="@{/app.css}">
+    <script th:unless="${export}" th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
     <!-- The export renders this page without a request, so it leaves out the parts that need one. -->

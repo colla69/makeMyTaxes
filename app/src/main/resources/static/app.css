@@ -329,3 +329,62 @@ form.inline {
 .saved {
   color: #1b6e2c;
 }
+
+/*
+ * The chat with the assistant sits at the top right, beside the tabs. Closed, it is a small button.
+ * Open, it is a column over the right edge of the page.
+ */
+.assistant-chat {
+  background: #fff;
+  border: 1px solid #9aa1a9;
+  border-radius: 0.5rem;
+  position: fixed;
+  right: 1rem;
+  top: 1rem;
+  z-index: 10;
+}
+
+.assistant-chat summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+}
+
+.assistant-chat[open] {
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 20%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 0 1rem 1rem;
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.assistant-messages {
+  list-style: none;
+  padding: 0;
+}
+
+.assistant-messages li {
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  white-space: pre-wrap;
+}
+
+.assistant-messages .from-user {
+  background: #e4e7eb;
+  margin-left: 2rem;
+}
+
+.assistant-messages .from-assistant {
+  background: #eef6ef;
+  margin-right: 2rem;
+}
+
+.assistant-ask textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.assistant-error {
+  color: #b00020;
+}

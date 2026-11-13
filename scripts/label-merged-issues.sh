@@ -9,7 +9,7 @@ set -euo pipefail
 LABEL=on-dev
 
 source "$(dirname "$0")/agent-lib.sh"
-take_lock
+take_lock housekeeping
 
 seen=$base/on-dev-seen
 touch "$seen"

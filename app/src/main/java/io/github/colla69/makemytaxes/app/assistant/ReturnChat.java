@@ -15,18 +15,29 @@ import org.springframework.stereotype.Component;
 @Component
 class ReturnChat {
 
-  private static final String INSTRUCTIONS =
+  /** The system prompt. {@code %s} is the tax year of the return. */
+  static final String INSTRUCTIONS =
       """
-      Du bist der Steuerassistent der App makeMyTaxes. Die App hilft bei der deutschen \
+      Du bist ein erfahrener Steuerberater für die deutsche Einkommensteuer des Jahres %s. Du arbeitest in der App makeMyTaxes. Die App hilft bei der \
       Einkommensteuererklärung einer Person. Antworte auf Deutsch, kurz und klar.
       Gib Rat für das beste legale Ergebnis innerhalb der Fakten. Schlage nie vor, einen Betrag, \
       ein Datum, eine Zahl von Tagen oder eine andere Tatsache zu ändern, um ein besseres Ergebnis \
-      zu erhalten. Nenne zu einer Regel die Vorschrift. Wenn du etwas nicht sicher weißt, sag es.
-      Wenn du den Inhalt eines Belegs brauchst, rufe das Werkzeug read_document mit seiner \
-      Beleg-Nr. auf und lies dann die genannte Datei mit Read.
+      zu erhalten.
+
+      # Quellen
       Antworte auf eine Steuerfrage nicht aus dem Gedächtnis. Suche im Recht des Jahres der \
       Erklärung mit search_law, lies eine Vorschrift mit read_provision und eine Richtlinie, einen \
       Hinweis, ein BMF-Schreiben oder eine Anleitung zum Vordruck mit read_guidance.
+      Nenne zu jeder Aussage über eine Steuerregel ihre Quelle: bei einem Gesetz die Vorschrift \
+      und das Datum ihrer Fassung, sonst die Richtlinie oder den Hinweis mit dem Jahr des \
+      Handbuchs, das BMF-Schreiben oder die Anleitung zum Vordruck.
+      Wenn die Bibliothek keine Quelle für eine Regel hat, sag das und antworte zu dieser Regel \
+      nicht aus dem Gedächtnis.
+
+      # Werkzeuge
+      Die Vordrucke des Jahres mit ihren Feldern, Zeilen und Werten liest du mit read_forms.
+      Wenn du den Inhalt eines Belegs brauchst, rufe das Werkzeug read_document mit seiner \
+      Beleg-Nr. auf und lies dann die genannte Datei mit Read.
 
       # Die Erklärungen, die du siehst
       """;
@@ -72,7 +83,9 @@ class ReturnChat {
   Request prepare(long returnId, String question) {
     List<SeenReturn> seen = context.seenReturns(returnId);
     Set<Long> seenIds = seenIds(seen);
-    StringBuilder prompt = new StringBuilder(INSTRUCTIONS).append("\n").append(context.text(seen));
+    TaxYear taxYear = seen.isEmpty() ? null : seen.getFirst().taxYear();
+    StringBuilder prompt =
+        new StringBuilder(instructions(taxYear)).append("\n").append(context.text(seen));
     List<Message> conversation = conversation(returnId, seenIds);
     if (!conversation.isEmpty()) {
       prompt.append("# Das bisherige Gespräch\n");
@@ -84,8 +97,12 @@ class ReturnChat {
       }
     }
     prompt.append("# Die neue Frage\n").append(question).append("\n");
-    TaxYear taxYear = seen.isEmpty() ? null : seen.getFirst().taxYear();
     return new Request(returnId, question, prompt.toString(), seenIds, taxYear);
+  }
+
+  /** The system prompt for the year of the return. Without a return it names no year. */
+  static String instructions(TaxYear taxYear) {
+    return INSTRUCTIONS.formatted(taxYear == null ? "der Erklärung" : taxYear.value());
   }
 
   void remember(Request request, String answer) {

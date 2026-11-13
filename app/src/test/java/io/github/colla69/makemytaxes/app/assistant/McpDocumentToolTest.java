@@ -8,11 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
+import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore.StoredPerson;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.MainForm;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -69,6 +72,8 @@ class McpDocumentToolTest {
 
   @Autowired private DocumentStore documents;
 
+  @Autowired private FormStore forms;
+
   @Autowired private PersonAssistant personAssistant;
 
   @Autowired private Assistant assistant;
@@ -118,6 +123,67 @@ class McpDocumentToolTest {
     assertTrue(fake().prompts().getLast().contains("Beleg-Nr. " + open.documentId()));
     assertEquals(1, seen.size());
     assertFalse(Files.exists(seen.getFirst().folder()), "the folder is deleted after the question");
+  }
+
+  @Test
+  void theFormsToolReadsTheFieldsLinesAndValuesOfTheReturn() throws Exception {
+    MadeUpReturn open = addReturn();
+    MadeUpReturn other = addReturn();
+    household.switchAssistant(open.personId(), true);
+    forms.saveAnswer(open.returnId(), MainForm.ID, "lastName", "Musterfrau");
+    forms.saveAnswer(open.returnId(), AnlageN.ID, "grossWage", "12345,67");
+    forms.saveAnswer(open.returnId(), AnlageN.ID, "employer2-grossWage", "1000");
+    forms.saveAnswer(other.returnId(), MainForm.ID, "lastName", "Nichtgesehen");
+    List<String> bodies = new ArrayList<>();
+    fake()
+        .setDuringQuestion(
+            access -> {
+              bodies.add(call(access.token(), "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":2}").body());
+              bodies.add(call(access.token(), readForms()).body());
+            });
+
+    personAssistant.askAboutReturn(open.returnId(), "Made-up question about the forms");
+
+    assertTrue(bodies.get(0).contains("\"name\":\"read_forms\""), bodies.get(0));
+    String text = bodies.get(1);
+    assertTrue(text.contains("\"isError\":false"), text);
+    assertTrue(text.contains("## Hauptvordruck (ESt 1 A) [main]"), text);
+    assertTrue(text.contains("- Zeile 9: Name [lastName, Pflicht]: Musterfrau"), text);
+    assertTrue(text.contains("Bruttoarbeitslohn (EUR) [grossWage, Pflicht]: 12.345,67"), text);
+    assertTrue(
+        text.contains("Bruttoarbeitslohn (EUR) [employer2-grossWage, Pflicht]: 1.000,00"), text);
+    assertTrue(
+        text.contains("- Quelle § 46 Abs. 2 Nr. 1 EStG: Einkünfte ohne Lohnsteuerabzug"),
+        "a question on no form shows its legal source: " + text);
+    assertTrue(text.contains(": leer"), "an empty field shows as empty");
+    assertFalse(text.contains("Nichtgesehen"), "a return that the assistant does not see stays out");
+  }
+
+  @Test
+  void theSystemPromptAsksForATaxConsultantOfTheYearWhoCitesASourceForEachRule() throws Exception {
+    MadeUpReturn open = addReturn();
+    household.switchAssistant(open.personId(), true);
+
+    personAssistant.askAboutReturn(open.returnId(), "Made-up question about a rule");
+
+    String prompt = fake().prompts().getLast();
+    assertTrue(
+        prompt.contains("erfahrener Steuerberater für die deutsche Einkommensteuer des Jahres 2022"),
+        prompt);
+    assertTrue(prompt.contains("Antworte auf eine Steuerfrage nicht aus dem Gedächtnis."), prompt);
+    assertTrue(
+        prompt.contains(
+            "Nenne zu jeder Aussage über eine Steuerregel ihre Quelle: bei einem Gesetz die"
+                + " Vorschrift und das Datum ihrer Fassung, sonst die Richtlinie oder den Hinweis"
+                + " mit dem Jahr des Handbuchs, das BMF-Schreiben oder die Anleitung zum"
+                + " Vordruck."),
+        prompt);
+    assertTrue(
+        prompt.contains(
+            "Wenn die Bibliothek keine Quelle für eine Regel hat, sag das und antworte zu dieser"
+                + " Regel nicht aus dem Gedächtnis."),
+        prompt);
+    assertTrue(prompt.contains("read_forms"), prompt);
   }
 
   @Test
@@ -224,6 +290,12 @@ class McpDocumentToolTest {
     return """
         {"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2025-06-18",\
         "capabilities":{},"clientInfo":{"name":"fake","version":"0"}}}""";
+  }
+
+  private static String readForms() {
+    return """
+        {"jsonrpc":"2.0","method":"tools/call","id":4,"params":{"name":"read_forms",\
+        "arguments":{}}}""";
   }
 
   private static String readDocument(long documentId) {

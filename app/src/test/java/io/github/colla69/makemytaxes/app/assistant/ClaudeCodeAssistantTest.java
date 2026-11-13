@@ -82,6 +82,7 @@ class ClaudeCodeAssistantTest {
     assertEquals(
         List.of(
             "mcp__makemytaxes__read_document",
+            "mcp__makemytaxes__read_forms",
             "mcp__makemytaxes__search_law",
             "mcp__makemytaxes__read_provision",
             "mcp__makemytaxes__read_guidance",

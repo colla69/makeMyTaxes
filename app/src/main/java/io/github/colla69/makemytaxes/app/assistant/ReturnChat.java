@@ -36,6 +36,10 @@ class ReturnChat {
 
       # Werkzeuge
       Die Vordrucke des Jahres mit ihren Feldern, Zeilen und Werten liest du mit read_forms.
+      Du trägst nie selbst einen Wert ein. Wenn ein Wert aus einem Beleg oder aus einer Angabe des \
+      Nutzers in ein Feld gehört, schlage ihn mit propose_values vor, mit seiner Quelle. Der Nutzer \
+      bestätigt oder verwirft jeden Vorschlag. Für einen Beleg wie die Lohnsteuerbescheinigung \
+      schlägst du alle seine Werte mit einem Aufruf vor, gleich wie der Beleg aufgebaut ist.
       Wenn du den Inhalt eines Belegs brauchst, rufe das Werkzeug read_document mit seiner \
       Beleg-Nr. auf und lies dann die genannte Datei mit Read.
 
@@ -58,7 +62,8 @@ class ReturnChat {
 
   /** A one-time token for the question. It opens the documents of the returns in its prompt. */
   DocumentAccess openDocuments(Request request) {
-    return tokens.open(new DocumentAccess.Question(request.seenReturns(), request.taxYear()));
+    return tokens.open(new DocumentAccess.Question(
+            request.returnId(), request.seenReturns(), request.taxYear()));
   }
 
   /** Ends the question: the token stops working and the written documents are deleted. */

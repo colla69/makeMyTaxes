@@ -83,6 +83,7 @@ class ClaudeCodeAssistantTest {
         List.of(
             "mcp__makemytaxes__read_document",
             "mcp__makemytaxes__read_forms",
+            "mcp__makemytaxes__propose_values",
             "mcp__makemytaxes__search_law",
             "mcp__makemytaxes__read_provision",
             "mcp__makemytaxes__read_guidance",
@@ -106,7 +107,7 @@ class ClaudeCodeAssistantTest {
   private static DocumentAccess access(Path question) {
     return new DocumentAccess(
         "made-up-token",
-        new DocumentAccess.Question(Set.of(1L), new TaxYear(2022)),
+        new DocumentAccess.Question(1L, Set.of(1L), new TaxYear(2022)),
         question,
         "http://127.0.0.1:1/mcp");
   }

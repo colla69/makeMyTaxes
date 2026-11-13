@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -47,19 +48,27 @@ class McpController {
               List.of("document_id")));
 
   private static final List<Map<String, Object>> TOOLS =
-      Stream.concat(Stream.of(TOOL, FormTools.DEFINITION), LawTools.DEFINITIONS.stream()).toList();
+      Stream.concat(
+              Stream.of(TOOL, FormTools.DEFINITION, FieldProposals.DEFINITION),
+              LawTools.DEFINITIONS.stream())
+          .toList();
 
   private final QuestionTokens tokens;
   private final DocumentStore documents;
   private final LawTools lawTools;
   private final FormTools formTools;
+  private final FieldProposals proposals;
 
-  McpController(
-      QuestionTokens tokens, DocumentStore documents, LawTools lawTools, FormTools formTools) {
+  /** The tools that the MCP server offers, besides the document tool. */
+  @Component
+  record Tools(LawTools law, FormTools forms, FieldProposals proposals) {}
+
+  McpController(QuestionTokens tokens, DocumentStore documents, Tools tools) {
     this.tokens = tokens;
     this.documents = documents;
-    this.lawTools = lawTools;
-    this.formTools = formTools;
+    this.lawTools = tools.law();
+    this.formTools = tools.forms();
+    this.proposals = tools.proposals();
   }
 
   /** The name of a tool of this server in the rules of Claude Code. */
@@ -110,6 +119,9 @@ class McpController {
     }
     if (FormTools.READ_FORMS.equals(name)) {
       return formTools.call(access);
+    }
+    if (FieldProposals.PROPOSE_VALUES.equals(name)) {
+      return proposals.call(access, asMap(params.get("arguments")));
     }
     if (!READ_DOCUMENT.equals(name)) {
       return toolText("Dieses Werkzeug gibt es nicht.", true);

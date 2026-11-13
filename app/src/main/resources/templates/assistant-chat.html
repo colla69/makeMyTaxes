@@ -11,7 +11,7 @@
           <li th:each="seen : ${chat.seenReturns}" th:text="${seen}">Steuererklärung</li>
         </ul>
         <!-- The page can have its own error and question, so the panel clears both. -->
-        <th:block th:with="messages=${chat.messages},error=${null},question=${null}">
+        <th:block th:with="messages=${chat.messages},proposals=${chat.proposals},error=${null},question=${null}">
           <div th:replace="~{assistant-chat :: conversation}"></div>
         </th:block>
       </details>
@@ -24,6 +24,37 @@
             th:class="${message.author.name() == 'USER'} ? 'from-user' : 'from-assistant'"
             th:text="${message.text}">Nachricht</li>
       </ol>
+      <!-- The values that the assistant proposes. None enters the return before the user confirms it. -->
+      <section class="assistant-proposals" th:unless="${#lists.isEmpty(proposals)}"
+               aria-labelledby="assistant-proposals-title">
+        <h2 id="assistant-proposals-title">Vorschläge des Assistenten</h2>
+        <ul>
+          <li th:each="proposal : ${proposals}" class="assistant-proposal">
+            <p class="proposal-field">
+              <span th:text="${proposal.form}">Anlage N</span>,
+              <span th:unless="${#strings.isEmpty(proposal.line)}"
+                    th:text="${'Zeile ' + proposal.line + ': '}">Zeile 6: </span>
+              <span th:text="${proposal.label}">Bruttoarbeitslohn</span>
+            </p>
+            <p class="proposal-value" th:text="${proposal.value}">1.234,56</p>
+            <p class="proposal-source">Quelle: <span th:text="${proposal.source}">Beleg</span></p>
+            <p>
+              <button th:hx-post="@{/returns/{id}/assistant/proposals/{p}/confirm(id=${returnId},p=${proposal.id})}"
+                      th:aria-label="${'Übernehmen: ' + proposal.label}"
+                      hx-target="#assistant-conversation" hx-swap="outerHTML">Übernehmen</button>
+              <button th:hx-post="@{/returns/{id}/assistant/proposals/{p}/reject(id=${returnId},p=${proposal.id})}"
+                      th:aria-label="${'Verwerfen: ' + proposal.label}"
+                      hx-target="#assistant-conversation" hx-swap="outerHTML">Verwerfen</button>
+            </p>
+          </li>
+        </ul>
+        <p>
+          <button th:attr="hx-post=@{/returns/{id}/assistant/proposals/confirm(id=${returnId})}"
+                  hx-target="#assistant-conversation" hx-swap="outerHTML">Alle übernehmen</button>
+          <button th:attr="hx-post=@{/returns/{id}/assistant/proposals/reject(id=${returnId})}"
+                  hx-target="#assistant-conversation" hx-swap="outerHTML">Alle verwerfen</button>
+        </p>
+      </section>
       <p class="assistant-error" th:if="${error}" th:text="${error}">Fehler</p>
       <form class="assistant-ask"
             th:attr="hx-post=@{/returns/{id}/assistant(id=${returnId})}"

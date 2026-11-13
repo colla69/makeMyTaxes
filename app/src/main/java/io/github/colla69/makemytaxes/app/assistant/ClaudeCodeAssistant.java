@@ -122,7 +122,8 @@ class ClaudeCodeAssistant implements Assistant {
             access.mcpConfig().toString(),
             "--allowedTools",
             McpController.READ_DOCUMENT_TOOL,
-            McpController.ruleName(FormTools.READ_FORMS)));
+            McpController.ruleName(FormTools.READ_FORMS),
+            McpController.ruleName(FieldProposals.PROPOSE_VALUES)));
     LawTools.NAMES.forEach(tool -> command.add(McpController.ruleName(tool)));
     command.add("Read(/" + access.documents() + "/**)");
     return command;

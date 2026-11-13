@@ -349,7 +349,7 @@ class McpLawToolTest {
 
     assertNull(chat.prepare(returnId, "Made-up question").taxYear());
 
-    DocumentAccess access = tokens.open(new DocumentAccess.Question(Set.of(), null));
+    DocumentAccess access = tokens.open(new DocumentAccess.Question(0L, Set.of(), null));
     try {
       String body = call(access, toolCall("read_provision", "{\"law\":\"estg\",\"provision\":\"§ 35a\"}"));
       assertTrue(body.contains("\"isError\":true"), body);

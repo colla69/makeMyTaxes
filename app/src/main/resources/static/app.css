@@ -385,6 +385,22 @@ form.inline {
   width: 100%;
 }
 
+.assistant-proposals ul {
+  list-style: none;
+  padding: 0;
+}
+
+.assistant-proposal {
+  border: 1px solid #9aa1a9;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.proposal-value {
+  font-weight: 600;
+}
+
 .assistant-error {
   color: #b00020;
 }

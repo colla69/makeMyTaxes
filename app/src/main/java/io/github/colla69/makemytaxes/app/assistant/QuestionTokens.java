@@ -14,7 +14,6 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -46,7 +45,7 @@ class QuestionTokens {
   }
 
   /** A new token for the returns of one question, with its own folder. */
-  DocumentAccess open(Set<Long> returnIds) {
+  DocumentAccess open(DocumentAccess.Question question) {
     byte[] secret = new byte[32];
     RANDOM.nextBytes(secret);
     String token = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
@@ -56,8 +55,7 @@ class QuestionTokens {
               FOLDER_PREFIX,
               PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
       DocumentAccess access =
-          new DocumentAccess(
-              token, Set.copyOf(returnIds), folder, "http://127.0.0.1:" + port + "/mcp");
+          new DocumentAccess(token, question, folder, "http://127.0.0.1:" + port + "/mcp");
       Files.createDirectory(access.documents());
       Files.writeString(access.mcpConfig(), mcpConfig(access), StandardCharsets.UTF_8);
       open.put(token, access);

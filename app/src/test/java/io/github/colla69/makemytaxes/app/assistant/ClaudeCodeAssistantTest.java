@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.colla69.makemytaxes.core.TaxYear;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,11 +68,10 @@ class ClaudeCodeAssistantTest {
   }
 
   @Test
-  void withAnAccessClaudeCodeGetsOnlyTheDocumentToolPlusReadInTheFolderOfTheQuestion()
+  void withAnAccessClaudeCodeGetsOnlyTheToolsOfTheAppPlusReadInTheFolderOfTheQuestion()
       throws IOException {
     Path question = folder.resolve("question");
-    DocumentAccess access =
-        new DocumentAccess("made-up-token", Set.of(1L), question, "http://127.0.0.1:1/mcp");
+    DocumentAccess access = access(question);
 
     List<String> command = withScript("true", Duration.ofSeconds(1)).command(folder, access);
 
@@ -82,8 +82,11 @@ class ClaudeCodeAssistantTest {
     assertEquals(
         List.of(
             "mcp__makemytaxes__read_document",
+            "mcp__makemytaxes__search_law",
+            "mcp__makemytaxes__read_provision",
+            "mcp__makemytaxes__read_guidance",
             "Read(/" + question.resolve("documents") + "/**)"),
-        command.subList(allowed + 1, allowed + 3));
+        command.subList(allowed + 1, command.size()));
     assertTrue(command.contains("--strict-mcp-config"));
     assertFalse(String.join(" ", command).contains("made-up-token"), "the token is not on the command line");
   }
@@ -92,12 +95,19 @@ class ClaudeCodeAssistantTest {
   void withAnAccessClaudeCodeStartsInTheFolderOfTheDocuments() throws Exception {
     Path question = folder.resolve("question");
     Files.createDirectories(question.resolve("documents"));
-    DocumentAccess access =
-        new DocumentAccess("made-up-token", Set.of(1L), question, "http://127.0.0.1:1/mcp");
+    DocumentAccess access = access(question);
 
     assertEquals(
         question.resolve("documents").toRealPath().toString(),
         withScript("cat > /dev/null; pwd -P", Duration.ofSeconds(10)).ask("Made-up", access));
+  }
+
+  private static DocumentAccess access(Path question) {
+    return new DocumentAccess(
+        "made-up-token",
+        new DocumentAccess.Question(Set.of(1L), new TaxYear(2022)),
+        question,
+        "http://127.0.0.1:1/mcp");
   }
 
   private ClaudeCodeAssistant withScript(String body, Duration timeout) throws IOException {

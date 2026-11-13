@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,7 @@ class McpController {
   static final String SERVER_NAME = "makemytaxes";
   static final String READ_DOCUMENT = "read_document";
   /** The name of the tool in the rules of Claude Code. */
-  static final String READ_DOCUMENT_TOOL = "mcp__" + SERVER_NAME + "__" + READ_DOCUMENT;
+  static final String READ_DOCUMENT_TOOL = ruleName(READ_DOCUMENT);
 
   private static final Map<String, Object> TOOL =
       Map.of(
@@ -45,12 +46,22 @@ class McpController {
               "required",
               List.of("document_id")));
 
+  private static final List<Map<String, Object>> TOOLS =
+      Stream.concat(Stream.of(TOOL), LawTools.DEFINITIONS.stream()).toList();
+
   private final QuestionTokens tokens;
   private final DocumentStore documents;
+  private final LawTools lawTools;
 
-  McpController(QuestionTokens tokens, DocumentStore documents) {
+  McpController(QuestionTokens tokens, DocumentStore documents, LawTools lawTools) {
     this.tokens = tokens;
     this.documents = documents;
+    this.lawTools = lawTools;
+  }
+
+  /** The name of a tool of this server in the rules of Claude Code. */
+  static String ruleName(String tool) {
+    return "mcp__" + SERVER_NAME + "__" + tool;
   }
 
   @PostMapping(path = "/mcp", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -72,7 +83,7 @@ class McpController {
         switch (String.valueOf(method)) {
           case "initialize" -> result(id, initialize(params));
           case "ping" -> result(id, Map.of());
-          case "tools/list" -> result(id, Map.of("tools", List.of(TOOL)));
+          case "tools/list" -> result(id, Map.of("tools", TOOLS));
           case "tools/call" -> result(id, callTool(access.get(), params));
           default -> error(id, -32601, "Unknown method");
         });
@@ -90,7 +101,11 @@ class McpController {
   }
 
   private Map<String, Object> callTool(DocumentAccess access, Map<String, Object> params) {
-    if (!READ_DOCUMENT.equals(params.get("name"))) {
+    Object name = params.get("name");
+    if (name instanceof String tool && LawTools.NAMES.contains(tool)) {
+      return lawTools.call(access, tool, asMap(params.get("arguments")));
+    }
+    if (!READ_DOCUMENT.equals(name)) {
       return toolText("Dieses Werkzeug gibt es nicht.", true);
     }
     Object documentId = asMap(params.get("arguments")).get("document_id");
@@ -136,7 +151,7 @@ class McpController {
     };
   }
 
-  private static Map<String, Object> toolText(String text, boolean isError) {
+  static Map<String, Object> toolText(String text, boolean isError) {
     return Map.of("content", List.of(Map.of("type", "text", "text", text)), "isError", isError);
   }
 

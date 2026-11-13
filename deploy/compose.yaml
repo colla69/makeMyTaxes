@@ -21,6 +21,7 @@ services:
       # volume, so it never sees the user's own Claude Code settings.
       MAKEMYTAXES_ASSISTANT_COMMAND: /opt/claude-code/claude
       CLAUDE_CONFIG_DIR: /claude-config
+      MAKEMYTAXES_LAW_PATH: /law
     # The token for Claude Code: a file outside the repository with the line
     # CLAUDE_CODE_OAUTH_TOKEN=<token>. Without the file, the assistant is not available.
     env_file:
@@ -32,6 +33,8 @@ services:
       # empty file, so that the assistant is not available.
       - ${MAKEMYTAXES_CLAUDE_CODE:-./no-claude-code}:/opt/claude-code/claude:ro
       - claude-config:/claude-config
+      # The law library of this checkout, read-only, for the law tools of the assistant.
+      - ../law:/law:ro
 
 volumes:
   claude-config:

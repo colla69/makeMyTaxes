@@ -93,7 +93,7 @@ class ClaudeCodeAssistant implements Assistant {
    * Claude Code gets no slash command and no settings file, so it cannot run a command, write a
    * file or reach the network. It keeps no session on disk, because a session holds the prompt as
    * plain text. Without an access it gets no tool and no MCP server. With an access it gets only
-   * the document tool of the app and {@code Read}. It starts in the folder of the documents, and
+   * the document tool and the law tools of the app, and {@code Read}. It starts in the folder of the documents, and
    * the rules let it read only there.
    */
   List<String> command(Path executable, DocumentAccess access) {
@@ -121,8 +121,9 @@ class ClaudeCodeAssistant implements Assistant {
             "--mcp-config",
             access.mcpConfig().toString(),
             "--allowedTools",
-            McpController.READ_DOCUMENT_TOOL,
-            "Read(/" + access.documents() + "/**)"));
+            McpController.READ_DOCUMENT_TOOL));
+    LawTools.NAMES.forEach(tool -> command.add(McpController.ruleName(tool)));
+    command.add("Read(/" + access.documents() + "/**)");
     return command;
   }
 

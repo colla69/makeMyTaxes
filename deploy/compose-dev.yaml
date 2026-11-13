@@ -19,6 +19,7 @@ services:
       # The assistant. See compose.yaml.
       MAKEMYTAXES_ASSISTANT_COMMAND: /opt/claude-code/claude
       CLAUDE_CONFIG_DIR: /claude-config
+      MAKEMYTAXES_LAW_PATH: /law
     env_file:
       - path: ${MAKEMYTAXES_ASSISTANT_TOKEN_FILE:-${HOME}/.config/makemytaxes/assistant.env}
         required: false
@@ -26,6 +27,7 @@ services:
       - ./data-dev:/data
       - ${MAKEMYTAXES_CLAUDE_CODE:-./no-claude-code}:/opt/claude-code/claude:ro
       - claude-config:/claude-config
+      - ../law:/law:ro
 
 volumes:
   claude-config:

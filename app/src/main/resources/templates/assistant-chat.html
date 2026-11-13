@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
   <body>
-    <!-- The chat with the assistant, beside the tabs of a return. It shows only while the person of
-         the return has the assistant on. The user opens and closes it with the summary. -->
+    <!-- The chat with the assistant, a fixed column on the right of the pages of a return. It shows
+         only while the person of the return has the assistant on, and it is always open. -->
     <th:block th:fragment="chat" th:with="chat=${@assistantController.panel(returnId)}">
-      <details th:if="${chat != null}" id="assistant-chat" class="assistant-chat">
-        <summary>Assistent</summary>
+      <aside th:if="${chat != null}" id="assistant-chat" class="assistant-chat"
+             aria-labelledby="assistant-chat-title">
+        <h2 id="assistant-chat-title">Assistent</h2>
         <p class="assistant-sees">Der Assistent sieht:</p>
         <ul class="assistant-seen">
           <li th:each="seen : ${chat.seenReturns}" th:text="${seen}">Steuererklärung</li>
@@ -14,11 +15,14 @@
         <th:block th:with="messages=${chat.messages},proposals=${chat.proposals},error=${null},question=${null}">
           <div th:replace="~{assistant-chat :: conversation}"></div>
         </th:block>
-      </details>
+        <script th:src="@{/assistant-chat.js}" defer></script>
+      </aside>
     </th:block>
 
-    <!-- htmx swaps this part with the answer. -->
+    <!-- htmx swaps this part with the answer. Only the part with the messages scrolls, so the
+         question field stays at the bottom of the column. -->
     <div th:fragment="conversation" id="assistant-conversation">
+      <div class="assistant-scroll">
       <ol class="assistant-messages">
         <li th:each="message : ${messages}"
             th:class="${message.author.name() == 'USER'} ? 'from-user' : 'from-assistant'"
@@ -56,6 +60,7 @@
         </p>
       </section>
       <p class="assistant-error" th:if="${error}" th:text="${error}">Fehler</p>
+      </div>
       <p>
         <button class="assistant-advise"
                 th:attr="hx-post=@{/returns/{id}/assistant/advice(id=${returnId})}"

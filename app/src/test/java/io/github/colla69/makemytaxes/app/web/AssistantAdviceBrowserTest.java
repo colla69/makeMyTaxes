@@ -147,7 +147,6 @@ class AssistantAdviceBrowserTest {
     page.navigate(returnPage(open));
 
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     button(panel, "Rat für das beste Ergebnis").click();
 
     assertThat(panel.locator(".from-user")).hasText("Rat für das beste legale Ergebnis");

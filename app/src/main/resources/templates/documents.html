@@ -6,6 +6,7 @@
     <title>makeMyTaxes</title>
     <link rel="stylesheet" th:href="@{/app.css}">
     <script th:src="@{/fields.js}" defer></script>
+    <script th:src="@{/dialog.js}" defer></script>
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
@@ -117,12 +118,33 @@
       </section>
 
       <h2>Dokumente</h2>
-      <section th:if="${deleteError}" id="delete-error">
-        <p class="error" th:text="${deleteError}">Fehler</p>
+      <!-- dialog.js opens this popup as a modal dialog when the page loads. -->
+      <dialog th:if="${deleteDocument}" id="delete-dialog" class="popup" data-show-modal
+              aria-labelledby="delete-dialog-title">
+        <h2 id="delete-dialog-title">Dokument ist ein Beleg</h2>
+        <p th:text="'„' + ${deleteDocument.fileName()} + '“ ist der Beleg dieser Einträge:'">
+          „datei.pdf“ ist der Beleg dieser Einträge:
+        </p>
         <ul>
-          <li th:each="use : ${deleteUses}" th:text="${use}">Eintrag</li>
+          <li th:each="use : ${deleteUses}">
+            <a th:href="@{${use.href}}" th:text="${use.label}">Eintrag</a>
+          </li>
         </ul>
-      </section>
+        <p class="help">
+          Wenn Sie das Dokument trotzdem löschen, behalten die Einträge ihre Werte. Bei jedem
+          Eintrag steht dann „Beleg fehlt“, bis er einen neuen Beleg hat.
+        </p>
+        <div class="form-buttons">
+          <form method="post"
+                th:action="@{/returns/{r}/documents/{d}/delete(r=${returnId},d=${deleteDocument.id()})}">
+            <input type="hidden" name="anyway" value="true">
+            <button>Trotzdem löschen</button>
+          </form>
+          <form method="dialog">
+            <button>Abbrechen</button>
+          </form>
+        </div>
+      </dialog>
       <table id="documents">
         <thead>
           <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th><th></th></tr>

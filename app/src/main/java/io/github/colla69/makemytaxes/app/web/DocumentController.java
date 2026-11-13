@@ -120,13 +120,27 @@ class DocumentController {
     return "redirect:/returns/" + returnId + "/documents";
   }
 
-  /** The page asks once more before it deletes, in the row of the document. */
+  /**
+   * The page asks once more before it deletes. For a document that no entry uses, it asks in the
+   * row of the document. For a document that is evidence, it asks in a popup that names the
+   * entries.
+   */
   @GetMapping(value = "/returns/{returnId}/documents", params = "delete")
   String confirmDelete(@PathVariable long returnId, @RequestParam long delete, Model model) {
-    model.addAttribute("confirmDelete", storedDocument(returnId, delete).id());
+    StoredDocument stored = storedDocument(returnId, delete);
+    Uses uses = documents.usesOf(returnId, delete);
+    if (uses.isEmpty()) {
+      model.addAttribute("confirmDelete", stored.id());
+    } else {
+      model.addAttribute("deleteDocument", stored);
+      model.addAttribute("deleteUses", useViews(returnId, uses));
+    }
     fillPage(returnId, model);
     return "documents";
   }
+
+  /** An entry that uses a document as its evidence, with the page that shows the entry. */
+  record UseView(String label, String href) {}
 
   /** A panel in the page shows one document, so that the user stays on the list. */
   @GetMapping(value = "/returns/{returnId}/documents", params = "preview")
@@ -144,20 +158,21 @@ class DocumentController {
   }
 
   /**
-   * Deletes the document, unless an entry of the return uses it as its evidence. Then the page
-   * names those entries, so that the user can change them first.
+   * Deletes the document. If an entry of the return uses it as its evidence, the page asks in a
+   * popup first and names those entries. Only "Trotzdem löschen" sends {@code anyway}, and then
+   * the entries keep their values and lose their evidence.
    */
   @PostMapping("/returns/{returnId}/documents/{documentId}/delete")
-  String delete(@PathVariable long returnId, @PathVariable long documentId, Model model) {
+  String delete(
+      @PathVariable long returnId,
+      @PathVariable long documentId,
+      @RequestParam(defaultValue = "false") boolean anyway,
+      Model model) {
     StoredDocument stored = storedDocument(returnId, documentId);
     Uses uses = documents.usesOf(returnId, documentId);
-    if (!uses.isEmpty()) {
-      model.addAttribute(
-          "deleteError",
-          "„"
-              + stored.fileName()
-              + "“ ist der Beleg dieser Einträge. Bitte zuerst die Einträge ändern.");
-      model.addAttribute("deleteUses", useNames(uses, taxYearOf(returnId)));
+    if (!uses.isEmpty() && !anyway) {
+      model.addAttribute("deleteDocument", stored);
+      model.addAttribute("deleteUses", useViews(returnId, uses));
       fillPage(returnId, model);
       return "documents";
     }
@@ -165,20 +180,29 @@ class DocumentController {
     return "redirect:/returns/" + returnId + "/documents";
   }
 
-  private static List<String> useNames(Uses uses, TaxYear taxYear) {
-    List<String> names = new ArrayList<>();
+  private List<UseView> useViews(long returnId, Uses uses) {
+    TaxYear taxYear = taxYearOf(returnId);
+    String returnHref = "/returns/" + returnId;
+    List<UseView> views = new ArrayList<>();
     for (ExpenseUse expense : uses.expenses()) {
-      names.add(
-          "Ausgabe vom " + GermanFormats.format(expense.paidOn()) + ": " + expense.description());
+      views.add(
+          new UseView(
+              "Ausgabe vom "
+                  + GermanFormats.format(expense.paidOn())
+                  + ": "
+                  + expense.description(),
+              returnHref));
     }
     for (AnswerUse answer : uses.answers()) {
       Optional<FormModule> form = Forms.find(taxYear, answer.formId());
       String title = form.map(FormModule::title).orElse(answer.formId());
       String label =
           form.flatMap(f -> f.field(answer.fieldId())).map(Field::label).orElse(answer.fieldId());
-      names.add(title + ": " + label);
+      String href =
+          form.map(f -> returnHref + "/forms/" + f.id()).orElse(returnHref + "/interview");
+      views.add(new UseView(title + ": " + label, href));
     }
-    return names;
+    return views;
   }
 
   private StoredDocument storedDocument(long returnId, long documentId) {

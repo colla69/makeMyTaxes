@@ -179,7 +179,7 @@ class McpDocumentToolTest {
   @Test
   void aLateToolCallWritesNothingAfterTheQuestionEnded() {
     QuestionTokens tokens = new QuestionTokens(1);
-    DocumentAccess access = tokens.open(Set.of(1L));
+    DocumentAccess access = tokens.open(new DocumentAccess.Question(Set.of(1L), YEAR));
     tokens.close(access);
 
     assertTrue(tokens.write(access, "beleg-1.pdf", new byte[] {1}).isEmpty());
@@ -193,7 +193,7 @@ class McpDocumentToolTest {
             Path.of(System.getProperty("java.io.tmpdir"), "makemytaxes-question-made-up-left"));
     Files.writeString(left.resolve("beleg-1.pdf"), "made-up");
     QuestionTokens tokens = new QuestionTokens(1);
-    DocumentAccess running = tokens.open(Set.of(1L));
+    DocumentAccess running = tokens.open(new DocumentAccess.Question(Set.of(1L), YEAR));
 
     tokens.deleteLeftFolders();
 

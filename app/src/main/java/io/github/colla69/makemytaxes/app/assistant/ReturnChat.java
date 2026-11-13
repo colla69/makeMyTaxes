@@ -5,6 +5,7 @@ import io.github.colla69.makemytaxes.app.storage.ChatStore;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Author;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Exchange;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Message;
+import io.github.colla69.makemytaxes.core.TaxYear;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,12 +24,16 @@ class ReturnChat {
       zu erhalten. Nenne zu einer Regel die Vorschrift. Wenn du etwas nicht sicher weißt, sag es.
       Wenn du den Inhalt eines Belegs brauchst, rufe das Werkzeug read_document mit seiner \
       Beleg-Nr. auf und lies dann die genannte Datei mit Read.
+      Antworte auf eine Steuerfrage nicht aus dem Gedächtnis. Suche im Recht des Jahres der \
+      Erklärung mit search_law, lies eine Vorschrift mit read_provision und eine Richtlinie, einen \
+      Hinweis, ein BMF-Schreiben oder eine Anleitung zum Vordruck mit read_guidance.
 
       # Die Erklärungen, die du siehst
       """;
 
   /** A question with its prompt and the IDs of the returns that the prompt holds. */
-  record Request(long returnId, String question, String prompt, Set<Long> seenReturns) {}
+  record Request(
+      long returnId, String question, String prompt, Set<Long> seenReturns, TaxYear taxYear) {}
 
   private final ReturnContext context;
   private final ChatStore chat;
@@ -42,7 +47,7 @@ class ReturnChat {
 
   /** A one-time token for the question. It opens the documents of the returns in its prompt. */
   DocumentAccess openDocuments(Request request) {
-    return tokens.open(request.seenReturns());
+    return tokens.open(new DocumentAccess.Question(request.seenReturns(), request.taxYear()));
   }
 
   /** Ends the question: the token stops working and the written documents are deleted. */
@@ -79,7 +84,8 @@ class ReturnChat {
       }
     }
     prompt.append("# Die neue Frage\n").append(question).append("\n");
-    return new Request(returnId, question, prompt.toString(), seenIds);
+    TaxYear taxYear = seen.isEmpty() ? null : seen.getFirst().taxYear();
+    return new Request(returnId, question, prompt.toString(), seenIds, taxYear);
   }
 
   void remember(Request request, String answer) {

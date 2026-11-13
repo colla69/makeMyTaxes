@@ -79,6 +79,26 @@ class PayslipBrowserTest {
   }
 
   @Test
+  void previewsAPayslipInThePageAndClosesThePreview() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadPayslip(page, "April", "4.000,00", "500,00");
+    Locator april = month(page, "April");
+    String href = april.getByRole(AriaRole.LINK).getAttribute("href");
+
+    april.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+
+    Locator preview = page.locator("#document-preview");
+    assertThat(preview).containsText("made-up-april.pdf");
+    assertThat(preview.locator("iframe")).hasAttribute("src", href);
+    preview
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
+        .click();
+    assertThat(page.locator("#document-preview")).hasCount(0);
+    assertThat(month(page, "April").getByRole(AriaRole.LINK)).hasText("made-up-april.pdf");
+  }
+
+  @Test
   void aNewPayslipReplacesTheOldOneOfTheMonth() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);

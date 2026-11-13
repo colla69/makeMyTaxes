@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,11 @@ class ClaudeCodeAssistant implements Assistant {
 
   @Override
   public String ask(String prompt) throws AssistantException {
+    return ask(prompt, null);
+  }
+
+  @Override
+  public String ask(String prompt, DocumentAccess access) throws AssistantException {
     Path executable =
         executable().orElseThrow(() -> new AssistantException("Claude Code is not installed."));
     if (token().isBlank()) {
@@ -72,7 +78,7 @@ class ClaudeCodeAssistant implements Assistant {
     Process process;
     try {
       Files.createDirectories(settings.configDir());
-      process = starter.start(builder(executable));
+      process = starter.start(builder(executable, access));
     } catch (IOException e) {
       throw new AssistantException("Claude Code did not start.", e);
     }
@@ -84,29 +90,46 @@ class ClaudeCodeAssistant implements Assistant {
   }
 
   /**
-   * Claude Code gets no tool, no MCP server, no slash command and no settings file, so it cannot run
-   * a command, write a file or reach the network. It keeps no session on disk, because a session
-   * holds the prompt as plain text.
+   * Claude Code gets no slash command and no settings file, so it cannot run a command, write a
+   * file or reach the network. It keeps no session on disk, because a session holds the prompt as
+   * plain text. Without an access it gets no tool and no MCP server. With an access it gets only
+   * the document tool of the app and {@code Read}. It starts in the folder of the documents, and
+   * the rules let it read only there.
    */
-  List<String> command(Path executable) {
-    return List.of(
-        executable.toString(),
-        "-p",
-        "--model",
-        MODEL,
-        "--output-format",
-        "text",
-        "--tools",
-        "",
-        "--restricted",
-        "--strict-mcp-config",
-        "--disable-slash-commands",
-        "--no-session-persistence");
+  List<String> command(Path executable, DocumentAccess access) {
+    List<String> command =
+        new ArrayList<>(
+            List.of(
+                executable.toString(),
+                "-p",
+                "--model",
+                MODEL,
+                "--output-format",
+                "text",
+                "--restricted",
+                "--strict-mcp-config",
+                "--disable-slash-commands",
+                "--no-session-persistence",
+                "--tools"));
+    if (access == null) {
+      command.add("");
+      return command;
+    }
+    command.addAll(
+        List.of(
+            "Read",
+            "--mcp-config",
+            access.mcpConfig().toString(),
+            "--allowedTools",
+            McpController.READ_DOCUMENT_TOOL,
+            "Read(/" + access.documents() + "/**)"));
+    return command;
   }
 
-  private ProcessBuilder builder(Path executable) {
-    ProcessBuilder builder = new ProcessBuilder(command(executable));
-    builder.directory(settings.configDir().toFile());
+  private ProcessBuilder builder(Path executable, DocumentAccess access) {
+    ProcessBuilder builder = new ProcessBuilder(command(executable, access));
+    builder.directory(
+        access == null ? settings.configDir().toFile() : access.documents().toFile());
     // The error output can hold parts of the prompt, so it does not reach the log of the app.
     builder.redirectError(ProcessBuilder.Redirect.DISCARD);
     // Claude Code gets only what it needs. The passphrase of the database stays out of it, and its

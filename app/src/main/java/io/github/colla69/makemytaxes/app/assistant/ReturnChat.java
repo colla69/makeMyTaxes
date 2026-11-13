@@ -21,6 +21,8 @@ class ReturnChat {
       Gib Rat für das beste legale Ergebnis innerhalb der Fakten. Schlage nie vor, einen Betrag, \
       ein Datum, eine Zahl von Tagen oder eine andere Tatsache zu ändern, um ein besseres Ergebnis \
       zu erhalten. Nenne zu einer Regel die Vorschrift. Wenn du etwas nicht sicher weißt, sag es.
+      Wenn du den Inhalt eines Belegs brauchst, rufe das Werkzeug read_document mit seiner \
+      Beleg-Nr. auf und lies dann die genannte Datei mit Read.
 
       # Die Erklärungen, die du siehst
       """;
@@ -30,10 +32,22 @@ class ReturnChat {
 
   private final ReturnContext context;
   private final ChatStore chat;
+  private final QuestionTokens tokens;
 
-  ReturnChat(ReturnContext context, ChatStore chat) {
+  ReturnChat(ReturnContext context, ChatStore chat, QuestionTokens tokens) {
     this.context = context;
     this.chat = chat;
+    this.tokens = tokens;
+  }
+
+  /** A one-time token for the question. It opens the documents of the returns in its prompt. */
+  DocumentAccess openDocuments(Request request) {
+    return tokens.open(request.seenReturns());
+  }
+
+  /** Ends the question: the token stops working and the written documents are deleted. */
+  void closeDocuments(DocumentAccess access) {
+    tokens.close(access);
   }
 
   List<String> seenReturns(long returnId) {

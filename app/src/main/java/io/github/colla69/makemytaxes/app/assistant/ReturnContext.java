@@ -102,7 +102,9 @@ class ReturnContext {
       text.append("Keine Belege.\n");
     }
     for (StoredDocument document : storedDocuments) {
-      text.append("- ")
+      text.append("- Beleg-Nr. ")
+          .append(document.id())
+          .append(": ")
           .append(document.fileName())
           .append(" (")
           .append(document.kind().label())

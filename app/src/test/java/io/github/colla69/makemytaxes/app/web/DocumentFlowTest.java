@@ -239,6 +239,69 @@ class DocumentFlowTest {
     assertThat(forms.answersWithoutEvidence(returnId, AnlageN.ID)).isEmpty();
   }
 
+  @Test
+  void aNewVersionOfAReceiptTakesItsPlaceAsTheEvidenceOfEachEntryAtOnce() throws Exception {
+    long oldId = aDocumentThatAFormAnswerUses();
+    jdbcClient
+        .sql(
+            "insert into expense(tax_return_id, paid_on, amount_cents, topic, description,"
+                + " receipt_reference, document_id) values (?, '2022-03-01', 10000, 'WORK_OTHER',"
+                + " 'Made-up desk', '', ?)")
+        .params(returnId, oldId)
+        .update();
+
+    mockMvc
+        .perform(
+            multipart("/returns/" + returnId + "/documents/" + oldId + "/replace")
+                .file(new MockMultipartFile("file", "rechnung-neu.pdf", "application/pdf", MADE_UP_PDF)))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(header().string("Location", "/returns/" + returnId + "/documents"));
+
+    long newId = onlyDocumentId();
+    assertThat(newId).isNotEqualTo(oldId);
+    assertThat(count("select count(*) from expense where document_id = ?", newId)).isEqualTo(1);
+    assertThat(forms.answerDocuments(returnId, "household-services"))
+        .containsEntry("cleaning1-paidAmount", newId);
+    assertThat(forms.answers(returnId, "household-services").text("cleaning1-paidAmount"))
+        .isEqualTo("100,00");
+  }
+
+  @Test
+  void aCertificateValueThatTheNewVersionLacksStaysEmptyWithoutEvidenceThroughLaterSaves()
+      throws Exception {
+    upload("lohnsteuer.pdf", MADE_UP_PDF, "WAGE_TAX_CERTIFICATE");
+    long oldId = onlyDocumentId();
+    nameTheCertificate(oldId);
+    forms.save(returnId, AnlageN.ID, new Answers(Map.of("grossWage", "30.000,00")));
+
+    // The made-up PDF has no text, so the new version has no value for the gross wage.
+    mockMvc.perform(
+        multipart("/returns/" + returnId + "/documents/" + oldId + "/replace")
+            .file(new MockMultipartFile("file", "lohnsteuer-neu.pdf", "application/pdf", MADE_UP_PDF)));
+    long newId =
+        jdbcClient
+            .sql("select max(id) from document where tax_return_id = ?")
+            .param(returnId)
+            .query(Long.class)
+            .single();
+    mockMvc
+        .perform(post("/returns/" + returnId + "/documents/" + oldId + "/replace/" + newId))
+        .andExpect(status().is3xxRedirection());
+
+    forms.save(returnId, Interview.ID, forms.answers(returnId, Interview.ID));
+    forms.save(returnId, AnlageN.ID, forms.answers(returnId, AnlageN.ID));
+    forms.saveAnswer(returnId, AnlageN.ID, "grossWage", "");
+
+    assertThat(onlyDocumentId()).isEqualTo(newId);
+    assertThat(forms.answers(returnId, AnlageN.ID).has("grossWage")).isFalse();
+    assertThat(forms.answersWithoutEvidence(returnId, AnlageN.ID)).containsExactly("grossWage");
+
+    forms.saveAnswer(returnId, AnlageN.ID, "grossWage", "31.000,00");
+
+    assertThat(forms.answers(returnId, AnlageN.ID).text("grossWage")).isEqualTo("31.000,00");
+    assertThat(forms.answersWithoutEvidence(returnId, AnlageN.ID)).isEmpty();
+  }
+
   private void nameTheCertificate(long documentId) {
     forms.save(
         returnId,

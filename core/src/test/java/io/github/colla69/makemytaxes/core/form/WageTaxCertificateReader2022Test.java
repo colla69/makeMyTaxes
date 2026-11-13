@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The layout comes from the official sample "Ausdruck der elektronischen Lohnsteuerbescheinigung
@@ -235,6 +237,42 @@ class WageTaxCertificateReader2022Test {
 
     assertThat(values.value("employedFrom")).isEmpty();
     assertThat(values.value("employedTo")).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "01.03.2022-31.12.2022",
+        "01.03.2022 - 31.12.2022",
+        "01.03. bis 31.12.",
+        "01.03.2022 bis 31.12.2022",
+        "01.03.2022   -   31.12.2022",
+        "01.03.2022 -\n31.12.2022",
+        "01.03.2022\n31.12.2022",
+        "01.03.-31.12. 01.03.2022 - 31.12.2022",
+        "01.03.-31.12.\n01.03.-31.12."
+      })
+  void thePeriodIsReadInEachLayout(String period) {
+    CertificateValues values = read(right(SOCIAL).replace("01.03.-31.12.", period));
+
+    assertThat(values.value("employedFrom")).hasValue("01.03.2022");
+    assertThat(values.value("employedTo")).hasValue("31.12.2022");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"01.03.-30.06. 01.07.-31.12.", "01.03. 30.06. 31.12.", "01.03.-31.12. 31.12."})
+  void twoDifferentPeriodsOrAStrayDateAreNotFound(String period) {
+    CertificateValues values = read(right(SOCIAL).replace("01.03.-31.12.", period));
+
+    assertThat(values.valueOrNotFound("employedFrom")).isEqualTo("nicht gefunden");
+    assertThat(values.valueOrNotFound("employedTo")).isEqualTo("nicht gefunden");
+  }
+
+  @Test
+  void aPeriodThatEndsBeforeItStartsIsNotFound() {
+    assertThat(read(right(SOCIAL).replace("01.03.-31.12.", "31.12. bis 01.03.")).value("employedFrom"))
+        .isEmpty();
   }
 
   @Test

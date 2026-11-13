@@ -115,6 +115,29 @@ class DocumentFirstBrowserTest {
   }
 
   @Test
+  void aPeriodWithBisAndTheYearIsReadAndTheInterviewDoesNotAskForTheDates() {
+    Page page = browser.newPage();
+    openInterview(page);
+    Locator upload = page.locator("#upload");
+    upload
+        .locator("input[type=file]")
+        .setInputFiles(
+            new FilePayload(
+                "made-up.pdf",
+                "application/pdf",
+                MadeUpCertificate.pdf("2022", "01.01.2022 bis 30.06.2022")));
+    button(upload, "Hochladen").click();
+
+    Locator check = page.locator(".upload-check");
+    assertThat(check.locator("tr[data-field$=-employedFrom] .read")).hasText("01.01.2022");
+    assertThat(check.locator("tr[data-field$=-employedTo] .read")).hasText("30.06.2022");
+    button(upload, "Werte übernehmen").click();
+
+    button(page.locator("#question"), "Ja, die Angaben stimmen").click();
+    assertThat(page.locator("#question h2")).containsText("Solidaritätszuschlag");
+  }
+
+  @Test
   void theUserCanSkipTheUploadAndAnswerEachQuestionByHand() {
     Page page = browser.newPage();
     openInterview(page);

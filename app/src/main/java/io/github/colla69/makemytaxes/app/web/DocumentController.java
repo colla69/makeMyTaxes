@@ -142,6 +142,21 @@ class DocumentController {
   /** An entry that uses a document as its evidence, with the page that shows the entry. */
   record UseView(String label, String href) {}
 
+  /** A panel in the page shows one document, so that the user stays on the list. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "preview")
+  String preview(@PathVariable long returnId, @RequestParam long preview, Model model) {
+    model.addAttribute("preview", Preview.of(storedDocument(returnId, preview)));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  record Preview(long id, String fileName, boolean image) {
+
+    static Preview of(StoredDocument stored) {
+      return new Preview(stored.id(), stored.fileName(), stored.mediaType().startsWith("image/"));
+    }
+  }
+
   /**
    * Deletes the document. If an entry of the return uses it as its evidence, the page asks in a
    * popup first and names those entries. Only "Trotzdem löschen" sends {@code anyway}, and then

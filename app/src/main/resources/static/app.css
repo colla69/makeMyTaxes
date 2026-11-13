@@ -308,6 +308,16 @@ form.inline {
   margin-left: 0.5rem;
 }
 
+#document-preview iframe {
+  border: 1px solid #ccc;
+  height: 80vh;
+  width: 100%;
+}
+
+#document-preview img {
+  max-width: 100%;
+}
+
 .answered li {
   margin-bottom: 0.4rem;
 }

@@ -14,6 +14,19 @@
     <main class="panel">
       <h1 th:text="'Belege ' + ${taxYear}">Belege</h1>
 
+      <section th:if="${preview}" id="document-preview" th:data-document="${preview.id}">
+        <h2 th:text="'Vorschau: ' + ${preview.fileName}">Vorschau: datei.pdf</h2>
+        <p>
+          <a th:href="@{/returns/{r}/documents(r=${returnId})}">Vorschau schließen</a>
+        </p>
+        <img th:if="${preview.image}"
+             th:src="@{/returns/{r}/documents/{d}(r=${returnId},d=${preview.id})}"
+             th:alt="${preview.fileName}">
+        <iframe th:unless="${preview.image}"
+                th:src="@{/returns/{r}/documents/{d}(r=${returnId},d=${preview.id})}"
+                th:title="${preview.fileName}"></iframe>
+      </section>
+
       <form id="document-form"
             class="fields"
             method="post"
@@ -71,6 +84,11 @@
               <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.payslip.stored.documentId})}"
                  target="_blank" rel="noopener"
                  th:text="${row.payslip.stored.fileName}">abrechnung.pdf</a>
+              <form method="get" class="inline"
+                    th:action="@{/returns/{r}/documents(r=${returnId})}">
+                <input type="hidden" name="preview" th:value="${row.payslip.stored.documentId}">
+                <button>Vorschau</button>
+              </form>
             </td>
             <td class="amount" th:text="${row.payslip == null} ? '' : ${row.taxableGross}">1,00</td>
             <td class="amount" th:text="${row.payslip == null} ? '' : ${row.wageTax}">1,00</td>
@@ -129,7 +147,7 @@
       </dialog>
       <table id="documents">
         <thead>
-          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th></tr>
+          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th><th></th></tr>
         </thead>
         <tbody>
           <tr th:each="row : ${rows}" th:data-document="${row.id}">
@@ -141,6 +159,12 @@
             <td th:text="${row.kind}">Art</td>
             <td class="amount" th:text="${row.size}">1 KB</td>
             <td th:text="${row.uploadedOn}">01.01.2022</td>
+            <td>
+              <form method="get" th:action="@{/returns/{r}/documents(r=${returnId})}">
+                <input type="hidden" name="preview" th:value="${row.id}">
+                <button>Vorschau</button>
+              </form>
+            </td>
             <td th:if="${confirmDelete != row.id}">
               <form method="get" th:action="@{/returns/{r}/documents(r=${returnId})}">
                 <input type="hidden" name="delete" th:value="${row.id}">

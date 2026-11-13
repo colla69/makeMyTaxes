@@ -8,6 +8,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.FilePayload;
+import com.microsoft.playwright.options.SelectOption;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -106,6 +107,55 @@ class DocumentBrowserTest {
 
     assertThat(page.locator(".error")).containsText("größer als 20 MB");
     assertThat(page.locator("#documents tbody tr")).hasCount(0);
+  }
+
+  @Test
+  void deletesADocumentAfterASecondQuestionInThePage() throws IOException {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadReceipt(page, "made-up-receipt.png");
+    Locator row = page.locator("#documents tbody tr");
+    assertThat(row).hasCount(1);
+
+    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Löschen")).click();
+    assertThat(row).containsText("Wirklich löschen?");
+    assertThat(row).hasCount(1);
+    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ja, löschen")).click();
+
+    assertThat(page.locator("#documents tbody tr")).hasCount(0);
+    assertThat(page.locator("#documents")).not().containsText("made-up-receipt.png");
+  }
+
+  @Test
+  void keepsADocumentThatAnExpenseUsesAndNamesTheExpense() throws IOException {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    String documentsUrl = page.url();
+    uploadReceipt(page, "made-up-invoice.png");
+    page.navigate(documentsUrl.substring(0, documentsUrl.lastIndexOf('/')));
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Dokument").selectOption(new SelectOption().setLabel("made-up-invoice.png"));
+    page.getByLabel("Betrag (EUR)").fill("10,00");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    page.getByLabel("Beschreibung").press("Enter");
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+
+    page.navigate(documentsUrl);
+    Locator row = page.locator("#documents tbody tr");
+    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Löschen")).click();
+    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ja, löschen")).click();
+
+    assertThat(page.locator("#delete-error"))
+        .containsText("Ausgabe vom 03.02.2022: Made-up cable");
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
+    assertThat(page.locator("#documents")).containsText("made-up-invoice.png");
+  }
+
+  private static void uploadReceipt(Page page, String fileName) throws IOException {
+    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
+    page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", madeUpPng()));
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    assertThat(page.locator("#documents")).containsText(fileName);
   }
 
   private void openTheDocumentsOfANewReturn(Page page) {

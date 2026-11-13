@@ -3,11 +3,16 @@ package io.github.colla69.makemytaxes.app.web;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewPayslip;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.AnswerUse;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.ExpenseUse;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.Uses;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.form.Field;
+import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +21,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -113,18 +120,67 @@ class DocumentController {
     return "redirect:/returns/" + returnId + "/documents";
   }
 
+  /** The page asks once more before it deletes, in the row of the document. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "delete")
+  String confirmDelete(@PathVariable long returnId, @RequestParam long delete, Model model) {
+    model.addAttribute("confirmDelete", storedDocument(returnId, delete).id());
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /**
+   * Deletes the document, unless an entry of the return uses it as its evidence. Then the page
+   * names those entries, so that the user can change them first.
+   */
+  @PostMapping("/returns/{returnId}/documents/{documentId}/delete")
+  String delete(@PathVariable long returnId, @PathVariable long documentId, Model model) {
+    StoredDocument stored = storedDocument(returnId, documentId);
+    Uses uses = documents.usesOf(returnId, documentId);
+    if (!uses.isEmpty()) {
+      model.addAttribute(
+          "deleteError",
+          "„"
+              + stored.fileName()
+              + "“ ist der Beleg dieser Einträge. Bitte zuerst die Einträge ändern.");
+      model.addAttribute("deleteUses", useNames(uses, taxYearOf(returnId)));
+      fillPage(returnId, model);
+      return "documents";
+    }
+    documents.delete(returnId, documentId);
+    return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  private static List<String> useNames(Uses uses, TaxYear taxYear) {
+    List<String> names = new ArrayList<>();
+    for (ExpenseUse expense : uses.expenses()) {
+      names.add(
+          "Ausgabe vom " + GermanFormats.format(expense.paidOn()) + ": " + expense.description());
+    }
+    for (AnswerUse answer : uses.answers()) {
+      Optional<FormModule> form = Forms.find(taxYear, answer.formId());
+      String title = form.map(FormModule::title).orElse(answer.formId());
+      String label =
+          form.flatMap(f -> f.field(answer.fieldId())).map(Field::label).orElse(answer.fieldId());
+      names.add(title + ": " + label);
+    }
+    return names;
+  }
+
+  private StoredDocument storedDocument(long returnId, long documentId) {
+    return documents
+        .find(returnId, documentId)
+        .orElseThrow(
+            () ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Kein Dokument mit der ID " + documentId + "."));
+  }
+
   /** The browser shows the document with its own viewer, because the response says "inline". */
   @GetMapping("/returns/{returnId}/documents/{documentId}")
   void open(
       @PathVariable long returnId, @PathVariable long documentId, HttpServletResponse response)
       throws IOException {
-    StoredDocument stored =
-        documents
-            .find(returnId, documentId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Kein Dokument mit der ID " + documentId + "."));
+    StoredDocument stored = storedDocument(returnId, documentId);
     response.setContentType(stored.mediaType());
     response.setContentLengthLong(stored.sizeBytes());
     response.setHeader(

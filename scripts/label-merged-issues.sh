@@ -3,6 +3,7 @@
 # GitHub closes such an issue only when the change reaches main, so the label shows what the owner can try.
 # It labels the issues of each pull request once, so the owner can remove the label. It never calls Claude.
 # Usage: scripts/label-merged-issues.sh
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 LABEL=on-dev
@@ -33,3 +34,5 @@ while read -r pull_request issues; do
   # A failed call stops the script before this line, so the next round tries this pull request again.
   echo "$pull_request" >>"$seen"
 done <<<"$merged"
+exit
+}

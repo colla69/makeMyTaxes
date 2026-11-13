@@ -3,6 +3,7 @@
 # The dev container holds made-up test data only, so a fixed passphrase is enough.
 #
 #   deploy-dev.sh
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -33,3 +34,5 @@ done
 echo "deploy-dev: ${commit:0:7} did not answer on port 9091." >&2
 echo "To read the logs, run: docker logs makemytaxes-dev" >&2
 exit 1
+exit
+}

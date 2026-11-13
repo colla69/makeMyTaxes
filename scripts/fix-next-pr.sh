@@ -2,6 +2,7 @@
 # Gives the oldest pull request with requested changes back to Claude, to make the corrections.
 # With no such pull request, it stops before any call to Claude.
 # Usage: scripts/fix-next-pr.sh
+{ # Bash reads this block in full before it runs it, so a change to this file during a run cannot break the run.
 set -euo pipefail
 
 EFFORT=${WORKER_EFFORT:-medium}
@@ -61,3 +62,5 @@ else
   echo "Pull request $number: no correction. The worktree stays at $worktree." >&2
   exit 1
 fi
+exit
+}

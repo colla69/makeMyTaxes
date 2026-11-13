@@ -18,10 +18,13 @@ public final class MadeUpCertificate {
   private static final float RIGHT_X = 300;
   private static final float AMOUNT_X = 520;
 
-  /** Each row: left column text, right column text, amount. A row shares one height. */
+  private static final String PERIOD = "01.01.-30.06.";
+
+  /**
+   * Each row after line 1: left column text, right column text, amount. A row shares one height.
+   */
   private static final List<String[]> ROWS =
       List.of(
-          row("Korrektur/Stornierung", "1. Bescheinigungszeitraum", "01.01.-30.06."),
           row("Datum: 14.02.2023", "3. Bruttoarbeitslohn einschl. Sachbezüge", "24.000,00"),
           row("Steuerklasse/Faktor", "4. Einbehaltene Lohnsteuer von 3.", "3.100,00"),
           row("3", "5. Einbehaltener Solidaritätszuschlag von 3.", ""),
@@ -44,13 +47,20 @@ public final class MadeUpCertificate {
 
   /** The certificate for the year, as the bytes of a PDF with text. */
   public static byte[] pdf(String year) {
+    return pdf(year, PERIOD);
+  }
+
+  /** The certificate for the year, with the given text for the period of line 1. */
+  public static byte[] pdf(String year, String period) {
     try (PDDocument document = new PDDocument()) {
       PDPage page = new PDPage(PDRectangle.A4);
       document.addPage(page);
       PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
       try (PDPageContentStream content = new PDPageContentStream(document, page)) {
         text(content, font, 14, LEFT_X, 800, "Ausdruck der elektronischen Lohnsteuerbescheinigung für " + year);
-        float y = 740;
+        text(content, font, 8, LEFT_X, 740, "Korrektur/Stornierung");
+        text(content, font, 8, RIGHT_X, 740, "1. Bescheinigungszeitraum " + period);
+        float y = 718;
         for (String[] row : ROWS) {
           text(content, font, 8, LEFT_X, y, row[0]);
           text(content, font, 8, RIGHT_X, y, row[1]);

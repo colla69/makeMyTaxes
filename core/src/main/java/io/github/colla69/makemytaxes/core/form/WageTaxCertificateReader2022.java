@@ -5,9 +5,11 @@ import io.github.colla69.makemytaxes.core.expense.Money;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,8 +40,16 @@ public final class WageTaxCertificateReader2022 {
       Pattern.compile(
           "(?:^|\\s)(-\\s*)?((?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{2})(\\s*-)?(?=\\s|$)");
 
+  private static final String DATE = "(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)";
+
+  private static final Pattern ANY_DATE = Pattern.compile(DATE);
+
+  /**
+   * The period of line 1, such as "01.01.-31.12.", "01.01.2022 bis 31.12.2022" or two dates with
+   * only space between them, as when the dates stand on two text lines.
+   */
   private static final Pattern PERIOD =
-      Pattern.compile("(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)\\s*-\\s*(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)");
+      Pattern.compile(DATE + "(?:\\s*(?:-|–|bis)\\s*|\\s+)" + DATE);
 
   private static final Pattern TAX_CLASS = Pattern.compile("([1-6])(?:\\s*/\\s*\\d+,\\d+)?");
 
@@ -97,7 +107,7 @@ public final class WageTaxCertificateReader2022 {
 
   private static void readRightColumn(String column, int year, Map<String, String> found) {
     Map<String, List<String>> amounts = new HashMap<>();
-    List<String> periods = new ArrayList<>();
+    StringBuilder periodText = new StringBuilder();
     int line = 0;
     String part = "";
     for (String text : column.lines().toList()) {
@@ -114,17 +124,14 @@ public final class WageTaxCertificateReader2022 {
         part = "a";
       }
       if (line == 1) {
-        Matcher period = PERIOD.matcher(text);
-        while (period.find()) {
-          periods.add(period.group(1) + "-" + period.group(2));
-        }
+        periodText.append(text).append(' ');
       }
       Matcher amount = AMOUNT.matcher(text);
       while (line > 0 && amount.find()) {
         amounts.computeIfAbsent(line + part, key -> new ArrayList<>()).add(amountText(amount));
       }
     }
-    putPeriod(periods, year, found);
+    putPeriod(periodText.toString(), year, found);
     putAmounts(new Amounts(amounts), found);
   }
 
@@ -145,17 +152,28 @@ public final class WageTaxCertificateReader2022 {
     return negative ? UNUSABLE : amount.group(2);
   }
 
-  /** Line 1 shows the period without the year, such as "01.01.-31.12.". */
-  private static void putPeriod(List<String> periods, int year, Map<String, String> found) {
-    if (periods.size() != 1) {
-      return;
+  /**
+   * Line 1 shows the period, with or without the year. The text of line 1 may print the period more
+   * than once. The reader takes it only if each print gives the same dates, and if no date stands
+   * outside a period.
+   */
+  private static void putPeriod(String text, int year, Map<String, String> found) {
+    Set<List<LocalDate>> periods = new HashSet<>();
+    Matcher matcher = PERIOD.matcher(text);
+    int dates = 0;
+    while (matcher.find()) {
+      Optional<LocalDate> from = dateOf(matcher.group(1), year);
+      Optional<LocalDate> to = dateOf(matcher.group(2), year);
+      if (from.isEmpty() || to.isEmpty() || from.get().isAfter(to.get())) {
+        return;
+      }
+      periods.add(List.of(from.get(), to.get()));
+      dates += 2;
     }
-    String[] dates = periods.getFirst().split("-");
-    Optional<LocalDate> from = dateOf(dates[0], year);
-    Optional<LocalDate> to = dateOf(dates[1], year);
-    if (from.isPresent() && to.isPresent() && !from.get().isAfter(to.get())) {
-      found.put("employedFrom", GermanFormats.format(from.get()));
-      found.put("employedTo", GermanFormats.format(to.get()));
+    if (periods.size() == 1 && ANY_DATE.matcher(text).results().count() == dates) {
+      List<LocalDate> period = periods.iterator().next();
+      found.put("employedFrom", GermanFormats.format(period.get(0)));
+      found.put("employedTo", GermanFormats.format(period.get(1)));
     }
   }
 

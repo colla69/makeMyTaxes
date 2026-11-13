@@ -42,15 +42,6 @@ send_back() { # message
   exit 0
 }
 
-# Brings the local dev branch and the dev container up to date. A failure here does not undo the merge.
-update_dev_environment() {
-  git -C "$root" fetch -q origin dev
-  if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain)" ]]; then
-    git -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
-  fi
-  "$root/scripts/deploy-dev.sh" || echo "The dev container did not update." >&2
-}
-
 checks=$(gh pr checks "$number" --repo "$REPO" --required --json bucket --jq '[.[].bucket] | unique | join(" ")' || true)
 if [[ -z "$checks" || "$checks" == *pending* ]]; then
   echo "Pull request $number: CI is still running."
@@ -117,7 +108,7 @@ case "$verdict" in
     gh pr merge "$number" --repo "$REPO" --merge --match-head-commit "$head"
     gh pr edit "$number" --repo "$REPO" --remove-label needs-review >/dev/null
     echo "Pull request $number: merged into dev."
-    update_dev_environment
+    sync_dev
     ;;
   "VERDICT: CHANGES")
     set_pr_label "$number" changes-requested needs-review

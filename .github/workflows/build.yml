@@ -45,6 +45,8 @@ jobs:
         run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Test the guidance script
         run: scripts/guidance-test.sh
+      - name: Test the loop scripts
+        run: scripts/agent-loop-test.sh
 
   live-container:
     runs-on: ubuntu-latest

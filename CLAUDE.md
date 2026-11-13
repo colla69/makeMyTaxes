@@ -47,6 +47,7 @@ owner's machine.
 | Read a letter or a form instruction | `scripts/guidance.sh show bmf-35a-2022` |
 | Test the guidance script | `scripts/guidance-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
+| Test the loop scripts | `scripts/agent-loop-test.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
 | Build origin/dev and start the dev container | `scripts/deploy-dev.sh` |

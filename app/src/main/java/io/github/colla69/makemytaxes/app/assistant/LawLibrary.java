@@ -45,7 +45,9 @@ class LawLibrary {
   private static final Pattern HANDBOOK_ID_LINE =
       Pattern.compile("[RH] [0-9]+[a-z]?(\\.[0-9]+[a-z]?)*\\.?");
   private static final Pattern PARAGRAPH = Pattern.compile("\\([0-9]+[a-z]?\\) ");
-  private static final Pattern GUIDANCE_ID =Pattern.compile("[a-z0-9-]+");
+  private static final Pattern ONE_PARAGRAPH =
+      Pattern.compile("(§\\s*\\S+)\\s+(?:Abs\\.|Absatz)\\s*([0-9]+[a-z]?)");
+  private static final Pattern GUIDANCE_ID = Pattern.compile("[a-z0-9-]+");
 
   private final Path root;
 
@@ -81,7 +83,9 @@ class LawLibrary {
       String place = text().relativize(file).toString();
       String heading = "";
       for (String line : lines(file)) {
-        if (line.startsWith("#") || line.startsWith("Source: ")) {
+        if (line.startsWith("Source: ")) {
+          heading = "";
+        } else if (line.startsWith("#")) {
           heading = line.replaceFirst("^#+ ", "");
         }
         if (!line.toLowerCase(Locale.GERMAN).contains(wanted)) {
@@ -107,6 +111,8 @@ class LawLibrary {
   /**
    * One provision in each version of the year, with the Stand and Hinweis lines of each version.
    * For the EStG, the paragraphs of § 52 EStG that name the provision follow, with § 52 Absatz 1.
+   * A provision such as "§ 52 Abs. 34" gives only that paragraph, so that a long provision can be
+   * read in parts.
    */
   String provision(TaxYear year, String law, String provision) throws NotFound {
     if (law == null || !LAW_NAME.matcher(law).matches()) {
@@ -116,6 +122,9 @@ class LawLibrary {
       throw new NotFound("Gib die Vorschrift an, wie \"§ 35a\".");
     }
     String wanted = provision.strip();
+    var one = ONE_PARAGRAPH.matcher(wanted);
+    String paragraph = one.matches() ? one.group(2) : null;
+    String base = paragraph == null ? wanted : one.group(1);
     List<Path> files = new ArrayList<>();
     for (Path snapshot : snapshots(year)) {
       Path file = snapshot.resolve(law + ".md");
@@ -124,14 +133,18 @@ class LawLibrary {
       }
     }
     if (files.isEmpty()) {
-      throw new NotFound("Die Rechtsbibliothek hat keinen Text von " + law + " für " + year.value() + ".");
+      throw new NotFound(
+          "Die Rechtsbibliothek hat keinen Text von " + law + " für " + year.value() + ".");
     }
     StringBuilder answer = new StringBuilder();
     boolean found = false;
     String previous = null;
     for (Path file : files) {
       List<String> lines = lines(file);
-      String text = section(lines, wanted);
+      String text = section(lines, base);
+      if (paragraph != null) {
+        text = paragraph(text, paragraph);
+      }
       answer.append("--- Fassung ").append(snapshot(file)).append("\n");
       for (String line : lines) {
         if (line.startsWith("## ")) {
@@ -155,8 +168,8 @@ class LawLibrary {
     if (!found) {
       throw new NotFound(wanted + " steht in keiner Fassung von " + law + " für " + year.value() + ".");
     }
-    if (law.equals("estg") && !wanted.equals("§ 52")) {
-      answer.append(applicationRule(files, wanted));
+    if (law.equals("estg") && !base.equals("§ 52")) {
+      answer.append(applicationRule(files, base));
     }
     return answer.toString();
   }
@@ -183,8 +196,9 @@ class LawLibrary {
         on = false;
         continue;
       }
+      boolean isIdLine = HANDBOOK_ID_LINE.matcher(line).matches();
       String heading = null;
-      if (HANDBOOK_ID_LINE.matcher(line).matches()) {
+      if (isIdLine) {
         heading = line;
       } else if (line.matches("#+ .*")) {
         heading = line.replaceFirst("^#+ ", "");
@@ -195,7 +209,7 @@ class LawLibrary {
           answer.append(page).append("\n").append(line).append("\n");
           continue;
         }
-        if (heading == line || heading.matches("[RH] [0-9].*") || heading.startsWith("§")) {
+        if (isIdLine || heading.matches("[RH] [0-9].*") || heading.startsWith("§")) {
           on = false;
         }
       }
@@ -321,6 +335,16 @@ class LawLibrary {
       previous = rule.toString();
     }
     return answer.toString();
+  }
+
+  /** The heading of a provision and one of its paragraphs, or nothing if it has no such one. */
+  private static String paragraph(String section, String number) {
+    for (String paragraph : paragraphs(section)) {
+      if (paragraph.startsWith("(" + number + ") ")) {
+        return section.lines().findFirst().orElse("") + "\n" + paragraph;
+      }
+    }
+    return "";
   }
 
   /** The numbered paragraphs of a provision, each with the lines that follow its number. */

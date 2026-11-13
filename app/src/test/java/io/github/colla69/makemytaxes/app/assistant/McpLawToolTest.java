@@ -3,6 +3,7 @@ package io.github.colla69.makemytaxes.app.assistant;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,6 +72,10 @@ class McpLawToolTest {
 
   @Autowired private Assistant assistant;
 
+  @Autowired private ReturnChat chat;
+
+  @Autowired private QuestionTokens tokens;
+
   private final HttpClient client = HttpClient.newHttpClient();
 
   @DynamicPropertySource
@@ -112,6 +118,27 @@ class McpLawToolTest {
         """);
     Files.createDirectories(law.resolve("guidance"));
     Files.write(law.resolve("guidance/made-up-instructions-2022.pdf"), PDF);
+    write("text/2022-12-31/made_up_long.md", "# Made-up langes Gesetz\n\n" + longText("## § 1 Lang"));
+    write(
+        "text/esth-2023.md",
+        longText(
+            "Source: https://esth.bundesfinanzministerium.de/esth/2023/C-Anhaenge/Anhang-99/inhalt.html"));
+    Files.writeString(
+        law.resolve("guidance.tsv"),
+        "made-up-long-letter-2023\tletter\t2023\t-\t-\tMade-up langes Schreiben\tMade-up\t"
+            + "https://esth.bundesfinanzministerium.de/esth/2023/C-Anhaenge/Anhang-99/inhalt.html"
+            + "\thandbook\t-\n",
+        StandardCharsets.UTF_8,
+        java.nio.file.StandardOpenOption.APPEND);
+  }
+
+  /** A heading and 100 made-up paragraphs of about 1,000 characters, from (1) to (100). */
+  private static String longText(String heading) {
+    StringBuilder text = new StringBuilder(heading).append("\n");
+    for (int i = 1; i <= 100; i++) {
+      text.append("(").append(i).append(") ").append("Made-up Fülltext. ".repeat(55)).append("\n");
+    }
+    return text.toString();
   }
 
   private static void estg(String snapshot, String stand, String wording) throws IOException {
@@ -265,6 +292,72 @@ class McpLawToolTest {
 
     assertTrue(body.contains("\"isError\":true"), body);
     assertFalse(body.contains("Made-up Wortlaut"), body);
+  }
+
+  @Test
+  void oneParagraphOfAProvisionIsRead() {
+    String text = tool(2022, "read_provision", "{\"law\":\"estg\",\"provision\":\"§ 52 Abs. 34\"}");
+
+    assertTrue(text.contains("## § 52 Anwendungsvorschriften"), text);
+    assertTrue(text.contains("(34) Made-up Regel: § 35a ist mit der Maßgabe"), text);
+    assertTrue(text.contains(" 2. made-up zweite Bedingung."), text);
+    assertFalse(text.contains("(34a)"), text);
+    assertFalse(text.contains("(1) Made-up allgemeine"), text);
+  }
+
+  @Test
+  void aLongProvisionComesInPartsThatSayHowToReadOn() {
+    String first = tool(2022, "read_provision", "{\"law\":\"made_up_long\",\"provision\":\"§ 1\"}");
+    String last =
+        tool(2022, "read_provision", "{\"law\":\"made_up_long\",\"provision\":\"§ 1\",\"part\":3}");
+
+    assertTrue(first.length() < LawTools.MAX_TEXT + 500, "length " + first.length());
+    assertTrue(first.contains("(1) Made-up"), first);
+    assertTrue(first.contains("[Teil 1 von 3."), first);
+    assertTrue(first.contains("part 2"), first);
+    assertTrue(first.contains("§ 52 Abs. 34"), first);
+    assertTrue(last.contains("(100) Made-up"), last);
+    assertTrue(last.contains("[Teil 3 von 3."), last);
+    assertFalse(last.contains("part 4"), last);
+  }
+
+  @Test
+  void aLongLetterComesInParts() {
+    String first = tool(2023, "read_guidance", "{\"reference\":\"made-up-long-letter-2023\"}");
+    String body =
+        during(
+            2023,
+            access ->
+                call(
+                    access,
+                    toolCall(
+                        "read_guidance",
+                        "{\"reference\":\"made-up-long-letter-2023\",\"part\":9}")));
+
+    assertTrue(first.length() < LawTools.MAX_TEXT + 500, "length " + first.length());
+    assertTrue(first.contains("[Teil 1 von 3."), first);
+    assertTrue(first.contains("part 2"), first);
+    assertTrue(body.contains("\"isError\":true"), body);
+    assertTrue(body.contains("nur 3 Teile"), body);
+  }
+
+  @Test
+  void aQuestionThatSeesNoReturnReadsNoYear() throws Exception {
+    long returnId = addReturn(2022);
+    long personId = household.personOf(returnId).orElseThrow();
+    household.switchAssistant(personId, false);
+
+    assertNull(chat.prepare(returnId, "Made-up question").taxYear());
+
+    DocumentAccess access = tokens.open(new DocumentAccess.Question(Set.of(), null));
+    try {
+      String body = call(access, toolCall("read_provision", "{\"law\":\"estg\",\"provision\":\"§ 35a\"}"));
+      assertTrue(body.contains("\"isError\":true"), body);
+      assertTrue(body.contains("kein Jahr"), body);
+      assertFalse(body.contains("Made-up Wortlaut"), body);
+    } finally {
+      tokens.close(access);
+    }
   }
 
   /** A step during a question about a made-up return of the year, with the access of the question. */

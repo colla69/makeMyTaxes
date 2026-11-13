@@ -82,6 +82,58 @@ class DocumentBrowserTest {
   }
 
   @Test
+  void previewsAPdfInThePageAndClosesThePreview() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
+    page.getByLabel("Datei")
+        .setInputFiles(
+            new FilePayload(
+                "made-up-invoice.pdf", "application/pdf", "%PDF-1.4 made-up".getBytes()));
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    Locator row = page.locator("#documents tbody tr");
+    assertThat(row).hasCount(1);
+    String href =
+        row.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("made-up-invoice.pdf"))
+            .getAttribute("href");
+
+    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+
+    Locator preview = page.locator("#document-preview");
+    assertThat(preview).containsText("made-up-invoice.pdf");
+    assertThat(preview.locator("iframe")).hasAttribute("src", href);
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
+    preview
+        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
+        .click();
+    assertThat(page.locator("#document-preview")).hasCount(0);
+  }
+
+  @Test
+  void previewsAnImageAsAnImageAndReplacesTheShownPreview() throws IOException {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadReceipt(page, "made-up-first.png");
+    uploadReceipt(page, "made-up-second.png");
+    Locator first =
+        page.locator("#documents tbody tr")
+            .filter(new Locator.FilterOptions().setHasText("made-up-first.png"));
+    Locator second =
+        page.locator("#documents tbody tr")
+            .filter(new Locator.FilterOptions().setHasText("made-up-second.png"));
+
+    first.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+    assertThat(page.locator("#document-preview")).containsText("made-up-first.png");
+    second.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+
+    assertThat(page.locator("#document-preview")).hasCount(1);
+    assertThat(page.locator("#document-preview")).containsText("made-up-second.png");
+    Locator image = page.locator("#document-preview img");
+    page.waitForCondition(
+        () -> ((Number) image.evaluate("img => img.naturalWidth")).intValue() == 3);
+  }
+
+  @Test
   void showsAnErrorForAFileOfAnotherType() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);

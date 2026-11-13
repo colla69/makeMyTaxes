@@ -125,7 +125,7 @@ class PayslipBrowserTest {
                 "made-up-certificate.pdf", "application/pdf", MadeUpCertificate.pdf("2022")));
     page.waitForNavigation(
         () ->
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen"))
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true))
                 .click());
 
     // Six months of 4.000,00 match line 3. Six months of 500,00 are 100,00 below line 4.

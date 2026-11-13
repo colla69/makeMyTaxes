@@ -12,6 +12,7 @@ import java.time.format.TextStyle;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -214,6 +215,77 @@ public class DocumentStore {
     jdbc.sql("delete from document_content where document_id = ?").param(documentId).update();
     jdbc.sql("delete from document where id = ? and tax_return_id = ?")
         .params(documentId, returnId)
+        .update();
+  }
+
+  /**
+   * A new version of a document, and the values that the app read again from it.
+   *
+   * @param oldId the document that the new version replaces
+   * @param newId the new version, already stored with {@link #add}
+   * @param values the new value of each form answer that comes from the old document and that the
+   *     app read again. An empty value leaves the field empty and without evidence.
+   */
+  public record Replacement(long oldId, long newId, Map<AnswerUse, String> values) {}
+
+  /**
+   * Puts the new version in the place of the old document, and deletes the old one. Each value in
+   * the replacement takes its new value, with the new version as its evidence. Every other entry
+   * that names the old document, such as an expense, a payslip month or a form answer that the
+   * app does not read again, keeps its values and names the new version. A value that the user
+   * typed has another source, so it does not change.
+   */
+  @Transactional
+  public void replace(long returnId, Replacement replacement) {
+    long oldId = replacement.oldId();
+    long newId = replacement.newId();
+    if (find(returnId, oldId).isEmpty() || find(returnId, newId).isEmpty()) {
+      return;
+    }
+    jdbc.sql("update expense set document_id = ? where tax_return_id = ? and document_id = ?")
+        .params(newId, returnId, oldId)
+        .update();
+    jdbc.sql("update payslip set document_id = ? where tax_return_id = ? and document_id = ?")
+        .params(newId, returnId, oldId)
+        .update();
+    jdbc.sql(
+            "update form_answer set value = ? where tax_return_id = ? and form_id = ? and value = ?"
+                + " and (field_id = ? or field_id like ?)")
+        .params(
+            String.valueOf(newId),
+            returnId,
+            Interview.ID,
+            String.valueOf(oldId),
+            Interview.WAGE_CERTIFICATE_DOCUMENT,
+            "%-" + Interview.WAGE_CERTIFICATE_DOCUMENT)
+        .update();
+    replacement.values().forEach((use, value) -> replaceValue(returnId, replacement, use, value));
+    jdbc.sql("update form_answer set document_id = ? where tax_return_id = ? and document_id = ?")
+        .params(newId, returnId, oldId)
+        .update();
+    delete(returnId, oldId);
+  }
+
+  private void replaceValue(
+      long returnId, Replacement replacement, AnswerUse use, String value) {
+    String where = " where tax_return_id = ? and form_id = ? and field_id = ? and document_id = ?";
+    if (value.isEmpty()) {
+      jdbc.sql(
+              "update form_answer set value = '', document_id = null, own_statement = 0,"
+                  + " confirmed_source = 0"
+                  + where)
+          .params(returnId, use.formId(), use.fieldId(), replacement.oldId())
+          .update();
+      return;
+    }
+    jdbc.sql("update form_answer set value = ?, document_id = ?" + where)
+        .params(
+            value,
+            replacement.newId(),
+            returnId,
+            use.formId(),
+            use.fieldId(),
+            replacement.oldId())
         .update();
   }
 

@@ -31,12 +31,23 @@ public class FormStore {
   }
 
   /**
+   * A field that a new version of its document left empty has an empty value and no evidence. It
+   * is not an answer: it only keeps the field marked as "Beleg fehlt" until the user enters a value.
+   */
+  private static final String EMPTY_WITHOUT_EVIDENCE =
+      "value = '' and document_id is null and own_statement = 0";
+
+  /**
    * The saved answers of the form. The main form starts with the personal details of the person,
    * and a saved answer that differs from a detail replaces it.
    */
   public Answers answers(long returnId, String formId) {
     Map<String, String> values = new LinkedHashMap<>(personalDetails(returnId, formId));
-    jdbc.sql("select field_id, value from form_answer where tax_return_id = ? and form_id = ?")
+    jdbc.sql(
+            "select field_id, value from form_answer where tax_return_id = ? and form_id = ?"
+                + " and not ("
+                + EMPTY_WITHOUT_EVIDENCE
+                + ")")
         .params(returnId, formId)
         .query(row -> {
           values.put(row.getString("field_id"), row.getString("value"));
@@ -64,13 +75,27 @@ public class FormStore {
     Map<String, String> details = personalDetails(returnId, formId);
     Answers interview = answers(returnId, Interview.ID);
     Map<String, AnswerSource> confirmed = confirmedSources(returnId, formId);
-    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ?")
+    jdbc.sql(
+            "delete from form_answer where tax_return_id = ? and form_id = ?"
+                + " and not ("
+                + EMPTY_WITHOUT_EVIDENCE
+                + ")")
         .params(returnId, formId)
         .update();
+    // A value for a field that was empty without evidence takes the place of that mark.
+    for (String fieldId : answers.values().keySet()) {
+      deleteAnswer(returnId, formId, fieldId);
+    }
     answers.values().entrySet().stream()
         .filter(answer -> !answer.getValue().equals(details.get(answer.getKey())))
         .map(answer -> new FormAnswer(returnId, formId, answer.getKey(), answer.getValue()))
         .forEach(answer -> insert(answer, sourceOf(answer, interview, confirmed)));
+  }
+
+  private void deleteAnswer(long returnId, String formId, String fieldId) {
+    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
+        .params(returnId, formId, fieldId)
+        .update();
   }
 
   /**
@@ -80,10 +105,19 @@ public class FormStore {
   @Transactional
   public void saveAnswer(long returnId, String formId, String fieldId, String value) {
     Map<String, AnswerSource> confirmed = confirmedSources(returnId, formId);
-    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
-        .params(returnId, formId, fieldId)
-        .update();
-    if (!value.isEmpty() && !value.equals(personalDetails(returnId, formId).get(fieldId))) {
+    if (value.isEmpty()) {
+      // An empty field that has no evidence keeps its mark.
+      jdbc.sql(
+              "delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?"
+                  + " and not ("
+                  + EMPTY_WITHOUT_EVIDENCE
+                  + ")")
+          .params(returnId, formId, fieldId)
+          .update();
+      return;
+    }
+    deleteAnswer(returnId, formId, fieldId);
+    if (!value.equals(personalDetails(returnId, formId).get(fieldId))) {
       FormAnswer answer = new FormAnswer(returnId, formId, fieldId, value);
       insert(answer, sourceOf(answer, answers(returnId, Interview.ID), confirmed));
     }
@@ -104,9 +138,7 @@ public class FormStore {
    */
   @Transactional
   public void saveSourcedAnswer(long returnId, SourcedAnswer answer) {
-    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
-        .params(returnId, answer.formId(), answer.fieldId())
-        .update();
+    deleteAnswer(returnId, answer.formId(), answer.fieldId());
     if (!answer.value().equals(personalDetails(returnId, answer.formId()).get(answer.fieldId()))) {
       insert(
           new FormAnswer(returnId, answer.formId(), answer.fieldId(), answer.value()),
@@ -213,8 +245,9 @@ public class FormStore {
   }
 
   /**
-   * The fields of the saved answers of the form that have no evidence, because the user deleted
-   * their document anyway. Each keeps its value and this state while the value stays the same.
+   * The fields of the form that have no evidence: the user deleted their document anyway, or a new
+   * version of the document has no value for them. Each keeps its value, or stays empty, and this
+   * state while the value stays the same.
    */
   public Set<String> answersWithoutEvidence(long returnId, String formId) {
     return new LinkedHashSet<>(

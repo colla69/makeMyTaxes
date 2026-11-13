@@ -48,7 +48,13 @@ class ReturnChat {
 
   /** A question with its prompt and the IDs of the returns that the prompt holds. */
   record Request(
-      long returnId, String question, String prompt, Set<Long> seenReturns, TaxYear taxYear) {}
+      long returnId, String question, String prompt, Set<Long> seenReturns, TaxYear taxYear) {
+
+    /** The same request, with another text for the question in the conversation. */
+    Request withQuestion(String text) {
+      return new Request(returnId, text, prompt, seenReturns, taxYear);
+    }
+  }
 
   private final ReturnContext context;
   private final ChatStore chat;

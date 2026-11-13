@@ -19,9 +19,11 @@ public record DocumentAccess(String token, Question question, Path folder, Strin
    * The returns that one question sees. They all belong to one tax year, so the law tools read the
    * law of that year.
    *
+   * @param openReturnId the return whose panel asks the question. Proposals of the assistant go
+   *     to this return.
    * @param taxYear the year of the returns, or null if the question sees no return
    */
-  public record Question(Set<Long> returnIds, TaxYear taxYear) {
+  public record Question(long openReturnId, Set<Long> returnIds, TaxYear taxYear) {
 
     public Question {
       returnIds = Set.copyOf(returnIds);
@@ -30,6 +32,10 @@ public record DocumentAccess(String token, Question question, Path folder, Strin
 
   public Set<Long> returnIds() {
     return question.returnIds();
+  }
+
+  public long openReturnId() {
+    return question.openReturnId();
   }
 
   public TaxYear taxYear() {

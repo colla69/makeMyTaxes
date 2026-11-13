@@ -61,16 +61,14 @@ public class FormStore {
   private void replace(long returnId, String formId, Answers answers) {
     Map<String, String> details = personalDetails(returnId, formId);
     Answers interview = answers(returnId, Interview.ID);
+    Map<String, AnswerSource> confirmed = confirmedSources(returnId, formId);
     jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ?")
         .params(returnId, formId)
         .update();
     answers.values().entrySet().stream()
         .filter(answer -> !answer.getValue().equals(details.get(answer.getKey())))
-        .forEach(
-            answer ->
-                insert(
-                    new FormAnswer(returnId, formId, answer.getKey(), answer.getValue()),
-                    interview));
+        .map(answer -> new FormAnswer(returnId, formId, answer.getKey(), answer.getValue()))
+        .forEach(answer -> insert(answer, sourceOf(answer, interview, confirmed)));
   }
 
   /**
@@ -79,31 +77,97 @@ public class FormStore {
    */
   @Transactional
   public void saveAnswer(long returnId, String formId, String fieldId, String value) {
+    Map<String, AnswerSource> confirmed = confirmedSources(returnId, formId);
     jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
         .params(returnId, formId, fieldId)
         .update();
     if (!value.isEmpty() && !value.equals(personalDetails(returnId, formId).get(fieldId))) {
-      insert(new FormAnswer(returnId, formId, fieldId, value), answers(returnId, Interview.ID));
+      FormAnswer answer = new FormAnswer(returnId, formId, fieldId, value);
+      insert(answer, sourceOf(answer, answers(returnId, Interview.ID), confirmed));
     }
   }
 
-  /** The source of a value of a certificate is the certificate of its employer, if it has one. */
-  private void insert(FormAnswer answer, Answers interview) {
+  /**
+   * An answer with a known source.
+   *
+   * @param documentId the document that the value comes from, or null for the user's own statement
+   */
+  public record SourcedAnswer(String formId, String fieldId, String value, Long documentId) {}
+
+  /**
+   * Replaces one answer of the form with a value whose source the user confirmed, such as a value
+   * from a proposal of the assistant. The value keeps this source while it stays the same, also
+   * through a later save of the form or of the interview. A value that is equal to a personal
+   * detail is not saved, as in {@link #saveAnswer}.
+   */
+  @Transactional
+  public void saveSourcedAnswer(long returnId, SourcedAnswer answer) {
+    jdbc.sql("delete from form_answer where tax_return_id = ? and form_id = ? and field_id = ?")
+        .params(returnId, answer.formId(), answer.fieldId())
+        .update();
+    if (!answer.value().equals(personalDetails(returnId, answer.formId()).get(answer.fieldId()))) {
+      insert(
+          new FormAnswer(returnId, answer.formId(), answer.fieldId(), answer.value()),
+          new AnswerSource(answer.value(), answer.documentId(), true));
+    }
+  }
+
+  /**
+   * The source of a saved answer.
+   *
+   * @param value the value that the source belongs to
+   * @param documentId the document, or null for the user's own statement
+   * @param confirmed true if the user confirmed this source for this value
+   */
+  private record AnswerSource(String value, Long documentId, boolean confirmed) {}
+
+  /**
+   * A value keeps the source that the user confirmed for it. Otherwise the source of a value of a
+   * certificate is the certificate of its employer, if it has one.
+   */
+  private static AnswerSource sourceOf(
+      FormAnswer answer, Answers interview, Map<String, AnswerSource> confirmed) {
+    AnswerSource kept = confirmed.get(answer.fieldId());
+    if (kept != null && kept.value().equals(answer.value())) {
+      return kept;
+    }
     OptionalLong document =
         CERTIFICATE_FORMS.contains(answer.formId())
             ? Interview.certificateDocument(interview, answer.fieldId())
             : OptionalLong.empty();
+    return new AnswerSource(
+        answer.value(), document.isPresent() ? document.getAsLong() : null, false);
+  }
+
+  /** The confirmed sources of the saved answers of the form, by field. */
+  private Map<String, AnswerSource> confirmedSources(long returnId, String formId) {
+    Map<String, AnswerSource> sources = new LinkedHashMap<>();
+    jdbc.sql(
+            "select field_id, value, document_id from form_answer"
+                + " where tax_return_id = ? and form_id = ? and confirmed_source = 1")
+        .params(returnId, formId)
+        .query(row -> {
+          long document = row.getLong("document_id");
+          sources.put(
+              row.getString("field_id"),
+              new AnswerSource(row.getString("value"), row.wasNull() ? null : document, true));
+        });
+    return sources;
+  }
+
+  private void insert(FormAnswer answer, AnswerSource source) {
     jdbc.sql(
             "insert into form_answer"
-                + "(tax_return_id, form_id, field_id, value, document_id, own_statement)"
-                + " values (?, ?, ?, ?, ?, ?)")
+                + "(tax_return_id, form_id, field_id, value, document_id, own_statement,"
+                + " confirmed_source) values (?, ?, ?, ?, ?, ?, ?)")
         .params(
             answer.returnId(),
             answer.formId(),
             answer.fieldId(),
             answer.value(),
-            document.isPresent() ? document.getAsLong() : null,
-            document.isPresent() ? 0 : 1)
+            source.documentId(),
+            source.documentId() == null ? 1 : 0,
+            source.confirmed() ? 1 : 0)
         .update();
   }
 

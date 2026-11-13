@@ -1,10 +1,9 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import io.github.colla69.makemytaxes.app.assistant.AssistantException;
-import io.github.colla69.makemytaxes.app.assistant.FieldProposals;
-import io.github.colla69.makemytaxes.app.assistant.FieldProposals.ProposalView;
 import io.github.colla69.makemytaxes.app.assistant.PersonAssistant;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Message;
+import io.github.colla69.makemytaxes.app.web.ProposalReview.ProposalView;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -29,9 +28,9 @@ public class AssistantController {
       List<String> seenReturns, List<Message> messages, List<ProposalView> proposals) {}
 
   private final PersonAssistant assistant;
-  private final FieldProposals proposals;
+  private final ProposalReview proposals;
 
-  AssistantController(PersonAssistant assistant, FieldProposals proposals) {
+  AssistantController(PersonAssistant assistant, ProposalReview proposals) {
     this.assistant = assistant;
     this.proposals = proposals;
   }

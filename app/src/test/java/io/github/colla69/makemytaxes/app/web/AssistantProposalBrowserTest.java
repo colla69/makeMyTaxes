@@ -129,7 +129,6 @@ class AssistantProposalBrowserTest {
     Page page = browser.newPage();
     page.navigate("http://127.0.0.1:" + port + "/returns/" + returnId);
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     panel.getByLabel("Frage an den Assistenten").fill("Made-up question: fill the certificate");
     button(panel, "Fragen").click();
 
@@ -253,7 +252,6 @@ class AssistantProposalBrowserTest {
     Page page = browser.newPage();
     page.navigate("http://127.0.0.1:" + port + "/returns/" + returnId);
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     panel.getByLabel("Frage an den Assistenten").fill("Made-up question: my commute is 17 km");
     button(panel, "Fragen").click();
     assertThat(panel.locator(".assistant-proposal")).containsText("Angabe des Nutzers im Gespräch");

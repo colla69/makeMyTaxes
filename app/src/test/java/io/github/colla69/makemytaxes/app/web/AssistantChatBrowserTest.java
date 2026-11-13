@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.options.BoundingBox;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.AriaRole;
@@ -54,6 +55,13 @@ class AssistantChatBrowserTest {
   }
 
   private static final TaxYear YEAR = new TaxYear(2022);
+
+  private static final int WINDOW_WIDTH = 1280;
+
+  private static final int WINDOW_HEIGHT = 720;
+
+  private static final Browser.NewPageOptions WINDOW =
+      new Browser.NewPageOptions().setViewportSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
   @TempDir static Path databaseFolder;
 
@@ -112,6 +120,68 @@ class AssistantChatBrowserTest {
   }
 
   @Test
+  void theOpenChatIsAColumnOnTheRightOverTheFullHeightOfTheWindow() {
+    MadeUpReturn open = addReturn();
+    household.switchAssistant(open.personId(), true);
+    Page page = browser.newPage(WINDOW);
+    page.navigate(returnPage(open));
+
+    Locator panel = page.locator("#assistant-chat");
+    assertThat(panel.getByLabel("Frage an den Assistenten")).isVisible();
+    BoundingBox column = panel.boundingBox();
+    assertEquals(WINDOW_WIDTH, column.x + column.width, 1, "the column ends at the right edge");
+    assertEquals(0, column.y, "the column starts at the top");
+    assertEquals(WINDOW_HEIGHT, column.height, 1, "the column spans the height of the window");
+    assertTrue(column.width < WINDOW_WIDTH / 2.0, "the column leaves room for the page");
+    BoundingBox content = page.locator("main").boundingBox();
+    assertTrue(content.x + content.width <= column.x, "the page sits to the left of the column");
+  }
+
+  @Test
+  void aLongConversationScrollsOnItsOwnAndKeepsTheQuestionFieldInView() {
+    MadeUpReturn open = addReturn();
+    household.switchAssistant(open.personId(), true);
+    fake().setAnswer("Made-up line of a long answer\n".repeat(20));
+    Page page = browser.newPage(WINDOW);
+    page.navigate(returnPage(open));
+    Locator panel = page.locator("#assistant-chat");
+    for (int round = 1; round <= 3; round++) {
+      panel.getByLabel("Frage an den Assistenten").fill("Made-up question " + round);
+      button(panel, "Fragen").click();
+      assertThat(panel.locator(".from-assistant")).hasCount(round);
+    }
+
+    Locator messages = panel.locator(".assistant-scroll");
+    assertTrue(
+        (Boolean) messages.evaluate("list => list.scrollHeight > list.clientHeight"),
+        "the conversation overflows the column");
+    assertTrue(
+        (Boolean)
+            messages.evaluate(
+                "list => list.scrollTop + list.clientHeight >= list.scrollHeight - 1"),
+        "the messages scrolled to the newest one");
+    assertThat(panel.locator(".from-assistant").last()).isInViewport();
+    assertThat(panel.getByLabel("Frage an den Assistenten")).isInViewport();
+
+    // A long page scrolls, and the column stays where it is.
+    page.evaluate("document.querySelector('main').style.minHeight = '3000px'");
+    page.evaluate("window.scrollTo(0, 1500)");
+    assertTrue(((Number) page.evaluate("window.scrollY")).intValue() > 0, "the page scrolled");
+    assertEquals(0, panel.boundingBox().y, "the column stays at the top");
+    assertThat(panel.getByLabel("Frage an den Assistenten")).isInViewport();
+    assertThat(panel.locator(".from-assistant").last()).isInViewport();
+
+    // After a reload, the newest message shows again.
+    page.reload();
+    assertThat(panel.locator(".from-assistant")).hasCount(3);
+    assertTrue(
+        (Boolean)
+            messages.evaluate(
+                "list => list.scrollTop + list.clientHeight >= list.scrollHeight - 1"),
+        "the messages open at the newest one");
+  }
+
+  @Test
   void theUserAsksAQuestionAndSeesTheConversationAgainAfterAReload() {
     MadeUpReturn open = addReturn();
     household.switchAssistant(open.personId(), true);
@@ -120,8 +190,6 @@ class AssistantChatBrowserTest {
     page.navigate(returnPage(open) + "/documents");
 
     Locator panel = page.locator("#assistant-chat");
-    assertThat(panel.locator(".assistant-messages")).not().isVisible();
-    panel.locator("summary").click();
     panel.getByLabel("Frage an den Assistenten").fill("Made-up question about the commute");
     fake().setDelay(Duration.ofSeconds(2));
     button(panel, "Fragen").click();
@@ -134,7 +202,6 @@ class AssistantChatBrowserTest {
     assertThat(panel.getByLabel("Frage an den Assistenten")).isEmpty();
 
     page.reload();
-    panel.locator("summary").click();
     assertThat(panel.locator(".from-user")).hasText("Made-up question about the commute");
     assertThat(panel.locator(".from-assistant")).hasText("Made-up answer about the commute");
 
@@ -157,7 +224,6 @@ class AssistantChatBrowserTest {
     page.navigate(returnPage(open));
 
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     assertThat(panel.locator(".assistant-seen li")).hasText(new String[] {seenName(open)});
     ask(panel, "Made-up question");
 
@@ -179,7 +245,6 @@ class AssistantChatBrowserTest {
     page.navigate(returnPage(open));
 
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     assertThat(panel.locator(".assistant-seen li"))
         .hasText(new String[] {seenName(open), seenName(other)});
     ask(panel, "Made-up question");
@@ -201,13 +266,11 @@ class AssistantChatBrowserTest {
     Page page = browser.newPage();
     page.navigate(returnPage(open));
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     ask(panel, "Made-up shared question");
 
     household.switchAssistant(other.personId(), false);
     fake().setAnswer("Made-up answer");
     page.reload();
-    panel.locator("summary").click();
     assertThat(panel.locator(".assistant-seen li")).hasText(new String[] {seenName(open)});
     assertThat(panel.locator(".assistant-messages li")).hasCount(0);
     ask(panel, "Made-up question alone");
@@ -226,7 +289,6 @@ class AssistantChatBrowserTest {
     page.navigate(returnPage(open));
 
     Locator panel = page.locator("#assistant-chat");
-    panel.locator("summary").click();
     panel.getByLabel("Frage an den Assistenten").fill("Made-up question without an answer");
     button(panel, "Fragen").click();
 

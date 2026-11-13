@@ -651,16 +651,18 @@ class InterviewController {
 
   /**
    * The source of the saved value of a field question: "Beleg: " and the file name, "Beleg fehlt"
-   * after the user deleted its document, or "eigene Angabe". It is null for a question that is not
-   * a field, or for an empty field.
+   * after the user deleted its document or when a new version of it has no value, or "eigene
+   * Angabe". It is null for a question that is not a field, or for an empty field with evidence.
    */
   private String sourceOf(long returnId, Question question) {
-    if (question.type() != Type.FIELD
-        || forms.answers(returnId, question.formId()).text(question.id()).isEmpty()) {
+    if (question.type() != Type.FIELD) {
       return null;
     }
     if (forms.answersWithoutEvidence(returnId, question.formId()).contains(question.id())) {
       return new Source.Missing(null).label();
+    }
+    if (forms.answers(returnId, question.formId()).text(question.id()).isEmpty()) {
+      return null;
     }
     Long document = forms.answerDocuments(returnId, question.formId()).get(question.id());
     return Optional.ofNullable(document)

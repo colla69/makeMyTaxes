@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Map;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -47,11 +48,24 @@ public final class MadeUpCertificate {
 
   /** The certificate for the year, as the bytes of a PDF with text. */
   public static byte[] pdf(String year) {
-    return pdf(year, PERIOD);
+    return pdf(year, PERIOD, Map.of());
   }
 
   /** The certificate for the year, with the given text for the period of line 1. */
   public static byte[] pdf(String year, String period) {
+    return pdf(year, period, Map.of());
+  }
+
+  /**
+   * A corrected certificate for the year: each amount in the map replaces the amount of the row
+   * whose right column starts with its key, such as "3." for the gross wage. An empty amount
+   * leaves the row without a value.
+   */
+  public static byte[] pdf(String year, Map<String, String> amounts) {
+    return pdf(year, PERIOD, amounts);
+  }
+
+  private static byte[] pdf(String year, String period, Map<String, String> amounts) {
     try (PDDocument document = new PDDocument()) {
       PDPage page = new PDPage(PDRectangle.A4);
       document.addPage(page);
@@ -64,7 +78,7 @@ public final class MadeUpCertificate {
         for (String[] row : ROWS) {
           text(content, font, 8, LEFT_X, y, row[0]);
           text(content, font, 8, RIGHT_X, y, row[1]);
-          text(content, font, 8, AMOUNT_X, y, row[2]);
+          text(content, font, 8, AMOUNT_X, y, amountOf(row, amounts));
           y -= 22;
         }
       }
@@ -74,6 +88,14 @@ public final class MadeUpCertificate {
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  private static String amountOf(String[] row, Map<String, String> amounts) {
+    return amounts.entrySet().stream()
+        .filter(amount -> row[1].startsWith(amount.getKey() + " "))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(row[2]);
   }
 
   private static void text(

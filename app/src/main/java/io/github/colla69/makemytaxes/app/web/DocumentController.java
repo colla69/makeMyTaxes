@@ -63,11 +63,17 @@ class DocumentController {
   private final HouseholdStore household;
   private final DocumentStore documents;
   private final PayslipOverview payslips;
+  private final DocumentReplacement replacement;
 
-  DocumentController(HouseholdStore household, DocumentStore documents, PayslipOverview payslips) {
+  DocumentController(
+      HouseholdStore household,
+      DocumentStore documents,
+      PayslipOverview payslips,
+      DocumentReplacement replacement) {
     this.household = household;
     this.documents = documents;
     this.payslips = payslips;
+    this.replacement = replacement;
   }
 
   @GetMapping("/returns/{returnId}/documents")
@@ -178,6 +184,87 @@ class DocumentController {
     }
     documents.delete(returnId, documentId);
     return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  /**
+   * Stores a new version of a document, with the kind of the old one. If the app reads values of
+   * the old document again from the new version, the page shows them for a check first. Otherwise
+   * the new version takes the place of the old one at once.
+   */
+  @PostMapping("/returns/{returnId}/documents/{documentId}/replace")
+  String uploadVersion(
+      @PathVariable long returnId,
+      @PathVariable long documentId,
+      @RequestParam(required = false) MultipartFile file,
+      Model model)
+      throws IOException {
+    StoredDocument old = storedDocument(returnId, documentId);
+    long newId;
+    try {
+      if (file == null) {
+        throw new IllegalArgumentException("Bitte eine Datei wählen. Eine leere Datei geht nicht.");
+      }
+      newId = documents.add(returnId, toNewDocument(old.kind(), file), LocalDate.now());
+    } catch (IllegalArgumentException e) {
+      model.addAttribute("error", e.getMessage());
+      fillPage(returnId, model);
+      return "documents";
+    }
+    StoredDocument version = storedDocument(returnId, newId);
+    if (replacement.rows(returnId, old, version).isEmpty()) {
+      documents.replace(returnId, replacement.replacement(returnId, old, version));
+      return "redirect:/returns/" + returnId + "/documents";
+    }
+    return "redirect:/returns/" + returnId + "/documents?replace=" + documentId + "&with=" + newId;
+  }
+
+  /** The check of a new version: each value of the old document beside its new value. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = {"replace", "with"})
+  String checkVersion(
+      @PathVariable long returnId,
+      @RequestParam("replace") long documentId,
+      @RequestParam("with") long newId,
+      Model model) {
+    StoredDocument old = storedDocument(returnId, documentId);
+    StoredDocument version = storedDocument(returnId, newId);
+    model.addAttribute("replaceOld", old);
+    model.addAttribute("replaceNew", version);
+    model.addAttribute("replaceRows", replacement.rows(returnId, old, version));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /** "Übernehmen": the new version replaces the old document, with the values read from it. */
+  @PostMapping("/returns/{returnId}/documents/{documentId}/replace/{newId}")
+  String confirmVersion(
+      @PathVariable long returnId, @PathVariable long documentId, @PathVariable long newId) {
+    StoredDocument old = storedDocument(returnId, documentId);
+    StoredDocument version = newVersion(returnId, old, newId);
+    documents.replace(returnId, replacement.replacement(returnId, old, version));
+    return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  /** "Abbrechen": the new version goes, and the old document and all values stay. */
+  @PostMapping("/returns/{returnId}/documents/{documentId}/replace/{newId}/cancel")
+  String cancelVersion(
+      @PathVariable long returnId, @PathVariable long documentId, @PathVariable long newId) {
+    StoredDocument old = storedDocument(returnId, documentId);
+    documents.delete(returnId, newVersion(returnId, old, newId).id());
+    return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  /**
+   * The new version must be another document of the same kind that no entry uses yet, so that a
+   * confirm or a cancel never takes the evidence of an entry.
+   */
+  private StoredDocument newVersion(long returnId, StoredDocument old, long newId) {
+    StoredDocument version = storedDocument(returnId, newId);
+    if (version.id() == old.id()
+        || version.kind() != old.kind()
+        || !documents.usesOf(returnId, newId).isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+    }
+    return version;
   }
 
   private List<UseView> useViews(long returnId, Uses uses) {

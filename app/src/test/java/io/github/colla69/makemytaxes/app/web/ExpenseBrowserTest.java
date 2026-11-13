@@ -239,7 +239,7 @@ class ExpenseBrowserTest {
   private static void uploadDocument(Page page, String returnUrl, String fileName) {
     page.navigate(returnUrl + "/documents");
     page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", MADE_UP_PNG));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
     assertThat(page.locator("#documents tbody tr")).hasCount(1);
   }
 

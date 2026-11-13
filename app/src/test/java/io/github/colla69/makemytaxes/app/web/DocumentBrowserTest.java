@@ -61,7 +61,7 @@ class DocumentBrowserTest {
     page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
     page.getByLabel("Datei")
         .setInputFiles(new FilePayload("made-up-receipt.png", "image/png", madeUpPng()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
 
     Locator row = page.locator("#documents tbody tr");
     assertThat(row).hasCount(1);
@@ -90,7 +90,7 @@ class DocumentBrowserTest {
         .setInputFiles(
             new FilePayload(
                 "made-up-invoice.pdf", "application/pdf", "%PDF-1.4 made-up".getBytes()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
     Locator row = page.locator("#documents tbody tr");
     assertThat(row).hasCount(1);
     String href =
@@ -140,7 +140,7 @@ class DocumentBrowserTest {
 
     page.getByLabel("Datei")
         .setInputFiles(new FilePayload("made-up.txt", "text/plain", "made-up".getBytes()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
 
     assertThat(page.locator(".error")).containsText("Nur PDF, JPEG und PNG");
     assertThat(page.locator("#documents tbody tr")).hasCount(0);
@@ -155,7 +155,7 @@ class DocumentBrowserTest {
     large[0] = '%';
 
     page.getByLabel("Datei").setInputFiles(new FilePayload("large.pdf", "application/pdf", large));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
 
     assertThat(page.locator(".error")).containsText("größer als 20 MB");
     assertThat(page.locator("#documents tbody tr")).hasCount(0);
@@ -244,7 +244,7 @@ class DocumentBrowserTest {
   private static void uploadReceipt(Page page, String fileName) throws IOException {
     page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
     page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", madeUpPng()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen")).click();
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
     assertThat(page.locator("#documents")).containsText(fileName);
   }
 

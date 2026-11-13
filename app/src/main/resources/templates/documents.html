@@ -118,6 +118,40 @@
       </section>
 
       <h2>Dokumente</h2>
+      <!--
+        The check of a new version. Nothing changes before "Übernehmen". "Abbrechen" deletes the
+        new version, so the old document and all values stay.
+      -->
+      <section th:if="${replaceOld}" id="version-check">
+        <h3 th:text="'Neue Version von „' + ${replaceOld.fileName()} + '“ prüfen'">Neue Version prüfen</h3>
+        <p class="help" th:text="'Die App hat diese Werte aus „' + ${replaceNew.fileName()} + '“ gelesen. Mit „Übernehmen“ ersetzen sie die bisherigen Werte, und die neue Version wird ihr Beleg. Die alte Datei wird gelöscht. Werte, die Sie selbst eingegeben haben, bleiben.'">
+          Hinweis
+        </p>
+        <table>
+          <thead>
+            <tr><th>Feld</th><th>Bisheriger Wert</th><th>Neue Version</th></tr>
+          </thead>
+          <tbody>
+            <tr th:each="row : ${replaceRows}" th:data-field="${row.fieldId}"
+                th:classappend="${row.missing} ? 'missing'">
+              <td th:text="${row.label}">Feld</td>
+              <td class="current" th:text="${row.current}">1,00</td>
+              <td class="replacement"
+                  th:text="${row.missing} ? 'nicht gefunden: das Feld wird leer, Beleg fehlt' : ${row.replacement}">2,00</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="form-buttons">
+          <form method="post"
+                th:action="@{/returns/{r}/documents/{d}/replace/{n}(r=${returnId},d=${replaceOld.id()},n=${replaceNew.id()})}">
+            <button>Übernehmen</button>
+          </form>
+          <form method="post"
+                th:action="@{/returns/{r}/documents/{d}/replace/{n}/cancel(r=${returnId},d=${replaceOld.id()},n=${replaceNew.id()})}">
+            <button>Abbrechen</button>
+          </form>
+        </div>
+      </section>
       <!-- dialog.js opens this popup as a modal dialog when the page loads. -->
       <dialog th:if="${deleteDocument}" id="delete-dialog" class="popup" data-show-modal
               aria-labelledby="delete-dialog-title">
@@ -147,7 +181,7 @@
       </dialog>
       <table id="documents">
         <thead>
-          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th><th></th></tr>
+          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th><th></th><th></th></tr>
         </thead>
         <tbody>
           <tr th:each="row : ${rows}" th:data-document="${row.id}">
@@ -163,6 +197,15 @@
               <form method="get" th:action="@{/returns/{r}/documents(r=${returnId})}">
                 <input type="hidden" name="preview" th:value="${row.id}">
                 <button>Vorschau</button>
+              </form>
+            </td>
+            <td>
+              <form method="post" enctype="multipart/form-data" class="new-version"
+                    th:action="@{/returns/{r}/documents/{d}/replace(r=${returnId},d=${row.id})}">
+                <input type="file" name="file" required
+                       th:aria-label="'Neue Version von ' + ${row.fileName}"
+                       accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
+                <button>Neue Version hochladen</button>
               </form>
             </td>
             <td th:if="${confirmDelete != row.id}">

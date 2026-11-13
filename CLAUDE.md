@@ -40,6 +40,12 @@ owner's machine.
 | Pin the handbook pages again, on the owner's machine | `java scripts/FetchHandbooks.java --pin` |
 | Read a guideline or note for a tax year | `scripts/handbook.sh 2026 "R 9.13 LStR"` |
 | Test the handbook parsing | `scripts/fetch-handbooks-test.sh` |
+| Name the form instructions to download by hand | `scripts/guidance.sh fetch` |
+| Pin the downloaded form instructions | `scripts/guidance.sh fetch --pin` |
+| Check the BMF letters and form instructions | `scripts/guidance.sh check` |
+| List the letters and instructions of a year | `scripts/guidance.sh list 2022` |
+| Read a letter or a form instruction | `scripts/guidance.sh show bmf-35a-2022` |
+| Test the guidance script | `scripts/guidance-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
 | Test the loop scripts | `scripts/agent-loop-test.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
@@ -157,8 +163,10 @@ not switch to a cheaper model.
   Lohnsteuer-Handbuch (LStR and LStH). Read a guideline or a note with
   `scripts/handbook.sh 2026 "R 9.13 LStR"`, and cite it with the edition year. An edition that
   does not exist yet, such as the EStH 2026, is listed as a gap. Do not fill a gap from memory.
-- The law library does not hold other BMF letters or court rulings. A rule that depends on them
-  needs its own source.
+- `law/guidance.tsv` lists the BMF letters that the forms of the first target use, as the
+  handbook annexes print them, and the official form instructions. `scripts/guidance.sh show`
+  prints one entry. The law library does not hold other BMF letters or court rulings. A rule
+  that depends on them needs its own source.
 - The owner reviews every change that could send data off the machine. The automatic review does
   not merge such a change.
 - The UI and the adapters depend on the core. The core does not depend on them. The Maven

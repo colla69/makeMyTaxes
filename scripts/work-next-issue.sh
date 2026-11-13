@@ -39,6 +39,8 @@ gh issue edit "$issue" --repo "$REPO" --add-label in-progress >/dev/null
 # The worker has internet access (WebSearch, WebFetch and curl), so it can send search text and URLs
 # off the machine. The owner allows this, so that the worker can test a script against its real source.
 # It can run the Java scripts and the script tests, but not the other scripts, such as the deploy.
+# It can run python3 and a nested `claude -p`, so it can try out a small server or check how Claude Code
+# handles a tool. The nested session uses the same token and counts against the same subscription.
 status=0
 (
   cd "$worktree"
@@ -50,6 +52,7 @@ status=0
     "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
+    "Bash(python3:*)" "Bash(claude -p:*)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git push:*)" \

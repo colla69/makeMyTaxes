@@ -68,6 +68,34 @@ public class AssistantController {
     return conversation(returnId, model);
   }
 
+  /** True if the review page offers the check by the assistant. */
+  public boolean adviceOn(long returnId) {
+    return assistant.onForReturn(returnId);
+  }
+
+  /**
+   * The assistant checks the return for the best legal result. The tips join the conversation. The
+   * chat panel shows the conversation, and the review page shows the tips.
+   */
+  @PostMapping("/returns/{returnId}/assistant/advice")
+  String advise(
+      @PathVariable long returnId,
+      @RequestParam(defaultValue = "chat") String view,
+      Model model) {
+    checkOn(returnId);
+    try {
+      model.addAttribute("tips", assistant.adviseOnReturn(returnId));
+    } catch (AssistantException e) {
+      model.addAttribute("error", "Der Assistent hat nicht geantwortet: " + e.getMessage());
+    } catch (RuntimeException e) {
+      model.addAttribute("error", "Der Assistent hat nicht geantwortet.");
+    }
+    if (view.equals("review")) {
+      return "assistant-chat :: advice";
+    }
+    return conversation(returnId, model);
+  }
+
   /** The user takes the proposed value into the return, with its source. */
   @PostMapping("/returns/{returnId}/assistant/proposals/{proposalId}/confirm")
   String confirm(@PathVariable long returnId, @PathVariable long proposalId, Model model) {

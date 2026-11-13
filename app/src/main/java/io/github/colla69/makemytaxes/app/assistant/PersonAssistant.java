@@ -44,21 +44,35 @@ public class PersonAssistant {
    * and the answer join the conversation only if the assistant answers.
    */
   public String askAboutReturn(long returnId, String question) throws AssistantException {
+    ReturnChat.Request request = chat.prepare(returnId, question);
+    String answer = ask(request);
+    chat.remember(request, answer);
+    return answer;
+  }
+
+  /**
+   * Checks the return for the best legal result within the facts. Each tip has a source, and the
+   * tips join the conversation.
+   */
+  public List<Advice.Tip> adviseOnReturn(long returnId) throws AssistantException {
+    ReturnChat.Request request = chat.prepare(returnId, Advice.QUESTION);
+    List<Advice.Tip> tips = Advice.tips(ask(request));
+    chat.remember(request.withQuestion(Advice.LABEL), Advice.text(tips));
+    return tips;
+  }
+
+  private String ask(ReturnChat.Request request) throws AssistantException {
     long personId =
         household
-            .personOf(returnId)
+            .personOf(request.returnId())
             .orElseThrow(() -> new AssistantException("The return does not exist."));
-    ReturnChat.Request request = chat.prepare(returnId, question);
     DocumentAccess access = chat.openDocuments(request);
-    String answer;
     try {
       checkOn(personId);
-      answer = assistant.ask(request.prompt(), access);
+      return assistant.ask(request.prompt(), access);
     } finally {
       chat.closeDocuments(access);
     }
-    chat.remember(request, answer);
-    return answer;
   }
 
   /**

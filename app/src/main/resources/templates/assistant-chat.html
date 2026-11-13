@@ -56,6 +56,12 @@
         </p>
       </section>
       <p class="assistant-error" th:if="${error}" th:text="${error}">Fehler</p>
+      <p>
+        <button class="assistant-advise"
+                th:attr="hx-post=@{/returns/{id}/assistant/advice(id=${returnId})}"
+                hx-target="#assistant-conversation" hx-swap="outerHTML"
+                hx-indicator="#assistant-working" hx-disabled-elt="this">Rat für das beste Ergebnis</button>
+      </p>
       <form class="assistant-ask"
             th:attr="hx-post=@{/returns/{id}/assistant(id=${returnId})}"
             hx-target="#assistant-conversation"
@@ -70,6 +76,33 @@
           <span id="assistant-working" class="htmx-indicator">Der Assistent arbeitet …</span>
         </p>
       </form>
+    </div>
+
+    <!-- The check before the review: the review page asks for it, and htmx swaps this part with
+         the tips. Each tip has its source. -->
+    <section th:fragment="review-check" id="advice" th:if="${@assistantController.adviceOn(returnId)}">
+      <h2>Rat vor der Abgabe</h2>
+      <p class="help">Der Assistent prüft die Erklärung auf das beste legale Ergebnis innerhalb der Fakten. Jeder Tipp nennt seine Quelle.</p>
+      <p>
+        <button th:attr="hx-post=@{/returns/{id}/assistant/advice(id=${returnId},view='review')}"
+                hx-target="#advice-result" hx-swap="outerHTML"
+                hx-indicator="#advice-working" hx-disabled-elt="this">Erklärung prüfen lassen</button>
+        <span id="advice-working" class="htmx-indicator">Der Assistent arbeitet …</span>
+      </p>
+      <div id="advice-result"></div>
+    </section>
+
+    <div th:fragment="advice" id="advice-result">
+      <p class="assistant-error" th:if="${error}" th:text="${error}">Fehler</p>
+      <p th:if="${tips != null and #lists.isEmpty(tips)}">Der Assistent hat keinen Rat mit Quelle gefunden.</p>
+      <ul class="advice-tips" th:if="${tips != null and !#lists.isEmpty(tips)}">
+        <li class="advice-tip" th:each="tip : ${tips}">
+          <h3><span class="advice-kind" th:text="${tip.kindLabel()}">Abzug</span>: <span class="advice-title" th:text="${tip.title}">Titel</span></h3>
+          <p class="advice-text" th:text="${tip.text}">Text</p>
+          <p class="advice-document" th:unless="${#strings.isEmpty(tip.document)}">Beleg: <span th:text="${tip.document}">Beleg</span></p>
+          <p class="advice-source">Quelle: <span th:text="${tip.source}">Quelle</span></p>
+        </li>
+      </ul>
     </div>
   </body>
 </html>

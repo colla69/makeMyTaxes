@@ -49,7 +49,14 @@ public class PersonAssistant {
             .personOf(returnId)
             .orElseThrow(() -> new AssistantException("The return does not exist."));
     ReturnChat.Request request = chat.prepare(returnId, question);
-    String answer = ask(personId, request.prompt());
+    DocumentAccess access = chat.openDocuments(request);
+    String answer;
+    try {
+      checkOn(personId);
+      answer = assistant.ask(request.prompt(), access);
+    } finally {
+      chat.closeDocuments(access);
+    }
     chat.remember(request, answer);
     return answer;
   }
@@ -64,12 +71,16 @@ public class PersonAssistant {
 
   /** Sends the prompt only if the person turned the assistant on. */
   public String ask(long personId, String prompt) throws AssistantException {
+    checkOn(personId);
+    return assistant.ask(prompt);
+  }
+
+  private void checkOn(long personId) throws AssistantException {
     if (!household.assistantOn(personId)) {
       throw new AssistantException("The assistant is off for this person.");
     }
     if (!assistant.available()) {
       throw new AssistantException("The assistant is not available on this machine.");
     }
-    return assistant.ask(prompt);
   }
 }

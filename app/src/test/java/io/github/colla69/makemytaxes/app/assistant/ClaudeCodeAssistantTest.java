@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.app.assistant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,7 +9,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -52,6 +55,49 @@ class ClaudeCodeAssistantTest {
     long start = System.nanoTime();
     assertThrows(AssistantException.class, () -> assistant.ask(prompt));
     assertTrue(Duration.ofNanos(System.nanoTime() - start).toSeconds() < 10, "stops at the timeout");
+  }
+
+  @Test
+  void withoutAnAccessClaudeCodeGetsNoTool() throws IOException {
+    List<String> command = withScript("true", Duration.ofSeconds(1)).command(folder, null);
+
+    assertEquals("", command.get(command.indexOf("--tools") + 1));
+    assertFalse(command.contains("--mcp-config"));
+    assertFalse(command.contains("--allowedTools"));
+  }
+
+  @Test
+  void withAnAccessClaudeCodeGetsOnlyTheDocumentToolPlusReadInTheFolderOfTheQuestion()
+      throws IOException {
+    Path question = folder.resolve("question");
+    DocumentAccess access =
+        new DocumentAccess("made-up-token", Set.of(1L), question, "http://127.0.0.1:1/mcp");
+
+    List<String> command = withScript("true", Duration.ofSeconds(1)).command(folder, access);
+
+    assertEquals("Read", command.get(command.indexOf("--tools") + 1));
+    assertEquals(
+        question.resolve("mcp.json").toString(), command.get(command.indexOf("--mcp-config") + 1));
+    int allowed = command.indexOf("--allowedTools");
+    assertEquals(
+        List.of(
+            "mcp__makemytaxes__read_document",
+            "Read(/" + question.resolve("documents") + "/**)"),
+        command.subList(allowed + 1, allowed + 3));
+    assertTrue(command.contains("--strict-mcp-config"));
+    assertFalse(String.join(" ", command).contains("made-up-token"), "the token is not on the command line");
+  }
+
+  @Test
+  void withAnAccessClaudeCodeStartsInTheFolderOfTheDocuments() throws Exception {
+    Path question = folder.resolve("question");
+    Files.createDirectories(question.resolve("documents"));
+    DocumentAccess access =
+        new DocumentAccess("made-up-token", Set.of(1L), question, "http://127.0.0.1:1/mcp");
+
+    assertEquals(
+        question.resolve("documents").toRealPath().toString(),
+        withScript("cat > /dev/null; pwd -P", Duration.ofSeconds(10)).ask("Made-up", access));
   }
 
   private ClaudeCodeAssistant withScript(String body, Duration timeout) throws IOException {

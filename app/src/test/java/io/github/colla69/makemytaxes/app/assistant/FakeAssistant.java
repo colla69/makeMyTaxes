@@ -46,6 +46,28 @@ public class FakeAssistant implements Assistant {
     this.answer = answer;
   }
 
+  /** A step that runs during a question with documents, as Claude Code would use the access. */
+  @FunctionalInterface
+  public interface DuringQuestion {
+    void run(DocumentAccess access) throws Exception;
+  }
+
+  private volatile DuringQuestion duringQuestion = access -> {};
+
+  @Override
+  public String ask(String prompt, DocumentAccess access) throws AssistantException {
+    try {
+      duringQuestion.run(access);
+    } catch (Exception e) {
+      throw new AssistantException("The step of the fake assistant failed.", e);
+    }
+    return ask(prompt);
+  }
+
+  public void setDuringQuestion(DuringQuestion duringQuestion) {
+    this.duringQuestion = duringQuestion;
+  }
+
   public synchronized List<String> prompts() {
     return List.copyOf(prompts);
   }

@@ -102,6 +102,69 @@ class DocumentFlowTest {
   }
 
   @Test
+  void anotherReturnCannotDeleteTheDocument() throws Exception {
+    upload("rechnung.pdf", MADE_UP_PDF, "INVOICE_OR_RECEIPT");
+    long documentId = onlyDocumentId();
+    long otherReturnId = newReturn();
+
+    mockMvc
+        .perform(post("/returns/" + otherReturnId + "/documents/" + documentId + "/delete"))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/returns/" + otherReturnId + "/documents").param("delete", "" + documentId))
+        .andExpect(status().isNotFound());
+
+    assertThat(documentCount()).isEqualTo(1);
+  }
+
+  @Test
+  void deletesTheDocumentWithItsBytesItsPayslipMonthAndAWaitingProposal() throws Exception {
+    mockMvc.perform(
+        multipart("/returns/" + returnId + "/payslips")
+            .file(new MockMultipartFile("file", "januar.pdf", "application/pdf", MADE_UP_PDF))
+            .param("month", "1"));
+    long documentId = onlyDocumentId();
+    jdbcClient
+        .sql(
+            "insert into field_proposal(tax_return_id, form_id, field_id, value, source,"
+                + " document_id) values (?, 'anlage-n', 'made-up', '1,00', 'Made-up', ?)")
+        .params(returnId, documentId)
+        .update();
+
+    mockMvc
+        .perform(post("/returns/" + returnId + "/documents/" + documentId + "/delete"))
+        .andExpect(status().is3xxRedirection());
+
+    assertThat(documentCount()).isZero();
+    assertThat(count("select count(*) from document_content where document_id = ?", documentId))
+        .isZero();
+    assertThat(count("select count(*) from payslip where document_id = ?", documentId)).isZero();
+    assertThat(count("select count(*) from field_proposal where document_id = ?", documentId))
+        .isZero();
+  }
+
+  @Test
+  void keepsADocumentThatAFormAnswerUsesAndNamesTheField() throws Exception {
+    upload("rechnung.pdf", MADE_UP_PDF, "INVOICE_OR_RECEIPT");
+    long documentId = onlyDocumentId();
+    jdbcClient
+        .sql(
+            "insert into form_answer(tax_return_id, form_id, field_id, value, document_id,"
+                + " own_statement) values (?, 'household-services', 'cleaning1-paidAmount', '100,00', ?, 0)")
+        .params(returnId, documentId)
+        .update();
+
+    mockMvc
+        .perform(post("/returns/" + returnId + "/documents/" + documentId + "/delete"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(containsString("<li>Haushaltsnahe Aufwendungen: Bezahlter Betrag (EUR)")));
+
+    assertThat(documentCount()).isEqualTo(1);
+  }
+
+  @Test
   void rejectsAFileThatIsNotPdfJpegOrPng() throws Exception {
     byte[] text = "made-up text".getBytes(StandardCharsets.US_ASCII);
     upload("notes.pdf", text, "OTHER")
@@ -172,6 +235,10 @@ class DocumentFlowTest {
         .param(returnId)
         .query(Long.class)
         .single();
+  }
+
+  private int count(String sql, long id) {
+    return jdbcClient.sql(sql).param(id).query(Integer.class).single();
   }
 
   private int documentCount() {

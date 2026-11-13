@@ -135,6 +135,66 @@ public class DocumentStore {
         .single();
   }
 
+  /** An expense that names the document as its evidence. */
+  public record ExpenseUse(LocalDate paidOn, String description) {}
+
+  /** A form answer whose value comes from the document. */
+  public record AnswerUse(String formId, String fieldId) {}
+
+  /** The entries of the return that use the document as their evidence. */
+  public record Uses(List<ExpenseUse> expenses, List<AnswerUse> answers) {
+
+    public boolean isEmpty() {
+      return expenses.isEmpty() && answers.isEmpty();
+    }
+  }
+
+  public Uses usesOf(long returnId, long documentId) {
+    List<ExpenseUse> expenses =
+        jdbc.sql(
+                "select paid_on, description from expense"
+                    + " where tax_return_id = ? and document_id = ? order by paid_on, id")
+            .params(returnId, documentId)
+            .query(
+                (row, rowNumber) ->
+                    new ExpenseUse(
+                        LocalDate.parse(row.getString("paid_on")), row.getString("description")))
+            .list();
+    List<AnswerUse> answers =
+        jdbc.sql(
+                "select form_id, field_id from form_answer"
+                    + " where tax_return_id = ? and document_id = ? order by form_id, field_id")
+            .params(returnId, documentId)
+            .query(
+                (row, rowNumber) ->
+                    new AnswerUse(row.getString("form_id"), row.getString("field_id")))
+            .list();
+    return new Uses(expenses, answers);
+  }
+
+  /**
+   * Deletes the document of the return and its bytes. The caller checks first that no entry uses
+   * it. A payslip month and a waiting proposal of the assistant go with the document, because they
+   * have no meaning without it. The return id is part of each condition, so one return cannot
+   * delete a document of another.
+   */
+  @Transactional
+  public void delete(long returnId, long documentId) {
+    if (find(returnId, documentId).isEmpty()) {
+      return;
+    }
+    jdbc.sql("delete from field_proposal where tax_return_id = ? and document_id = ?")
+        .params(returnId, documentId)
+        .update();
+    jdbc.sql("delete from payslip where tax_return_id = ? and document_id = ?")
+        .params(returnId, documentId)
+        .update();
+    jdbc.sql("delete from document_content where document_id = ?").param(documentId).update();
+    jdbc.sql("delete from document where id = ? and tax_return_id = ?")
+        .params(documentId, returnId)
+        .update();
+  }
+
   private static StoredDocument detailsOf(ResultSet row) throws SQLException {
     return new StoredDocument(
         row.getLong("id"),

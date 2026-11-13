@@ -99,12 +99,18 @@
       </section>
 
       <h2>Dokumente</h2>
+      <section th:if="${deleteError}" id="delete-error">
+        <p class="error" th:text="${deleteError}">Fehler</p>
+        <ul>
+          <li th:each="use : ${deleteUses}" th:text="${use}">Eintrag</li>
+        </ul>
+      </section>
       <table id="documents">
         <thead>
-          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th></tr>
+          <tr><th>Datei</th><th>Art</th><th>Größe</th><th>Hochgeladen am</th><th></th></tr>
         </thead>
         <tbody>
-          <tr th:each="row : ${rows}">
+          <tr th:each="row : ${rows}" th:data-document="${row.id}">
             <td>
               <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.id})}"
                  target="_blank" rel="noopener"
@@ -113,6 +119,20 @@
             <td th:text="${row.kind}">Art</td>
             <td class="amount" th:text="${row.size}">1 KB</td>
             <td th:text="${row.uploadedOn}">01.01.2022</td>
+            <td th:if="${confirmDelete != row.id}">
+              <form method="get" th:action="@{/returns/{r}/documents(r=${returnId})}">
+                <input type="hidden" name="delete" th:value="${row.id}">
+                <button>Löschen</button>
+              </form>
+            </td>
+            <td th:if="${confirmDelete == row.id}" class="confirm-delete">
+              <form method="post"
+                    th:action="@{/returns/{r}/documents/{d}/delete(r=${returnId},d=${row.id})}">
+                <span>Wirklich löschen?</span>
+                <button>Ja, löschen</button>
+                <a th:href="@{/returns/{r}/documents(r=${returnId})}">Abbrechen</a>
+              </form>
+            </td>
           </tr>
         </tbody>
       </table>

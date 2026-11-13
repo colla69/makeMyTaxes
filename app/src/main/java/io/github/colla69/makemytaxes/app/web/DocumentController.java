@@ -128,6 +128,21 @@ class DocumentController {
     return "documents";
   }
 
+  /** A panel in the page shows one document, so that the user stays on the list. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "preview")
+  String preview(@PathVariable long returnId, @RequestParam long preview, Model model) {
+    model.addAttribute("preview", Preview.of(storedDocument(returnId, preview)));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  record Preview(long id, String fileName, boolean image) {
+
+    static Preview of(StoredDocument stored) {
+      return new Preview(stored.id(), stored.fileName(), stored.mediaType().startsWith("image/"));
+    }
+  }
+
   /**
    * Deletes the document, unless an entry of the return uses it as its evidence. Then the page
    * names those entries, so that the user can change them first.

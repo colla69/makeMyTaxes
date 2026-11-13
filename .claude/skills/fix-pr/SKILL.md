@@ -38,9 +38,9 @@ The argument is the pull request number. Nobody answers while you run.
    `gh pr edit <number> --body-file <file>`. The body must describe the change as it is now. Use
    `gh pr edit` only for the body: do not change labels, the title, the base or the reviewers.
 4. Run only the test classes that cover your correction, and name each class:
-   `./mvnw -q -B test -Dtest=FirstTest,SecondTest -Dsurefire.failIfNoSpecifiedTests=false > target-test.log 2>&1`
+   `scripts/build.sh ./mvnw -q -B test -Dtest=FirstTest,SecondTest -Dsurefire.failIfNoSpecifiedTests=false > target-test.log 2>&1`
    Read only the failures, and delete the log before you commit. If no test covers the correction, run
-   `./mvnw -q -B -DskipTests test-compile`. If this step still fails after two serious attempts, stop
+   `scripts/build.sh ./mvnw -q -B -DskipTests test-compile`. If this step still fails after two serious attempts, stop
    without a push.
 5. Commit with Conventional Commits, and run `git push origin HEAD`. Do not change the history.
 

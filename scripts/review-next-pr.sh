@@ -15,16 +15,19 @@ MAX_ROUNDS=${REVIEWER_MAX_ROUNDS:-10}
 OWNER_ONLY='^(\.github/|\.githooks/|\.claude/|scripts/|pom\.xml$|.*/pom\.xml$|app/src/main/resources/application\.properties$|.*/LocalRequestFilter\.java$|.*/storage/(EncryptedDatabase|DatabaseConfiguration)\.java$)'
 
 source "$(dirname "$0")/agent-lib.sh"
-take_lock
+take_slot
 
 # The worker script adds needs-review to each new pull request, so needs-owner must also stop the review.
+lock_choice
 number=$(gh pr list --repo "$REPO" --state open --base dev --label needs-review --author "$OWNER" \
   --search "-label:needs-owner" --json number,isCrossRepository \
-  --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[0].number // empty')
+  --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[].number' |
+  while read -r candidate; do is_claimed "pr $candidate" || { echo "$candidate"; break; }; done || true)
 if [[ -z "$number" ]]; then
   echo "No pull request waits for a review."
   exit 0
 fi
+claim "pr $number"
 
 head=$(gh pr view "$number" --repo "$REPO" --json headRefOid --jq .headRefOid)
 
@@ -70,10 +73,10 @@ if [[ -n "$changed" ]]; then
   hand_to_owner "the owner reviews changes to these files: $(tr '\n' ' ' <<<"$changed")"
 fi
 
-worktree=$base/review
-git -C "$root" fetch -q origin dev "pull/$number/head"
+worktree=$base/review-$number
+git_locked -C "$root" fetch -q origin dev "pull/$number/head"
 prepare_worktree "$worktree" origin/dev
-trap 'remove_worktree "$worktree"' EXIT
+trap 'remove_worktree "$worktree"; release' EXIT
 
 # The hook can be skipped, so these scans run again here. They print no values.
 if ! (cd "$worktree" && scripts/privacy-scan.sh --history) >/dev/null 2>&1; then

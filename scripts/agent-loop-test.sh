@@ -8,7 +8,7 @@ source_root=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
-LOOP_SCRIPTS="agent-lib.sh agent-loop.sh work-next-issue.sh review-next-pr.sh fix-next-pr.sh label-merged-issues.sh update-pr-branches.sh"
+LOOP_SCRIPTS="agent-lib.sh agent-loop.sh agent-slot.sh build.sh work-next-issue.sh review-next-pr.sh fix-next-pr.sh label-merged-issues.sh update-pr-branches.sh"
 
 check() { # description, command...
   local description=$1
@@ -43,7 +43,20 @@ EOF
 echo "$*" >>"$FAKE/claude.log"
 if [[ -f "$FAKE/claude-action.sh" ]]; then source "$FAKE/claude-action.sh"; fi
 EOF
-  chmod +x "$case_dir/bin/gh" "$case_dir/bin/claude"
+  # Stands in for systemd-run: it notes the unit and runs the slot at once, with the given variables.
+  cat >"$case_dir/bin/fake-start" <<'EOF'
+#!/usr/bin/env bash
+variables=()
+while [[ "$1" == --* ]]; do
+  case "$1" in
+    --unit=*) echo "${1#--unit=}" >>"$FAKE/units.log" ;;
+    --setenv=*) variables+=("${1#--setenv=}") ;;
+  esac
+  shift
+done
+env "${variables[@]}" "$@"
+EOF
+  chmod +x "$case_dir/bin/gh" "$case_dir/bin/claude" "$case_dir/bin/fake-start"
 
   local script
   for script in $LOOP_SCRIPTS; do cp "$source_root/scripts/$script" "$repo/scripts/"; done
@@ -76,8 +89,20 @@ run() { # script, arguments...
   local script=$1
   shift
   FAKE=$case_dir PATH="$case_dir/bin:$PATH" XDG_CACHE_HOME=$case_dir/cache \
+    AGENT_START=$case_dir/bin/fake-start MAKEMYTAXES_LOOP_CONFIG=$case_dir/loop.conf \
     "$repo/scripts/$script" "$@" >"$case_dir/out.log" 2>&1
 }
+units() { sort "$case_dir/units.log" 2>/dev/null | tr '\n' ' '; }
+cache=makemytaxes-worker
+# Holds the lock of a slot in the background, as a slot that runs.
+hold_slot() { # slot
+  mkdir -p "$case_dir/cache/$cache"
+  flock "$case_dir/cache/$cache/slot-$1.lock" sleep 60 &
+  holders+=($!)
+  sleep 0.3
+}
+holders=()
+stop_holders() { kill "${holders[@]}" 2>/dev/null; wait 2>/dev/null; holders=(); }
 
 # A loop round with no work at all calls no Claude.
 new_case idle
@@ -87,6 +112,96 @@ EOF
 run agent-loop.sh
 check "an idle round calls no Claude" claude_never_ran
 check "an idle round deploys nothing" test ! -e "$case_dir/deploy.log"
+check "without a settings file, 2 reviewers and 2 workers start" \
+  test "$(units)" = "makemytaxes-review-1 makemytaxes-review-2 makemytaxes-work-1 makemytaxes-work-2 "
+
+# The settings file sets how many slots start.
+new_case settings
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+printf 'WORKERS=0\nREVIEWERS=1\n' >"$case_dir/loop.conf"
+run agent-loop.sh
+check "the settings file sets the number of slots" test "$(units)" = "makemytaxes-review-1 "
+
+# A slot that still runs is not started again.
+new_case busy-slot
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+hold_slot work-1
+run agent-loop.sh
+stop_holders
+check "a slot that runs is not started again" \
+  test "$(units)" = "makemytaxes-review-1 makemytaxes-review-2 makemytaxes-work-2 "
+
+# A pull request that another slot reviews is not taken. The next one is.
+new_case claimed-pr
+review_rules_two() {
+  cat >"$case_dir/rules.sh" <<'EOF'
+respond() {
+  case "$*" in
+    "pr list"*) printf '116\n117\n' ;;
+    "pr checks"*) echo pending ;;
+  esac
+}
+EOF
+}
+review_rules_two
+mkdir -p "$case_dir/cache/$cache/claims"
+echo "pr 116" >"$case_dir/cache/$cache/claims/review-9"
+hold_slot review-9
+run review-next-pr.sh
+stop_holders
+check "a review takes the pull request that no other slot has" logged "pr view 117"
+check "a review leaves the pull request of another slot" not_logged "pr view 116"
+check "a review removes its claim at the end" test "$(ls "$case_dir/cache/$cache/claims")" = review-9
+
+# An issue that another slot works on is not taken.
+new_case claimed-issue
+cat >"$case_dir/rules.sh" <<'EOF'
+respond() {
+  case "$*" in
+    "issue list"*) printf '119\n120\n' ;;
+    *dependencies/blocked_by*) echo 0 ;;
+    "issue view 120"*) echo true ;;
+    "pr list"*) printf 'issue-120\thttps://example.org/pull/130\n' ;;
+  esac
+}
+EOF
+mkdir -p "$case_dir/cache/$cache/claims"
+echo "issue 119" >"$case_dir/cache/$cache/claims/work-9"
+hold_slot work-9
+run work-next-issue.sh
+stop_holders
+check "a worker takes the issue that no other slot has" claude_ran "/work-issue 120"
+
+# A slot that stopped during its work leaves a claim. The next round removes it and its label.
+new_case stale-claim
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+mkdir -p "$case_dir/cache/$cache/claims"
+echo "issue 105" >"$case_dir/cache/$cache/claims/work-9"
+echo "issue 106" >"$case_dir/cache/$cache/claims/work-8"
+hold_slot work-8
+run agent-loop.sh
+stop_holders
+check "the claim of a stopped slot goes" test ! -e "$case_dir/cache/$cache/claims/work-9"
+check "the issue of a stopped slot loses in-progress" logged "issue edit 105 --repo colla69/makeMyTaxes --remove-label in-progress"
+check "the claim of a slot that runs stays" test -e "$case_dir/cache/$cache/claims/work-8"
+
+# A second build waits for the first, and the build script runs only Maven.
+new_case build-lock
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+printf '#!/usr/bin/env bash\necho built >>"$FAKE/build.log"\n' >"$repo/mvnw"
+chmod +x "$repo/mvnw"
+build() { (cd "$repo" && FAKE=$case_dir XDG_CACHE_HOME=$case_dir/cache timeout 2 scripts/build.sh "$@") >/dev/null 2>&1; }
+build ./mvnw -q
+check "a build runs when no other build runs" test "$(cat "$case_dir/build.log")" = built
+flock "$case_dir/cache/$cache/build.lock" sleep 60 &
+holders+=($!)
+sleep 0.3
+build ./mvnw -q
+status=$?
+stop_holders
+check "a build waits while another build runs" test "$status" -eq 124
+build rm -rf "$repo"
+check "the build script refuses a command other than Maven" test -d "$repo/scripts"
 
 # The worker names its branch issue-104-annexes. The script still finds the pull request.
 new_case branch-suffix

@@ -11,10 +11,50 @@ export GIT_CONFIG_COUNT=2
 export GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=
 export GIT_CONFIG_KEY_1=credential.helper GIT_CONFIG_VALUE_1='!gh auth git-credential'
 
-# One agent run at a time, so two runs cannot take the same work or pass the budget.
-take_lock() {
-  exec 9>"$base/lock"
-  flock -n 9 || { echo "Another agent run is active."; exit 0; }
+# A slot is one place for an agent run. The loop starts the slots review-1, work-1 and so on, and a run
+# by hand gets a slot of its own. A slot runs one script at a time.
+AGENT_SLOT=${AGENT_SLOT:-manual-$$}
+mkdir -p "$base/claims"
+
+take_lock() { # name
+  exec 9>"$base/$1.lock"
+  flock -n 9 || { echo "$1 is busy."; exit 0; }
+}
+take_slot() { take_lock "slot-$AGENT_SLOT"; }
+
+# Runs git while no other agent run changes the shared refs and worktrees of the main checkout.
+git_locked() { flock "$base/git.lock" git "$@"; }
+
+# Only one slot chooses work at a time. The lock holds from the choice until claim, or until the script ends.
+lock_choice() {
+  exec 7>"$base/choice.lock"
+  flock 7
+}
+
+# Notes the work of this slot, so that no other slot takes it. The note goes when the script ends.
+claim() { # "issue N" or "pr N"
+  echo "$1" >"$base/claims/$AGENT_SLOT"
+  trap release EXIT
+  flock -u 7
+}
+release() { rm -f "$base/claims/$AGENT_SLOT"; }
+is_claimed() { cat "$base"/claims/* 2>/dev/null | grep -qx "$1"; }
+
+# Removes the claim of a slot that stopped without its cleanup, for example after a kill.
+# The slot lock is free only when no run of that slot is active.
+release_stale_claims() {
+  local note slot kind number
+  for note in "$base"/claims/*; do
+    [[ -e "$note" ]] || continue
+    slot=${note##*/}
+    flock -n "$base/slot-$slot.lock" true || continue
+    read -r kind number <"$note"
+    if [[ "$kind" == issue ]]; then
+      gh issue edit "$number" --repo "$REPO" --remove-label in-progress >/dev/null || continue
+    fi
+    rm -f "$note"
+    echo "Slot $slot stopped during $kind $number. Its claim is gone."
+  done
 }
 
 # Creates a worktree of a ref, with the files that git ignores and that the checks need.
@@ -23,8 +63,8 @@ prepare_worktree() { # directory, git ref
     echo "The private terms are missing, so the privacy scan cannot check them." >&2
     exit 1
   fi
-  git -C "$root" worktree remove --force "$1" 2>/dev/null || true
-  git -C "$root" worktree add -q --detach "$1" "$2"
+  git_locked -C "$root" worktree remove --force "$1" 2>/dev/null || true
+  git_locked -C "$root" worktree add -q --detach "$1" "$2"
   cp -r "$root/.privacy" "$1/.privacy"
   if [[ -d "$root/law/text" ]]; then
     mkdir -p "$1/law"
@@ -51,6 +91,7 @@ next_unblocked_issue() { # label
   local candidate
   for candidate in $(gh issue list --repo "$REPO" --state open --label "$1" --author "$OWNER" --limit 100 \
     --search "-label:in-progress -label:needs-input" --json number --jq 'sort_by(.number) | .[].number'); do
+    is_claimed "issue $candidate" && continue
     if [[ "$(unfinished_blockers "$candidate")" == 0 ]]; then
       echo "$candidate"
       return
@@ -59,7 +100,7 @@ next_unblocked_issue() { # label
 }
 
 remove_worktree() { # directory
-  git -C "$root" worktree remove --force "$1" 2>/dev/null || true
+  git_locked -C "$root" worktree remove --force "$1" 2>/dev/null || true
 }
 
 set_pr_label() { # pull request, label to add, the rest are labels to remove
@@ -74,13 +115,20 @@ set_pr_label() { # pull request, label to add, the rest are labels to remove
 # Brings the local dev branch up to date and deploys origin/dev to the dev container once per commit.
 # It runs after the loop merges a pull request and at the start of each round, so a merge by the owner
 # also reaches the dev container. A failure here does not stop the round.
+# Two slots can merge at the same time, so only one of them syncs. The other one skips it.
 sync_dev() {
-  git -C "$root" fetch -q origin dev || { echo "The fetch of dev failed." >&2; return 0; }
+  (
+    flock -n 6 || exit 0
+    sync_dev_now
+  ) 6>"$base/dev.lock"
+}
+sync_dev_now() {
+  git_locked -C "$root" fetch -q origin dev || { echo "The fetch of dev failed." >&2; return 0; }
   local target
   target=$(git -C "$root" rev-parse origin/dev)
   if [[ "$(git -C "$root" rev-parse HEAD)" != "$target" ]]; then
     if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain)" ]]; then
-      git -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
+      git_locked -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
     else
       echo "The main checkout is not a clean dev branch, so it stays as it is." >&2
     fi

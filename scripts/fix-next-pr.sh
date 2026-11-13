@@ -9,23 +9,26 @@ EFFORT=${WORKER_EFFORT:-medium}
 BUDGET=${WORKER_BUDGET_USD:-10}
 
 source "$(dirname "$0")/agent-lib.sh"
-take_lock
+take_slot
 
+lock_choice
 number=$(gh pr list --repo "$REPO" --state open --base dev --label changes-requested --author "$OWNER" \
   --search "-label:needs-owner" --json number,isCrossRepository \
-  --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[0].number // empty')
+  --jq '[.[] | select(.isCrossRepository | not)] | sort_by(.number) | .[].number' |
+  while read -r candidate; do is_claimed "pr $candidate" || { echo "$candidate"; break; }; done || true)
 if [[ -z "$number" ]]; then
   echo "No pull request waits for corrections."
   exit 0
 fi
+claim "pr $number"
 
 branch=$(gh pr view "$number" --repo "$REPO" --json headRefName --jq .headRefName)
 head=$(gh pr view "$number" --repo "$REPO" --json headRefOid --jq .headRefOid)
 body=$(gh pr view "$number" --repo "$REPO" --json body --jq .body)
 worktree=$base/fix-$number
-git -C "$root" fetch -q origin "$branch"
+git_locked -C "$root" fetch -q origin "$branch"
 prepare_worktree "$worktree" "origin/$branch"
-git -C "$worktree" switch -q -C "$branch" "origin/$branch"
+git_locked -C "$worktree" switch -q -C "$branch" "origin/$branch"
 
 # The worker has internet access, as in scripts/work-next-issue.sh, to test a script against its real source.
 status=0
@@ -36,7 +39,7 @@ status=0
     --max-budget-usd "$BUDGET" \
     --permission-mode acceptEdits \
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Skill" "WebSearch" "WebFetch" \
-    "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
+    "Bash(scripts/build.sh ./mvnw -q -B test -Dtest=*)" "Bash(scripts/build.sh ./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
     "Bash(python3:*)" "Bash(claude -p:*)" \

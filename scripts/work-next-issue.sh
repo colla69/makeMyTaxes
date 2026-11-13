@@ -11,13 +11,19 @@ EFFORT=${WORKER_EFFORT:-medium}
 BUDGET=${WORKER_BUDGET_USD:-10}
 
 source "$(dirname "$0")/agent-lib.sh"
-take_lock
+take_slot
 
+lock_choice
 issue=${1:-$(next_unblocked_issue "$LABEL")}
 if [[ -z "$issue" ]]; then
   echo "No issue waits."
   exit 0
 fi
+if is_claimed "issue $issue"; then
+  echo "Another slot works on issue $issue."
+  exit 0
+fi
+claim "issue $issue"
 
 # The label is the guard: on a public repository, only the owner can set it.
 labelled=$(gh issue view "$issue" --repo "$REPO" --json labels,author \
@@ -29,9 +35,9 @@ fi
 
 branch=issue-$issue
 worktree=$base/$branch
-git -C "$root" fetch -q origin
+git_locked -C "$root" fetch -q origin
 prepare_worktree "$worktree" origin/dev
-git -C "$worktree" switch -q -C "$branch"
+git_locked -C "$worktree" switch -q -C "$branch"
 
 gh issue edit "$issue" --repo "$REPO" --add-label in-progress >/dev/null
 
@@ -49,7 +55,7 @@ status=0
     --max-budget-usd "$BUDGET" \
     --permission-mode acceptEdits \
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Agent" "Skill" "WebSearch" "WebFetch" \
-    "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
+    "Bash(scripts/build.sh ./mvnw -q -B test -Dtest=*)" "Bash(scripts/build.sh ./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
     "Bash(python3:*)" "Bash(claude -p:*)" \

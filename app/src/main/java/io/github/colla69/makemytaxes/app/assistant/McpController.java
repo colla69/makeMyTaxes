@@ -47,16 +47,19 @@ class McpController {
               List.of("document_id")));
 
   private static final List<Map<String, Object>> TOOLS =
-      Stream.concat(Stream.of(TOOL), LawTools.DEFINITIONS.stream()).toList();
+      Stream.concat(Stream.of(TOOL, FormTools.DEFINITION), LawTools.DEFINITIONS.stream()).toList();
 
   private final QuestionTokens tokens;
   private final DocumentStore documents;
   private final LawTools lawTools;
+  private final FormTools formTools;
 
-  McpController(QuestionTokens tokens, DocumentStore documents, LawTools lawTools) {
+  McpController(
+      QuestionTokens tokens, DocumentStore documents, LawTools lawTools, FormTools formTools) {
     this.tokens = tokens;
     this.documents = documents;
     this.lawTools = lawTools;
+    this.formTools = formTools;
   }
 
   /** The name of a tool of this server in the rules of Claude Code. */
@@ -104,6 +107,9 @@ class McpController {
     Object name = params.get("name");
     if (name instanceof String tool && LawTools.NAMES.contains(tool)) {
       return lawTools.call(access, tool, asMap(params.get("arguments")));
+    }
+    if (FormTools.READ_FORMS.equals(name)) {
+      return formTools.call(access);
     }
     if (!READ_DOCUMENT.equals(name)) {
       return toolText("Dieses Werkzeug gibt es nicht.", true);

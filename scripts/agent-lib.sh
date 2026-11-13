@@ -70,3 +70,24 @@ set_pr_label() { # pull request, label to add, the rest are labels to remove
   done
   gh pr edit "$pull_request" --repo "$REPO" --add-label "$add" >/dev/null
 }
+
+# Brings the local dev branch up to date and deploys origin/dev to the dev container once per commit.
+# It runs after the loop merges a pull request and at the start of each round, so a merge by the owner
+# also reaches the dev container. A failure here does not stop the round.
+sync_dev() {
+  git -C "$root" fetch -q origin dev || { echo "The fetch of dev failed." >&2; return 0; }
+  local target
+  target=$(git -C "$root" rev-parse origin/dev)
+  if [[ "$(git -C "$root" rev-parse HEAD)" != "$target" ]]; then
+    if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain)" ]]; then
+      git -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
+    else
+      echo "The main checkout is not a clean dev branch, so it stays as it is." >&2
+    fi
+  fi
+  # The commit is noted even when the deploy fails, so a broken deploy does not run every minute.
+  if [[ "$(cat "$base/dev-deployed" 2>/dev/null)" != "$target" ]]; then
+    echo "$target" >"$base/dev-deployed"
+    "$root/scripts/deploy-dev.sh" || echo "The dev container did not update." >&2
+  fi
+}

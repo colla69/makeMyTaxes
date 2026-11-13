@@ -59,7 +59,15 @@ status=0
 ) || status=$?
 
 gh issue edit "$issue" --repo "$REPO" --remove-label in-progress --remove-label "$LABEL" >/dev/null
-pull_request=$(gh pr list --repo "$REPO" --head "$branch" --state open --json url --jq '.[0].url // empty')
+# The worker can name its branch issue-N-something, for example when an old branch issue-N exists.
+pull_request=
+while IFS=$'\t' read -r head url; do
+  if [[ "$head" == "$branch" || "$head" == "$branch"-* ]]; then
+    pull_request=$url
+    break
+  fi
+done < <(gh pr list --repo "$REPO" --state open --base dev --author "$OWNER" --limit 100 \
+  --json headRefName,url --jq '.[] | [.headRefName, .url] | @tsv')
 if [[ -n "$pull_request" ]]; then
   gh pr edit "$pull_request" --repo "$REPO" --add-label needs-review >/dev/null
   echo "Issue $issue: $pull_request"

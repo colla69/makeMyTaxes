@@ -41,6 +41,7 @@ owner's machine.
 | Read a guideline or note for a tax year | `scripts/handbook.sh 2026 "R 9.13 LStR"` |
 | Test the handbook parsing | `scripts/fetch-handbooks-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
+| Test the loop scripts | `scripts/agent-loop-test.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
 | Build origin/dev and start the dev container | `scripts/deploy-dev.sh` |

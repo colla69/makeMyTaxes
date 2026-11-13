@@ -6,6 +6,8 @@
 set -uo pipefail
 
 scripts=$(dirname "$0")
+# A merge by the owner reaches the local dev branch and the dev container here.
+(source "$scripts/agent-lib.sh" && sync_dev)
 "$scripts/update-pr-branches.sh"
 "$scripts/review-next-pr.sh"
 "$scripts/label-merged-issues.sh"

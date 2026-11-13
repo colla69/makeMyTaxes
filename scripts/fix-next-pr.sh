@@ -39,6 +39,7 @@ status=0
     "Bash(./mvnw -q -B test -Dtest=*)" "Bash(./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
     "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
+    "Bash(python3:*)" "Bash(claude -p:*)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
     "Bash(git fetch origin dev)" "Bash(git merge origin/dev:*)" \

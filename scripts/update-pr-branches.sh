@@ -8,7 +8,7 @@
 set -euo pipefail
 
 source "$(dirname "$0")/agent-lib.sh"
-take_lock
+take_lock housekeeping
 
 prs=$(gh pr list --repo "$REPO" --state open --base dev --author "$OWNER" \
   --search "-label:needs-owner" --json number,isCrossRepository,headRefName,mergeable,labels \

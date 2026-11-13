@@ -17,8 +17,14 @@ if [[ ! -f deploy/.env.dev ]]; then
 fi
 
 # The build context is the commit, not the folder. See scripts/deploy-live.sh.
+# It waits for the build lock of scripts/build.sh, so it never runs at the same time as a worker build.
+lock=${XDG_CACHE_HOME:-$HOME/.cache}/makemytaxes-worker/build.lock
+mkdir -p "$(dirname "$lock")"
+exec 8>"$lock"
+flock 8
 git archive --format=tar "$commit" |
   docker build --pull -t makemytaxes:dev -f deploy/Dockerfile -
+flock -u 8
 
 MAKEMYTAXES_UID=$(id -u) MAKEMYTAXES_GID=$(id -g) docker compose \
   -f deploy/compose-dev.yaml --env-file deploy/.env.dev up -d

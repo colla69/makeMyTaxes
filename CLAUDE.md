@@ -47,6 +47,7 @@ owner's machine.
 | Read a letter or a form instruction | `scripts/guidance.sh show bmf-35a-2022` |
 | Test the guidance script | `scripts/guidance-test.sh` |
 | Run one round of the working loop | `scripts/agent-loop.sh` |
+| Run a Maven command, one build at a time | `scripts/build.sh ./mvnw -q -B test -Dtest=TaxYearTest` |
 | Test the loop scripts | `scripts/agent-loop-test.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
@@ -98,12 +99,23 @@ The owner is the product owner: the owner writes issues, tries `dev` and calls t
 Before the review, `scripts/update-pr-branches.sh` merges `dev` into each pull request branch that
 is behind. A pull request with a merge conflict goes back to the fixer.
 
-`scripts/agent-loop.sh` runs one round of steps 2 to 4 and the labelling in step 6. Each step stops before any call to Claude if
-it has no work.
+`scripts/agent-loop.sh` runs one round: it syncs `dev`, labels merged issues and updates the pull
+request branches. Then it starts each free slot as its own systemd unit, `makemytaxes-review-<n>`
+and `makemytaxes-work-<n>`. A review slot reviews one pull request. A work slot fixes one pull
+request, or else works on one issue. Two slots never take the same issue or pull request. Each step
+stops before any call to Claude if it has no work.
+
+The owner sets the number of slots in `~/.config/makemytaxes/loop.conf`, with the lines
+`WORKERS=2` and `REVIEWERS=2`. These are the defaults. A change takes effect in the next round, and
+`0` pauses that kind of slot. Slots that run keep running.
+
+Builds run one at a time: the slots and `scripts/deploy-dev.sh` wait for each other through
+`scripts/build.sh`, which runs only `./mvnw`.
 
 The owner can run `scripts/install-agent-timer.sh` to start a round every minute on this machine.
-To see the logs, run `journalctl --user -u makemytaxes-agent`. To stop the timer, run
-`systemctl --user disable --now makemytaxes-agent.timer`. The timer reads the token for unattended
+To see the logs, run `journalctl --user -u 'makemytaxes-*'`. To stop the timer, run
+`systemctl --user disable --now makemytaxes-agent.timer`, and to stop the slots that run,
+`systemctl --user stop 'makemytaxes-review-*' 'makemytaxes-work-*'`. The timer reads the token for unattended
 runs from `~/.config/makemytaxes/agent.env`, which must never enter the repository.
 
 A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do

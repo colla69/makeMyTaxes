@@ -43,9 +43,9 @@ pull request. The owner reviews and merges.
    - A tax rule gets a test that cites its provision and the date of the version. Read the law with
      `scripts/law.sh` first.
 5. Run only the test classes that cover your change, and name each class:
-   `./mvnw -q -B test -Dtest=FirstTest,SecondTest -Dsurefire.failIfNoSpecifiedTests=false > target-test.log 2>&1`
+   `scripts/build.sh ./mvnw -q -B test -Dtest=FirstTest,SecondTest -Dsurefire.failIfNoSpecifiedTests=false > target-test.log 2>&1`
    Read only the failures, and delete the log before you commit. If no test covers the change, run
-   `./mvnw -q -B -DskipTests test-compile`. If this step still fails after two serious attempts,
+   `scripts/build.sh ./mvnw -q -B -DskipTests test-compile`. If this step still fails after two serious attempts,
    comment on the issue with the failure, and stop.
 6. If the change touches a tax rule, a year pack, a deadline or a legal citation, start the
    `tax-law-checker` agent with the diff. Fix each `WRONG`. Do not continue with a `NO SOURCE`:

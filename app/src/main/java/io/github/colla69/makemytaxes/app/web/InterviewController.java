@@ -22,6 +22,7 @@ import io.github.colla69.makemytaxes.core.form.Interview.Type;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.form.MainForm;
 import io.github.colla69.makemytaxes.core.form.Sections;
+import io.github.colla69.makemytaxes.core.form.Source;
 import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
 import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import jakarta.servlet.http.HttpServletRequest;
@@ -649,13 +650,17 @@ class InterviewController {
   }
 
   /**
-   * The source of the saved value of a field question: "Beleg: " and the file name, or "eigene
-   * Angabe". It is null for a question that is not a field, or for an empty field.
+   * The source of the saved value of a field question: "Beleg: " and the file name, "Beleg fehlt"
+   * after the user deleted its document, or "eigene Angabe". It is null for a question that is not
+   * a field, or for an empty field.
    */
   private String sourceOf(long returnId, Question question) {
     if (question.type() != Type.FIELD
         || forms.answers(returnId, question.formId()).text(question.id()).isEmpty()) {
       return null;
+    }
+    if (forms.answersWithoutEvidence(returnId, question.formId()).contains(question.id())) {
+      return new Source.Missing(null).label();
     }
     Long document = forms.answerDocuments(returnId, question.formId()).get(question.id());
     return Optional.ofNullable(document)

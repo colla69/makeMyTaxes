@@ -6,9 +6,11 @@ import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.MainForm;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,7 +110,27 @@ public class FormStore {
     if (!answer.value().equals(personalDetails(returnId, answer.formId()).get(answer.fieldId()))) {
       insert(
           new FormAnswer(returnId, answer.formId(), answer.fieldId(), answer.value()),
-          new AnswerSource(answer.value(), answer.documentId(), true));
+          new AnswerSource(answer.value(), Proof.of(answer.documentId()), true));
+    }
+  }
+
+  /**
+   * The evidence of a saved answer: a document, the user's own statement, or none. An answer has no
+   * evidence after the user deleted its document anyway.
+   *
+   * @param documentId the document, or null
+   * @param ownStatement true if the user stated the value
+   */
+  private record Proof(Long documentId, boolean ownStatement) {
+
+    /** A document, or else the user's own statement. */
+    static Proof of(Long documentId) {
+      return new Proof(documentId, documentId == null);
+    }
+
+    /** True if the value has no evidence, because the user deleted its document. */
+    boolean missing() {
+      return documentId == null && !ownStatement;
     }
   }
 
@@ -116,41 +138,44 @@ public class FormStore {
    * The source of a saved answer.
    *
    * @param value the value that the source belongs to
-   * @param documentId the document, or null for the user's own statement
+   * @param proof the evidence of the value
    * @param confirmed true if the user confirmed this source for this value
    */
-  private record AnswerSource(String value, Long documentId, boolean confirmed) {}
+  private record AnswerSource(String value, Proof proof, boolean confirmed) {}
 
   /**
    * A value keeps the source that the user confirmed for it. Otherwise the source of a value of a
-   * certificate is the certificate of its employer, if it has one.
+   * certificate is the certificate of its employer, if it has one. A value that lost its document
+   * keeps that state until the user names a new certificate for it.
    */
   private static AnswerSource sourceOf(
       FormAnswer answer, Answers interview, Map<String, AnswerSource> confirmed) {
-    AnswerSource kept = confirmed.get(answer.fieldId());
-    if (kept != null && kept.value().equals(answer.value())) {
-      return kept;
-    }
     OptionalLong document =
         CERTIFICATE_FORMS.contains(answer.formId())
             ? Interview.certificateDocument(interview, answer.fieldId())
             : OptionalLong.empty();
+    AnswerSource kept = confirmed.get(answer.fieldId());
+    boolean replacedByCertificate = kept != null && kept.proof().missing() && document.isPresent();
+    if (kept != null && kept.value().equals(answer.value()) && !replacedByCertificate) {
+      return kept;
+    }
     return new AnswerSource(
-        answer.value(), document.isPresent() ? document.getAsLong() : null, false);
+        answer.value(), Proof.of(document.isPresent() ? document.getAsLong() : null), false);
   }
 
   /** The confirmed sources of the saved answers of the form, by field. */
   private Map<String, AnswerSource> confirmedSources(long returnId, String formId) {
     Map<String, AnswerSource> sources = new LinkedHashMap<>();
     jdbc.sql(
-            "select field_id, value, document_id from form_answer"
+            "select field_id, value, document_id, own_statement from form_answer"
                 + " where tax_return_id = ? and form_id = ? and confirmed_source = 1")
         .params(returnId, formId)
         .query(row -> {
           long document = row.getLong("document_id");
+          var proof =
+              new Proof(row.wasNull() ? null : document, row.getInt("own_statement") == 1);
           sources.put(
-              row.getString("field_id"),
-              new AnswerSource(row.getString("value"), row.wasNull() ? null : document, true));
+              row.getString("field_id"), new AnswerSource(row.getString("value"), proof, true));
         });
     return sources;
   }
@@ -165,8 +190,8 @@ public class FormStore {
             answer.formId(),
             answer.fieldId(),
             answer.value(),
-            source.documentId(),
-            source.documentId() == null ? 1 : 0,
+            source.proof().documentId(),
+            source.proof().ownStatement() ? 1 : 0,
             source.confirmed() ? 1 : 0)
         .update();
   }
@@ -185,6 +210,20 @@ public class FormStore {
           documents.put(row.getString("field_id"), row.getLong("document_id"));
         });
     return documents;
+  }
+
+  /**
+   * The fields of the saved answers of the form that have no evidence, because the user deleted
+   * their document anyway. Each keeps its value and this state while the value stays the same.
+   */
+  public Set<String> answersWithoutEvidence(long returnId, String formId) {
+    return new LinkedHashSet<>(
+        jdbc.sql(
+                "select field_id from form_answer where tax_return_id = ? and form_id = ?"
+                    + " and document_id is null and own_statement = 0")
+            .params(returnId, formId)
+            .query(String.class)
+            .list());
   }
 
   /** The personal details of the person of the return. Only the main form has them. */

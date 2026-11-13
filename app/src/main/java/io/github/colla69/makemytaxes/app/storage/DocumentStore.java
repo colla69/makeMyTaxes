@@ -1,6 +1,7 @@
 package io.github.colla69.makemytaxes.app.storage;
 
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.form.Interview;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
@@ -173,16 +174,37 @@ public class DocumentStore {
   }
 
   /**
-   * Deletes the document of the return and its bytes. The caller checks first that no entry uses
-   * it. A payslip month and a waiting proposal of the assistant go with the document, because they
-   * have no meaning without it. The return id is part of each condition, so one return cannot
-   * delete a document of another.
+   * Deletes the document of the return and its bytes. The caller asks the user first if an entry
+   * uses it. Such an entry keeps its value and loses its evidence, so the app shows that its
+   * evidence is missing. A form answer keeps this state while its value stays the same, so it is a
+   * confirmed source. A payslip month and a waiting proposal of the assistant go with the
+   * document, because they have no meaning without it. The return id is part of each condition, so
+   * one return cannot delete a document of another.
    */
   @Transactional
   public void delete(long returnId, long documentId) {
     if (find(returnId, documentId).isEmpty()) {
       return;
     }
+    jdbc.sql("update expense set document_id = null where tax_return_id = ? and document_id = ?")
+        .params(returnId, documentId)
+        .update();
+    jdbc.sql(
+            "update form_answer set document_id = null, own_statement = 0, confirmed_source = 1"
+                + " where tax_return_id = ? and document_id = ?")
+        .params(returnId, documentId)
+        .update();
+    // The interview names the certificate of an employer by its id, so it forgets the certificate.
+    jdbc.sql(
+            "delete from form_answer where tax_return_id = ? and form_id = ? and value = ?"
+                + " and (field_id = ? or field_id like ?)")
+        .params(
+            returnId,
+            Interview.ID,
+            String.valueOf(documentId),
+            Interview.WAGE_CERTIFICATE_DOCUMENT,
+            "%-" + Interview.WAGE_CERTIFICATE_DOCUMENT)
+        .update();
     jdbc.sql("delete from field_proposal where tax_return_id = ? and document_id = ?")
         .params(returnId, documentId)
         .update();

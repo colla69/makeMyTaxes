@@ -11,6 +11,7 @@ import com.microsoft.playwright.Download;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.FilePayload;
 import com.microsoft.playwright.options.FormData;
 import com.microsoft.playwright.options.RequestOptions;
@@ -84,6 +85,32 @@ class ReviewSourceBrowserTest {
         .hasAttribute("href", "/returns/" + returnId + "/documents/" + documentId);
 
     assertThat(row(page, "einfache Entfernung").locator(".source")).hasText("eigene Angabe");
+  }
+
+  @Test
+  void aValueWhoseCertificateIsDeletedAnywayShowsThatItsEvidenceIsMissing() {
+    Page page = browser.newPage();
+    String returnUrl = returnWithCertificateAndOwnStatement(page);
+    page.navigate(returnUrl + "/documents");
+    page.locator("#documents tbody tr")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Löschen"))
+        .click();
+    Locator dialog = page.getByRole(AriaRole.DIALOG);
+    assertThat(dialog).isVisible();
+    assertThat(dialog.getByRole(AriaRole.LINK).filter(
+            new Locator.FilterOptions().setHasText("Bruttoarbeitslohn")))
+        .hasAttribute("href", "/returns/" + returnId + "/forms/" + AnlageN.ID);
+    dialog
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Trotzdem löschen"))
+        .click();
+    assertThat(page.locator("#documents tbody tr")).hasCount(0);
+
+    page.navigate(returnUrl + "/review");
+    Locator grossWage = row(page, "Bruttoarbeitslohn");
+    assertThat(grossWage).containsText("30.000,00");
+    assertThat(grossWage.locator(".source")).hasText("Beleg fehlt");
+    page.navigate(returnUrl + "/interview/questions/grossWage");
+    assertThat(page.locator("p.source")).hasText("Quelle: Beleg fehlt");
   }
 
   @Test

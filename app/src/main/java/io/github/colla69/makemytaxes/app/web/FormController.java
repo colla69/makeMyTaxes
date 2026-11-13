@@ -387,7 +387,10 @@ class FormController {
     for (FormModule form : Forms.of(taxYear)) {
       if (!form.id().equals(FilingCheckForm.ID)) {
         Answers answers = forms.answers(returnId, form.id());
-        Map<String, Long> answerDocuments = forms.answerDocuments(returnId, form.id());
+        AnswerEvidence evidence =
+            new AnswerEvidence(
+                forms.answerDocuments(returnId, form.id()),
+                forms.answersWithoutEvidence(returnId, form.id()));
         Map<String, List<LineView>> bySection = new LinkedHashMap<>();
         for (ReviewLine line : form.review(answers, stored)) {
           bySection
@@ -397,7 +400,7 @@ class FormController {
                       line.line(),
                       line.label(),
                       line.value(),
-                      view.apply(resolve(line.source(), answerDocuments, byId))));
+                      view.apply(resolve(line.source(), evidence, byId))));
         }
         List<SectionView> sections =
             bySection.entrySet().stream()
@@ -423,15 +426,27 @@ class FormController {
   }
 
   /**
-   * The source of a saved answer is its document, if the storage has one. Otherwise the user
-   * stated the value, as for a personal detail of the main form.
+   * The evidence of the saved answers of one form, by field.
+   *
+   * @param documents the document of each answer that comes from a document
+   * @param missing the answers that lost their document
+   */
+  private record AnswerEvidence(Map<String, Long> documents, Set<String> missing) {}
+
+  /**
+   * The source of a saved answer is its document, if the storage has one. An answer that lost its
+   * document shows that its evidence is missing. Otherwise the user stated the value, as for a
+   * personal detail of the main form.
    */
   private static Source resolve(
-      Source source, Map<String, Long> answerDocuments, Map<Long, DocumentRef> byId) {
+      Source source, AnswerEvidence evidence, Map<Long, DocumentRef> byId) {
     if (!(source instanceof Source.Answer answer)) {
       return source;
     }
-    DocumentRef document = byId.get(answerDocuments.get(answer.fieldId()));
+    if (evidence.missing().contains(answer.fieldId())) {
+      return new Source.Missing(null);
+    }
+    DocumentRef document = byId.get(evidence.documents().get(answer.fieldId()));
     return document == null ? new Source.OwnStatement() : new Source.FromDocument(document);
   }
 

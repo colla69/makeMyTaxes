@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,8 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.colla69.makemytaxes.app.storage.FormStore;
+import io.github.colla69.makemytaxes.core.form.AnlageN;
+import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.Interview;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +43,7 @@ class DocumentFlowTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcClient jdbcClient;
+  @Autowired private FormStore forms;
 
   private long returnId;
 
@@ -145,6 +152,106 @@ class DocumentFlowTest {
 
   @Test
   void keepsADocumentThatAFormAnswerUsesAndNamesTheField() throws Exception {
+    long documentId = aDocumentThatAFormAnswerUses();
+    String popupLink =
+        "<a href=\"/returns/"
+            + returnId
+            + "/forms/household-services\">Haushaltsnahe Aufwendungen: Bezahlter Betrag (EUR)</a>";
+
+    mockMvc
+        .perform(get("/returns/" + returnId + "/documents").param("delete", "" + documentId))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("<dialog id=\"delete-dialog\"")))
+        .andExpect(content().string(containsString(popupLink)));
+    mockMvc
+        .perform(post("/returns/" + returnId + "/documents/" + documentId + "/delete"))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString(popupLink)));
+
+    assertThat(documentCount()).isEqualTo(1);
+  }
+
+  @Test
+  void deleteAnywayKeepsTheFormAnswerWithoutEvidenceAlsoAfterTheFormIsSavedAgain()
+      throws Exception {
+    long documentId = aDocumentThatAFormAnswerUses();
+    mockMvc
+        .perform(get("/returns/" + returnId + "/review"))
+        .andExpect(content().string(not(containsString("Beleg fehlt"))));
+
+    mockMvc
+        .perform(
+            post("/returns/" + returnId + "/documents/" + documentId + "/delete")
+                .param("anyway", "true"))
+        .andExpect(status().is3xxRedirection());
+    forms.save(returnId, "household-services", forms.answers(returnId, "household-services"));
+
+    assertThat(documentCount()).isZero();
+    assertThat(forms.answers(returnId, "household-services").text("cleaning1-paidAmount"))
+        .isEqualTo("100,00");
+    assertThat(forms.answersWithoutEvidence(returnId, "household-services"))
+        .containsExactly("cleaning1-paidAmount");
+    mockMvc
+        .perform(get("/returns/" + returnId + "/review"))
+        .andExpect(content().string(containsString("Beleg fehlt")));
+  }
+
+  @Test
+  void aNewValueOfAnAnswerWithoutEvidenceIsTheOwnStatementOfTheUser() throws Exception {
+    long documentId = aDocumentThatAFormAnswerUses();
+    mockMvc.perform(
+        post("/returns/" + returnId + "/documents/" + documentId + "/delete")
+            .param("anyway", "true"));
+
+    forms.saveAnswer(returnId, "household-services", "cleaning1-paidAmount", "90,00");
+
+    assertThat(forms.answersWithoutEvidence(returnId, "household-services")).isEmpty();
+  }
+
+  @Test
+  void afterACertificateIsDeletedAnywayTheFormsSaveAndANewCertificateIsTheEvidenceAgain()
+      throws Exception {
+    upload("lohnsteuer.pdf", MADE_UP_PDF, "WAGE_TAX_CERTIFICATE");
+    long oldCertificate = onlyDocumentId();
+    nameTheCertificate(oldCertificate);
+    forms.save(returnId, AnlageN.ID, new Answers(Map.of("grossWage", "30.000,00")));
+    assertThat(forms.answerDocuments(returnId, AnlageN.ID))
+        .containsEntry("grossWage", oldCertificate);
+
+    mockMvc
+        .perform(
+            post("/returns/" + returnId + "/documents/" + oldCertificate + "/delete")
+                .param("anyway", "true"))
+        .andExpect(status().is3xxRedirection());
+    forms.save(returnId, Interview.ID, forms.answers(returnId, Interview.ID));
+    forms.save(returnId, AnlageN.ID, forms.answers(returnId, AnlageN.ID));
+
+    assertThat(forms.answers(returnId, Interview.ID).text(Interview.WAGE_CERTIFICATE_DOCUMENT))
+        .isEmpty();
+    assertThat(forms.answersWithoutEvidence(returnId, AnlageN.ID)).containsExactly("grossWage");
+
+    upload("lohnsteuer-neu.pdf", MADE_UP_PDF, "WAGE_TAX_CERTIFICATE");
+    long newCertificate = onlyDocumentId();
+    nameTheCertificate(newCertificate);
+
+    assertThat(forms.answerDocuments(returnId, AnlageN.ID))
+        .containsEntry("grossWage", newCertificate);
+    assertThat(forms.answersWithoutEvidence(returnId, AnlageN.ID)).isEmpty();
+  }
+
+  private void nameTheCertificate(long documentId) {
+    forms.save(
+        returnId,
+        Interview.ID,
+        new Answers(
+            Map.of(
+                Interview.WAGE_CERTIFICATE,
+                Interview.YES,
+                Interview.WAGE_CERTIFICATE_DOCUMENT,
+                String.valueOf(documentId))));
+  }
+
+  private long aDocumentThatAFormAnswerUses() throws Exception {
     upload("rechnung.pdf", MADE_UP_PDF, "INVOICE_OR_RECEIPT");
     long documentId = onlyDocumentId();
     jdbcClient
@@ -153,15 +260,7 @@ class DocumentFlowTest {
                 + " own_statement) values (?, 'household-services', 'cleaning1-paidAmount', '100,00', ?, 0)")
         .params(returnId, documentId)
         .update();
-
-    mockMvc
-        .perform(post("/returns/" + returnId + "/documents/" + documentId + "/delete"))
-        .andExpect(status().isOk())
-        .andExpect(
-            content()
-                .string(containsString("<li>Haushaltsnahe Aufwendungen: Bezahlter Betrag (EUR)")));
-
-    assertThat(documentCount()).isEqualTo(1);
+    return documentId;
   }
 
   @Test

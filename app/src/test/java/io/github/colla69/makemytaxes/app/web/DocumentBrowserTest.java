@@ -127,8 +127,46 @@ class DocumentBrowserTest {
   }
 
   @Test
-  void keepsADocumentThatAnExpenseUsesAndNamesTheExpense() throws IOException {
+  void aPopupNamesTheExpenseOfADocumentAndCancelKeepsTheDocument() throws IOException {
     Page page = browser.newPage();
+    String documentsUrl = openADocumentThatAnExpenseUses(page);
+
+    Locator dialog = clickDeleteOfTheOnlyDocument(page);
+    assertThat(dialog).isVisible();
+    assertThat(dialog.getByRole(AriaRole.LINK)).hasText("Ausgabe vom 03.02.2022: Made-up cable");
+    String expensesPath =
+        documentsUrl.substring(documentsUrl.indexOf("/returns/"), documentsUrl.lastIndexOf('/'));
+    assertThat(dialog.getByRole(AriaRole.LINK)).hasAttribute("href", expensesPath);
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Abbrechen")).click();
+
+    assertThat(dialog).not().isVisible();
+    page.navigate(documentsUrl);
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
+    assertThat(page.locator("#documents")).containsText("made-up-invoice.png");
+  }
+
+  @Test
+  void deleteAnywayKeepsTheExpenseAndShowsThatItsEvidenceIsMissing() throws IOException {
+    Page page = browser.newPage();
+    String documentsUrl = openADocumentThatAnExpenseUses(page);
+
+    Locator dialog = clickDeleteOfTheOnlyDocument(page);
+    dialog
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Trotzdem löschen"))
+        .click();
+
+    assertThat(page.locator("#documents tbody tr")).hasCount(0);
+    page.navigate(documentsUrl.substring(0, documentsUrl.lastIndexOf('/')));
+    Locator expense = page.locator("#expenses tbody tr");
+    assertThat(expense).hasCount(1);
+    assertThat(expense).containsText("10,00");
+    assertThat(expense).containsText("Made-up cable");
+    assertThat(expense).containsText("Beleg fehlt");
+    assertThat(expense).not().containsText("made-up-invoice.png");
+  }
+
+  /** Returns the address of the documents page. */
+  private String openADocumentThatAnExpenseUses(Page page) throws IOException {
     openTheDocumentsOfANewReturn(page);
     String documentsUrl = page.url();
     uploadReceipt(page, "made-up-invoice.png");
@@ -139,16 +177,16 @@ class DocumentBrowserTest {
     page.getByLabel("Beschreibung").fill("Made-up cable");
     page.getByLabel("Beschreibung").press("Enter");
     assertThat(page.locator("#expenses tbody tr")).hasCount(1);
-
+    assertThat(page.locator("#expenses tbody tr")).not().containsText("Beleg fehlt");
     page.navigate(documentsUrl);
-    Locator row = page.locator("#documents tbody tr");
-    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Löschen")).click();
-    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ja, löschen")).click();
+    return documentsUrl;
+  }
 
-    assertThat(page.locator("#delete-error"))
-        .containsText("Ausgabe vom 03.02.2022: Made-up cable");
-    assertThat(page.locator("#documents tbody tr")).hasCount(1);
-    assertThat(page.locator("#documents")).containsText("made-up-invoice.png");
+  private static Locator clickDeleteOfTheOnlyDocument(Page page) {
+    page.locator("#documents tbody tr")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Löschen"))
+        .click();
+    return page.getByRole(AriaRole.DIALOG);
   }
 
   private static void uploadReceipt(Page page, String fileName) throws IOException {

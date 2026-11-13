@@ -41,6 +41,8 @@ jobs:
         run: scripts/privacy-scan-test.sh
       - name: Test the deploy script
         run: scripts/deploy-live-test.sh
+      - name: Test the loop scripts
+        run: scripts/agent-loop-test.sh
 
   live-container:
     runs-on: ubuntu-latest

@@ -25,7 +25,7 @@
       </div>
       <!-- A year without a definition has no forms, so the tabs above say why they are missing. -->
       <p th:if="${#lists.isEmpty(forms)}" class="no-rules">Für dieses Jahr gibt es noch keine Regeln.</p>
-      <details th:replace="~{assistant-chat :: chat}"></details>
+      <aside th:replace="~{assistant-chat :: chat}"></aside>
     </nav>
   </body>
 </html>

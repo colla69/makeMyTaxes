@@ -24,7 +24,7 @@ public final class ExtraordinaryBurdensForm implements FormModule {
   /** The number of children of § 33(3) sentence 2 EStG. */
   public static final String CHILDREN = "children";
 
-  /** Yes if the splitting tariff of § 32a(5) or (6) EStG applies. */
+  /** Yes if the splitting tariff of § 32a(6) EStG applies. */
   public static final String SPLITTING = "splitting";
 
   static final String MEDICAL = "Krankheitskosten";
@@ -46,13 +46,14 @@ public final class ExtraordinaryBurdensForm implements FormModule {
           optional(
                   SPLITTING,
                   FACTS,
-                  "§ 32a Abs. 5 oder 6 EStG",
+                  "§ 32a Abs. 6 EStG",
                   "Splitting-Verfahren",
                   Kind.YES_NO_UNSURE)
               .withHelp(
                   "Die App erstellt keine Zusammenveranlagung. Wählen Sie Ja nur, wenn für Sie"
-                      + " das Splitting-Verfahren nach § 32a Abs. 6 EStG gilt. Ohne Ja schätzt"
-                      + " die App mit dem Grundtarif."));
+                      + " das Splitting-Verfahren nach § 32a Abs. 6 EStG gilt. Bei der"
+                      + " Einzelveranlagung von Ehegatten gilt es nicht (§ 32a Abs. 6 Satz 2"
+                      + " EStG). Ohne Ja schätzt die App mit dem Grundtarif."));
 
   @Override
   public String id() {

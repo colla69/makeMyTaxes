@@ -12,16 +12,19 @@ import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentRef;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
+import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.filing.FilingCheck;
 import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.CertificateValues;
+import io.github.colla69.makemytaxes.core.form.ExtraordinaryBurdensForm;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.HomeOfficeDay;
 import io.github.colla69.makemytaxes.core.form.Interview;
+import io.github.colla69.makemytaxes.core.form.MedicalCostEstimate;
 import io.github.colla69.makemytaxes.core.form.ReviewLine;
 import io.github.colla69.makemytaxes.core.form.Source;
 import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
@@ -91,6 +94,27 @@ class FormController {
           GermanFormats.format(estimate.lumpSum()),
           estimate.isAboveLumpSum(),
           LimitsView.of(pack));
+    }
+  }
+
+  /** The estimate of the deductible medical costs, as text for the review. */
+  record MedicalView(
+      boolean hasCosts, String costs, String refunds, String burden, String totalIncome,
+      String group, String percents, String reasonableBurden, String deductible,
+      boolean wageKnown) {
+
+    static MedicalView of(MedicalCostEstimate estimate) {
+      return new MedicalView(
+          estimate.hasCosts(),
+          GermanFormats.format(estimate.costs()),
+          GermanFormats.format(estimate.refunds()),
+          GermanFormats.format(estimate.burden()),
+          GermanFormats.format(estimate.totalIncome()),
+          estimate.group().label(),
+          estimate.group().percents(),
+          GermanFormats.format(estimate.reasonableBurden()),
+          GermanFormats.format(estimate.deductible()),
+          estimate.wageKnown());
     }
   }
 
@@ -420,6 +444,14 @@ class FormController {
         "estimate",
         EstimateView.of(
             WorkExpenseEstimate.of(pack, forms.answers(returnId, AnlageN.ID), stored), pack));
+    attributes.put(
+        "medical",
+        MedicalView.of(
+            MedicalCostEstimate.of(
+                pack,
+                forms.answers(returnId, AnlageN.ID),
+                forms.answers(returnId, ExtraordinaryBurdensForm.ID),
+                stored)));
     attributes.put("withoutReceipt", ExpenseSummary.of(stored).expensesWithoutEvidence());
     attributes.put("withoutForm", withoutForm(stored, view));
     return linked;
@@ -455,6 +487,7 @@ class FormController {
       List<Expense> stored, Function<Source, SourceView> view) {
     return stored.stream()
         .filter(expense -> !expense.purpose().topic().isWorkExpense())
+        .filter(expense -> expense.purpose().topic() != ExpenseTopic.MEDICAL)
         .map(
             expense ->
                 new WithoutFormView(

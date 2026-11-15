@@ -41,7 +41,8 @@ public record YearDefinition(
         new MainForm(layouts.get(MainForm.ID)),
         new AnlageN(pack, layouts.get(AnlageN.ID)),
         new AnlageVorsorgeaufwand(layouts.get(AnlageVorsorgeaufwand.ID)),
-        new HouseholdServicesForm());
+        new HouseholdServicesForm(),
+        new ExtraordinaryBurdensForm());
   }
 
   public Interview interview() {

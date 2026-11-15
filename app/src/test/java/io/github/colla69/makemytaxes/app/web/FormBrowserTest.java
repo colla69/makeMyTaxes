@@ -55,6 +55,7 @@ class FormBrowserTest {
           "Anlage N",
           "Anlage Vorsorgeaufwand",
           "Haushaltsnahe Aufwendungen",
+          "Außergewöhnliche Belastungen",
           "Abgabepflicht");
 
   @TempDir static Path databaseFolder;
@@ -680,6 +681,7 @@ class FormBrowserTest {
             "Anlage N",
             "Anlage Vorsorgeaufwand",
             "Haushaltsnahe Aufwendungen",
+            "Außergewöhnliche Belastungen",
             "Abgabepflicht",
             "Übersicht")) {
       link(page, tab).click();
@@ -712,7 +714,9 @@ class FormBrowserTest {
     for (String form : FORM_TABS) {
       link(page, form).click();
       assertThat(page.locator("#answers")).isVisible();
-      assertEquals(3, leftEdges(page).size(), "columns on " + page.url());
+      // A form with fewer than three fields fills only as many columns as it has fields.
+      int fields = page.locator(".field input, .field select").count();
+      assertEquals(Math.min(3, fields), leftEdges(page).size(), "columns on " + page.url());
     }
   }
 

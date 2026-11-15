@@ -27,6 +27,7 @@
         <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
         <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE')}"></div>
         <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true, kind='MONEY')}"></div>
+        <div th:replace="~{fields :: field(name='refunded', label='Davon erstattet (EUR)', hint=#{hint.expense.refunded}, help='Nur bei Krankheitskosten: der Betrag, den Krankenkasse oder Versicherung erstattet hat. Auch eine spätere Erstattung, mit der Sie in diesem Jahr schon rechnen konnten (H 33.1-33.4 EStH, Ersatz von dritter Seite).', value=${form.refunded}, placeholder='1.234,56', kind='MONEY')}"></div>
         <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
         <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
         <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
@@ -54,12 +55,13 @@
       <h2>Ausgaben</h2>
       <table id="expenses">
         <thead>
-          <tr><th>Datum</th><th>Betrag</th><th>Kategorie</th><th>Beschreibung</th><th>Beleg</th><th></th></tr>
+          <tr><th>Datum</th><th>Betrag</th><th>Erstattet</th><th>Kategorie</th><th>Beschreibung</th><th>Beleg</th><th></th></tr>
         </thead>
         <tbody>
           <tr th:each="row : ${rows}">
             <td th:text="${row.paidOn}">01.01.2022</td>
             <td class="amount" th:text="${row.amount}">0,00</td>
+            <td class="amount" th:text="${row.refunded}"></td>
             <td th:text="${row.topic}">Kategorie</td>
             <td th:text="${row.description}">Beschreibung</td>
             <td>

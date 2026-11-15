@@ -34,8 +34,8 @@ public class ExpenseStore {
             """
             insert into expense(
               tax_return_id, paid_on, amount_cents, topic, description, receipt_reference,
-              document_id, stated_basis)
-            values (?, ?, ?, ?, ?, ?, ?, ?)
+              document_id, stated_basis, refunded_cents)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)
         .params(
             returnId,
@@ -45,7 +45,8 @@ public class ExpenseStore {
             expense.purpose().description(),
             expense.evidence().receiptNote(),
             documentId,
-            expense.evidence().statedBasis())
+            expense.evidence().statedBasis(),
+            expense.refunded().cents())
         .update();
   }
 
@@ -59,7 +60,7 @@ public class ExpenseStore {
     return jdbc.sql(
             """
             select e.id, e.paid_on, e.amount_cents, e.topic, e.description, e.receipt_reference,
-              e.document_id, e.stated_basis, d.file_name
+              e.document_id, e.stated_basis, e.refunded_cents, d.file_name
             from expense e left join document d on d.id = e.document_id
             where e.tax_return_id = ? order by e.paid_on desc, e.id desc
             """)
@@ -80,7 +81,9 @@ public class ExpenseStore {
                       row.getString("receipt_reference"),
                       documentId == null ? null : new DocumentRef(documentId, documentName),
                       row.getString("stated_basis"));
-              var expense = new Expense(payment, purpose, evidence);
+              var expense =
+                  new Expense(
+                      payment, purpose, evidence, Money.ofCents(row.getLong("refunded_cents")));
               return new StoredExpense(row.getLong("id"), expense, documentId);
             })
         .list();

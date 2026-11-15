@@ -182,7 +182,10 @@ class ExpenseBrowserTest {
             page.locator(".review-form tr")
                 .filter(new Locator.FilterOptions().setHasText("Made-up cable")))
         .containsText("Beleg fehlt");
-    assertThat(page.locator("#without-form")).containsText("Beleg fehlt");
+    assertThat(
+            page.locator(".review-form tr")
+                .filter(new Locator.FilterOptions().setHasText("Made-up doctor")))
+        .containsText("Beleg fehlt");
   }
 
   @Test
@@ -201,8 +204,50 @@ class ExpenseBrowserTest {
 
     page.navigate(returnUrl + "/review");
 
-    assertThat(page.locator("#without-form")).containsText("Grundlage: Made-up 12 days");
-    assertThat(page.locator("#without-form")).not().containsText("Beleg fehlt");
+    Locator reviewRow =
+        page.locator(".review-form tr")
+            .filter(new Locator.FilterOptions().setHasText("Made-up doctor"));
+    assertThat(reviewRow).containsText("Grundlage: Made-up 12 days");
+    assertThat(reviewRow).not().containsText("Beleg fehlt");
+  }
+
+  @Test
+  void aMedicalBillShowsOnTheReviewWithItsRefundAndTheDeductiblePart() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    String returnUrl = page.url();
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    page.getByLabel("Davon erstattet (EUR)").fill("200,00");
+    addExpenseWithBasis(page, "2.000,00", "Made-up dentist");
+    assertThat(page.locator("#expenses tbody tr")).containsText("200,00");
+
+    page.navigate(returnUrl + "/review");
+
+    Locator bill =
+        page.locator(".review-form tr")
+            .filter(new Locator.FilterOptions().setHasText("Made-up dentist, bezahlt am 03.02.2022"));
+    assertThat(bill).containsText("2.000,00");
+    assertThat(
+            page.locator(".review-form tr")
+                .filter(new Locator.FilterOptions().setHasText("Made-up dentist: erstattet")))
+        .containsText("200,00");
+    assertThat(page.locator("#without-form", new Page.LocatorOptions().setHasText("Made-up dentist")))
+        .hasCount(0);
+    // Without a wage the income is not known, so the review shows no deductible part yet.
+    assertThat(page.locator("#medical-wage-missing")).isVisible();
+    assertThat(page.locator("#medical-deductible")).hasCount(0);
+
+    page.navigate(returnUrl + "/forms/anlage-n");
+    page.locator("#answers [name=grossWage]").fill("30.000,00");
+    page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+    assertThat(page.locator(".saved")).isVisible();
+    page.navigate(returnUrl + "/review");
+
+    // 30.000 less the lump sum of 1.200: 28.800. 767,00 + 13.460 x 6 % = 1.574,60. 1.800 - 1.574,60.
+    assertThat(page.locator("#medical-estimate")).containsText("1.574,60");
+    assertThat(page.locator("#medical-deductible")).hasText("225,40");
   }
 
   @Test

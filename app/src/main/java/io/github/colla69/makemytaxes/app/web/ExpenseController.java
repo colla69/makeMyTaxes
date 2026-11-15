@@ -11,6 +11,7 @@ import io.github.colla69.makemytaxes.core.expense.Evidence;
 import io.github.colla69.makemytaxes.core.expense.Expense;
 import io.github.colla69.makemytaxes.core.expense.ExpenseSummary;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
+import io.github.colla69.makemytaxes.core.expense.Money;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.expense.Payment;
 import io.github.colla69.makemytaxes.core.expense.Purpose;
@@ -45,15 +46,16 @@ class ExpenseController {
       String description,
       String receipt,
       Long documentId,
-      String statedBasis) {
+      String statedBasis,
+      String refunded) {
 
     static ExpenseForm empty() {
-      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null, "");
+      return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null, "", "");
     }
 
     /** The next entry often shares a date and topic with this entry, so those two stay. */
     ExpenseForm forNextEntry() {
-      return new ExpenseForm(paidOn, "", topic, "", "", null, "");
+      return new ExpenseForm(paidOn, "", topic, "", "", null, "", "");
     }
 
     Expense toExpense(TaxYear taxYear) {
@@ -65,12 +67,21 @@ class ExpenseController {
                 .formatted(taxYear.value(), GermanFormats.format(payment.paidOn())));
       }
       var evidence = new Evidence(receipt.strip(), null, statedBasis.strip());
-      return new Expense(payment, new Purpose(topic, description.strip()), evidence);
+      return new Expense(
+          payment, new Purpose(topic, description.strip()), evidence, refundedAmount());
+    }
+
+    /** The refund is optional, so an empty field is no refund. */
+    private Money refundedAmount() {
+      return StringUtils.hasText(refunded)
+          ? GermanFormats.parseMoney(refunded)
+          : Money.ofCents(0);
     }
   }
 
-  record ExpenseRow(long id, String paidOn, String amount, String topic, String description,
-      String receipt, Long documentId, String documentName, String statedBasis) {
+  record ExpenseRow(long id, String paidOn, String amount, String refunded, String topic,
+      String description, String receipt, Long documentId, String documentName,
+      String statedBasis) {
 
     static ExpenseRow of(StoredExpense stored) {
       Expense expense = stored.expense();
@@ -78,6 +89,7 @@ class ExpenseController {
           stored.id(),
           GermanFormats.format(expense.payment().paidOn()),
           GermanFormats.format(expense.payment().amount()),
+          expense.refunded().isPositive() ? GermanFormats.format(expense.refunded()) : "",
           expense.purpose().topic().label(),
           expense.purpose().description(),
           expense.evidence().receiptNote(),

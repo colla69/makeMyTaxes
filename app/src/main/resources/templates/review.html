@@ -47,6 +47,25 @@
       <p class="help">Dies ist eine Schätzung. Das Finanzamt berechnet die Beträge.</p>
     </section>
 
+    <section id="medical-estimate" th:if="${medical.hasCosts}" th:with="m=${medical}">
+      <h2>Krankheitskosten im Vergleich zur zumutbaren Belastung</h2>
+      <table>
+        <tr><td>Krankheitskosten</td><td class="amount" th:text="${m.costs}">0,00</td></tr>
+        <tr><td>Erstattungen</td><td class="amount" th:text="${m.refunds}">0,00</td></tr>
+        <tr><th>Belastung</th><th class="amount" th:text="${m.burden}">0,00</th></tr>
+        <tr><td>Gesamtbetrag der Einkünfte, geschätzt</td><td class="amount" th:text="${m.totalIncome}">0,00</td></tr>
+        <tr><td th:text="'Zumutbare Belastung, ' + ${m.group} + ': ' + ${m.percents} + ' Prozent'">Zumutbare Belastung</td><td class="amount" th:text="${m.reasonableBurden}">0,00</td></tr>
+        <tr th:if="${m.wageKnown}"><th>Abziehbarer Teil</th><th id="medical-deductible" class="amount" th:text="${m.deductible}">0,00</th></tr>
+      </table>
+      <p id="medical-wage-missing" class="warning" th:unless="${m.wageKnown}">Der abziehbare Teil fehlt noch: Tragen Sie zuerst den Bruttoarbeitslohn in Anlage N ein.</p>
+      <ul class="help">
+        <li>Nur der Teil der Belastung über der zumutbaren Belastung mindert den Gesamtbetrag der Einkünfte (§ 33 Abs. 1 EStG).</li>
+        <li>Zumutbare Belastung: die Prozentsätze von § 33 Abs. 3 EStG für einen Gesamtbetrag der Einkünfte bis 15.340 EUR, bis 51.130 EUR und darüber. Jede Stufe hat ihren eigenen Prozentsatz (H 33.1-33.4 EStH, Zumutbare Belastung).</li>
+        <li>Gesamtbetrag der Einkünfte: der Bruttoarbeitslohn aller Arbeitgeber, abzüglich der Werbungskosten oder des höheren Arbeitnehmer-Pauschbetrags (§ 2 Abs. 3 und § 9a EStG). Andere Einkünfte kennt die App nicht. Den Altersentlastungsbetrag und den Entlastungsbetrag für Alleinerziehende zieht die Schätzung nicht ab.</li>
+      </ul>
+      <p class="help">Dies ist eine Schätzung. Das Finanzamt berechnet die Beträge.</p>
+    </section>
+
     <p class="warning" th:if="${withoutReceipt > 0}" th:text="${withoutReceipt} + ' ohne Beleg'">0</p>
 
     <section id="without-form" class="warning" th:unless="${#lists.isEmpty(withoutForm)}">

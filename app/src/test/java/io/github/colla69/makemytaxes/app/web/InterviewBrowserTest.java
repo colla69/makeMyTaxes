@@ -583,6 +583,21 @@ class InterviewBrowserTest {
   }
 
   @Test
+  void aFileOverTheLimitShowsItsErrorOnTheDocumentStep() {
+    Page page = browser.newPage();
+    openDocumentStep(page);
+
+    byte[] large = new byte[26 * 1024 * 1024];
+    Locator upload = page.locator("#upload");
+    upload.getByLabel("Lohnsteuerbescheinigung")
+        .setInputFiles(new FilePayload("large.pdf", "application/pdf", large));
+    upload.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Hochladen")).click();
+
+    assertThat(page.locator("#upload h2")).hasText("Dokumente hochladen");
+    assertThat(page.locator("#upload .error")).containsText("größer als 20 MB");
+  }
+
+  @Test
   void aValueChangedInTheFormShowsInTheInterview() {
     Page page = browser.newPage();
     openInterview(page);
@@ -813,6 +828,15 @@ class InterviewBrowserTest {
   }
 
   private void openInterview(Page page) {
+    openDocumentStep(page);
+    // These tests answer by hand.
+    page.locator("#upload")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ohne Dokumente weiter"))
+        .click();
+    assertThat(page.locator("#question")).isVisible();
+  }
+
+  private void openDocumentStep(Page page) {
     page.navigate("http://127.0.0.1:" + port + "/");
     String lastName = UUID.randomUUID().toString();
     String name = "Made-up " + lastName;
@@ -829,11 +853,7 @@ class InterviewBrowserTest {
     Locator section = page.locator("section").filter(new Locator.FilterOptions().setHasText(name));
     section.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022")).click();
     tab(page, "Fragen").click();
-    // The interview starts with the upload of documents. These tests answer by hand.
+    // The interview starts with the upload of documents.
     assertThat(page.locator("#upload h2")).hasText("Dokumente hochladen");
-    page.locator("#upload")
-        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Ohne Dokumente weiter"))
-        .click();
-    assertThat(page.locator("#question")).isVisible();
   }
 }

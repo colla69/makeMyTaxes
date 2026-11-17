@@ -211,4 +211,88 @@ class PayslipReaderTest {
 
     assertThat(PayslipReader.read(text, MARCH_2025).taxableGross()).isEmpty();
   }
+
+  /** The statement of March, then a correction of January and a negative one of February. */
+  private static final String WITH_CORRECTIONS =
+      """
+      für den Zeitraum vom 01.03. bis 31.03.2025
+      Steuerbrutto, lfd.    3.000,00      9.000,00
+      Lohnsteuer, lfd.        400,00      1.200,00
+      für den Zeitraum vom 01.01. bis 31.01.2025
+      Steuerbrutto, lfd.      150,00
+      Lohnsteuer, lfd.         40,00
+      für den Zeitraum vom 01.02. bis 28.02.2025
+      Lohnsteuer, lfd.  10,00 -
+      """;
+
+  @Test
+  void readsTheCorrectionsOfEarlierMonthsWithTheirSign() {
+    PayslipContent content = PayslipReader.readContent(WITH_CORRECTIONS, MARCH_2025);
+
+    assertThat(content.month())
+        .isEqualTo(new PayslipValues(cents(300_000), cents(40_000)));
+    assertThat(content.corrections())
+        .containsExactly(
+            new PayslipCorrection(
+                YearMonth.of(2025, 1), new PayslipValues(cents(15_000), cents(4_000))),
+            new PayslipCorrection(
+                YearMonth.of(2025, 2), new PayslipValues(cents(0), cents(-1_000))));
+  }
+
+  @Test
+  void readsTheYearColumnOfTheMonth() {
+    PayslipContent content = PayslipReader.readContent(WITH_CORRECTIONS, MARCH_2025);
+
+    assertThat(content.yearToDate()).isEqualTo(new PayslipValues(cents(900_000), cents(120_000)));
+  }
+
+  @Test
+  void addsTheYearColumnOfTheOneOffPay() {
+    PayslipContent content = PayslipReader.readContent(ENTGELTABRECHNUNG, MARCH_2025);
+
+    assertThat(content.yearToDate())
+        .isEqualTo(new PayslipValues(cents(3_100_000), cents(530_000)));
+  }
+
+  @Test
+  void doesNotReadACorrectionWithAnEzLine() {
+    String text = WITH_CORRECTIONS + "Lohnsteuer, EZ  20,00\n";
+
+    PayslipContent content = PayslipReader.readContent(text, MARCH_2025);
+
+    assertThat(content.corrections().getLast().values().wageTax()).isEmpty();
+  }
+
+  @Test
+  void doesNotReadACorrectionOfAnotherYear() {
+    String text =
+        WITH_CORRECTIONS
+            + "für den Zeitraum vom 01.12. bis 31.12.2024\nLohnsteuer, lfd.  5,00\n";
+
+    assertThat(PayslipReader.readContent(text, MARCH_2025).corrections()).hasSize(2);
+  }
+
+  @Test
+  void doesNotReadALaterMonthAsACorrection() {
+    String text =
+        WITH_CORRECTIONS
+            + "für den Zeitraum vom 01.04. bis 30.04.2025\nSteuerbrutto, lfd.  3.000,00  12.000,00\n";
+
+    assertThat(PayslipReader.readContent(text, MARCH_2025).corrections())
+        .extracting(PayslipCorrection::month)
+        .containsExactly(YearMonth.of(2025, 1), YearMonth.of(2025, 2));
+  }
+
+  @Test
+  void hasNoCorrectionsAndNoYearColumnInADatevPayslip() {
+    PayslipContent content = PayslipReader.readContent(PAYSLIP, MARCH_2022);
+
+    assertThat(content.month().wageTax()).contains(Money.ofCents(41_025));
+    assertThat(content.corrections()).isEmpty();
+    assertThat(content.yearToDate()).isEqualTo(PayslipValues.NONE);
+  }
+
+  private static Optional<Money> cents(long cents) {
+    return Optional.of(Money.ofCents(cents));
+  }
 }

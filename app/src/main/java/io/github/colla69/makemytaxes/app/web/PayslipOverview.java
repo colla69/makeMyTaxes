@@ -9,7 +9,10 @@ import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.document.PayslipCheck;
+import io.github.colla69.makemytaxes.core.document.PayslipContent;
 import io.github.colla69.makemytaxes.core.document.PayslipValues;
+import io.github.colla69.makemytaxes.core.document.PayslipYear;
+import io.github.colla69.makemytaxes.core.document.PayslipYear.MonthValue;
 import io.github.colla69.makemytaxes.core.expense.Money;
 import io.github.colla69.makemytaxes.core.form.CertificateValues;
 import io.github.colla69.makemytaxes.core.form.Kind;
@@ -37,21 +40,55 @@ class PayslipOverview {
 
   static final String NOT_READ = "nicht gelesen";
 
-  /** One month of the year. A month without a payslip has no payslip. */
-  record MonthRow(String month, ReadPayslip payslip) {
+  /**
+   * One month of the year. A month without a payslip has no payslip, and a month with neither a
+   * payslip nor a correction has no value.
+   */
+  record MonthRow(String month, StoredPayslip payslip, MonthValue value) {
 
     public String taxableGross() {
-      return text(payslip.values().taxableGross());
+      return text(value.taxableGross());
     }
 
     public String wageTax() {
-      return text(payslip.values().wageTax());
+      return text(value.wageTax());
+    }
+
+    /** Where the value comes from. Empty if the month has no correction. */
+    public List<String> sources() {
+      if (value == null || value.corrections().isEmpty()) {
+        return List.of();
+      }
+      List<String> sources = new ArrayList<>();
+      value.own().ifPresent(own -> sources.add("Abrechnung des Monats: " + amounts(own)));
+      value
+          .corrections()
+          .forEach(
+              correction ->
+                  sources.add(
+                      "Korrektur in "
+                          + correction.fileName()
+                          + ": "
+                          + amounts(correction.values())
+                          + repeats(correction.repeatedIn())));
+      return sources;
+    }
+
+    private static String repeats(List<String> files) {
+      return files.isEmpty()
+          ? ""
+          : " (auch in " + String.join(", ", files) + ", einmal gezählt)";
+    }
+
+    private static String amounts(PayslipValues values) {
+      return "Steuer-Brutto "
+          + text(values.taxableGross())
+          + ", Lohnsteuer "
+          + text(values.wageTax());
     }
   }
 
-  record CheckRow(String amount, String sum, String certificate, String result) {}
-
-  record ReadPayslip(StoredPayslip stored, PayslipValues values) {}
+  record CheckRow(String amount, String sum, String compared, String result) {}
 
   private final DocumentStore documents;
 
@@ -60,15 +97,27 @@ class PayslipOverview {
   }
 
   void fill(long returnId, TaxYear taxYear, Model model) {
-    List<ReadPayslip> payslips =
-        documents.payslipsOf(returnId).stream()
-            .map(stored -> new ReadPayslip(stored, valuesOf(stored, taxYear)))
-            .toList();
+    List<StoredPayslip> stored = documents.payslipsOf(returnId);
+    PayslipYear year =
+        PayslipYear.of(stored.stream().map(payslip -> read(payslip, taxYear)).toList());
     model.addAttribute("months", monthOptions());
-    model.addAttribute("payslipMonths", monthRows(payslips));
-    if (payslips.isEmpty()) {
+    model.addAttribute("payslipMonths", monthRows(stored, year));
+    if (stored.isEmpty()) {
       return;
     }
+    PayslipYear.Payslip last = year.last().orElseThrow();
+    model.addAttribute(
+        "payslipYearSource",
+        "Die Jahressumme steht in der Lohnabrechnung für "
+            + DocumentStore.monthName(last.month().getMonth())
+            + " ("
+            + last.fileName()
+            + ").");
+    model.addAttribute(
+        "payslipYearChecks",
+        List.of(
+            yearCheckRow("Steuer-Brutto", year, last, PayslipValues::taxableGross),
+            yearCheckRow("Lohnsteuer", year, last, PayslipValues::wageTax)));
     Optional<WageTaxCertificate> layout =
         YearDefinition.of(taxYear).map(YearDefinition::certificate);
     List<StoredDocument> certificates =
@@ -87,28 +136,41 @@ class PayslipOverview {
         List.of(
             checkRow(
                 "Bruttoarbeitslohn" + lineOf(layout, "grossWage"),
-                payslips.stream().map(p -> p.values().taxableGross()).toList(),
+                year.monthTotals(PayslipValues::taxableGross),
                 amountOf(certificate, "grossWage")),
             checkRow(
                 "Lohnsteuer" + lineOf(layout, "wageTax"),
-                payslips.stream().map(p -> p.values().wageTax()).toList(),
+                year.monthTotals(PayslipValues::wageTax),
                 amountOf(certificate, "wageTax"))));
   }
 
-  private PayslipValues valuesOf(StoredPayslip stored, TaxYear taxYear) {
+  private PayslipYear.Payslip read(StoredPayslip stored, TaxYear taxYear) {
     YearMonth month = YearMonth.of(taxYear.value(), stored.month());
-    return PayslipPdfReader.read(documents.content(stored.documentId()), month);
+    PayslipContent content = PayslipPdfReader.read(documents.content(stored.documentId()), month);
+    return new PayslipYear.Payslip(stored.fileName(), month, content);
   }
 
-  private static List<MonthRow> monthRows(List<ReadPayslip> payslips) {
-    Map<Month, ReadPayslip> byMonth =
-        payslips.stream()
-            .collect(Collectors.toMap(p -> p.stored().month(), Function.identity()));
+  private static List<MonthRow> monthRows(List<StoredPayslip> stored, PayslipYear year) {
+    Map<Month, StoredPayslip> byMonth =
+        stored.stream().collect(Collectors.toMap(StoredPayslip::month, Function.identity()));
     List<MonthRow> rows = new ArrayList<>();
     for (Month month : Month.values()) {
-      rows.add(new MonthRow(DocumentStore.monthName(month), byMonth.get(month)));
+      rows.add(
+          new MonthRow(
+              DocumentStore.monthName(month), byMonth.get(month), year.month(month).orElse(null)));
     }
     return rows;
+  }
+
+  private static CheckRow yearCheckRow(
+      String amount,
+      PayslipYear year,
+      PayslipYear.Payslip last,
+      Function<PayslipValues, Optional<Money>> value) {
+    PayslipCheck check =
+        PayslipCheck.of(year.monthTotals(value), value.apply(last.content().yearToDate()));
+    return new CheckRow(
+        amount, text(check.sum()), text(check.certificate()), check.result("die Jahressumme"));
   }
 
   private static CheckRow checkRow(

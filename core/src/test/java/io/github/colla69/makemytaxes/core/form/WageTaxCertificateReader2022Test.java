@@ -7,6 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -176,12 +177,27 @@ class WageTaxCertificateReader2022Test {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"150,00€", "150 00", "87 50", "50.00"})
+  @ValueSource(strings = {"150,00€", "1.234.56", "87.5"})
   void aLineWithAnAmountThatCannotBeReadIsNotFoundAndNotEmpty(String amount) {
     String[] lines = SOCIAL.clone();
     lines[2] = lines[2].replace("150,00", amount);
 
     assertThat(read(right(lines)).readText("shortTimeWork")).isEqualTo("nicht gefunden");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "150 00, '150,00'",
+    "24000 00, '24.000,00'",
+    "87 50, '87,50'",
+    "5 00, '5,00'",
+    "50.00, '50,00'"
+  })
+  void anAmountInEuroAndCentColumnsOrWithADotIsRead(String printed, String read) {
+    String[] lines = SOCIAL.clone();
+    lines[2] = lines[2].replace("150,00", printed);
+
+    assertThat(read(right(lines)).readText("shortTimeWork")).isEqualTo(read);
   }
 
   @Test

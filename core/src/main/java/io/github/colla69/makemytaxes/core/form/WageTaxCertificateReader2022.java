@@ -36,16 +36,21 @@ public final class WageTaxCertificateReader2022 {
   /** The letter of a part of lines 22 to 24, such as "a) zur gesetzlichen Rentenversicherung". */
   private static final Pattern PART = Pattern.compile("(?:^|\\s)([abc])\\)\\s");
 
-  /** An amount on a text line, with a minus sign before or after it. */
+  /**
+   * An amount on a text line, with a minus sign before or after it. The cents follow a comma, a
+   * space, as in the euro and cent columns ("24000 00", "87 50"), or a dot ("50.00"). A line
+   * reference such as "15." has no digits right after its dot, and a date such as "01.03." has a
+   * dot after the second number, so neither is an amount.
+   */
   private static final Pattern AMOUNT =
       Pattern.compile(
-          "(?:^|\\s)(-\\s*)?((?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{2})(\\s*-)?(?=\\s|$)");
+          "(?:^|\\s)(-\\s*)?(?:(\\d{1,3}(?:\\.\\d{3})+|\\d+)[, ]|(\\d+)\\.)(\\d{2})(\\s*-)?(?=\\s|$)");
 
   /**
    * A reference to a line in a label, such as "15.", "15a." or "von 3.", or a rate, such as the
    * "15 %" of line 18. The labels of the lines that can be empty hold no other digits. So a digit
    * that is left after the reader removes the amounts and these parts of labels belongs to an
-   * amount the reader cannot read, such as "87 50" or "1.234,56€", and the line is not empty.
+   * amount the reader cannot read, such as "1.234,56€" or "1.234.56", and the line is not empty.
    */
   private static final Pattern LABEL_NUMBER =
       Pattern.compile("\\d{1,2}[a-c]?\\.(?!\\d)|\\d{1,2}\\s?%");
@@ -177,8 +182,9 @@ public final class WageTaxCertificateReader2022 {
   }
 
   private static String amountText(Matcher amount) {
-    boolean negative = amount.group(1) != null || amount.group(3) != null;
-    return negative ? UNUSABLE : amount.group(2);
+    boolean negative = amount.group(1) != null || amount.group(5) != null;
+    String euros = amount.group(2) != null ? amount.group(2) : amount.group(3);
+    return negative ? UNUSABLE : euros + "," + amount.group(4);
   }
 
   /**

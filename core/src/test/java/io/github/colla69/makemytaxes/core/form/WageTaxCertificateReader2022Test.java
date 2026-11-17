@@ -191,6 +191,34 @@ class WageTaxCertificateReader2022Test {
   }
 
   @Test
+  void commuteOnLine18IsReadWhenLine17PrintsZero() {
+    assertThat(read(right(commute("0,00", "80,00"))).value("employerCommute")).hasValue("80,00");
+  }
+
+  @Test
+  void commuteOnLine17IsReadWhenLine18PrintsZero() {
+    assertThat(read(right(commute("300,00", "0,00"))).value("employerCommute"))
+        .hasValue("300,00");
+  }
+
+  @Test
+  void commuteIsZeroWhenBothLinesPrintZero() {
+    assertThat(read(right(commute("0,00", "0,00"))).value("employerCommute")).hasValue("0,00");
+  }
+
+  /** The lines of {@code SOCIAL}, with the given amounts on lines 17 and 18. */
+  private static String[] commute(String line17, String line18) {
+    String[] lines = SOCIAL.clone();
+    for (int i = 0; i < lines.length; i++) {
+      lines[i] =
+          lines[i]
+              .replace("auf die 300,00", "auf die " + line17)
+              .replace("erster Tätigkeitsstätte", "erster Tätigkeitsstätte " + line18);
+    }
+    return lines;
+  }
+
+  @Test
   void aNegativeAmountIsNotFound() {
     String text = right(SOCIAL).replace("4.321,00", "-4.321,00").replace("360,00", "360,00-");
 

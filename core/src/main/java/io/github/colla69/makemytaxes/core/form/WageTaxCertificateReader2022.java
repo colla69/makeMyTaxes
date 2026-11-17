@@ -257,12 +257,30 @@ public final class WageTaxCertificateReader2022 {
       return Optional.of(total);
     }
 
-    /** The amount of the one line that has an amount. Nothing if both lines have one. */
+    /**
+     * The amount of the one line that has an amount above zero. A certificate prints 0,00 on a
+     * line it does not use, so 0,00 counts as no amount, and two lines of 0,00 give 0,00. Nothing
+     * if both lines have an amount above zero, or if a line cannot be read.
+     */
     Optional<Money> oneOf(String first, String second) {
-      if (has(first) == has(second)) {
-        return Optional.empty();
+      List<Money> above = new ArrayList<>();
+      boolean any = false;
+      for (String line : List.of(first, second)) {
+        if (has(line)) {
+          Optional<Money> money = single(line);
+          if (money.isEmpty()) {
+            return Optional.empty();
+          }
+          any = true;
+          if (money.get().cents() > 0) {
+            above.add(money.get());
+          }
+        }
       }
-      return single(has(first) ? first : second);
+      if (above.size() == 1) {
+        return Optional.of(above.getFirst());
+      }
+      return any && above.isEmpty() ? Optional.of(Money.ofCents(0)) : Optional.empty();
     }
   }
 }

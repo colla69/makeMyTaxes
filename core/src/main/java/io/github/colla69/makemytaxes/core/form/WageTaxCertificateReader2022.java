@@ -331,12 +331,26 @@ public final class WageTaxCertificateReader2022 {
       return Optional.of(total);
     }
 
-    /** The amount of the one line that has an amount. Nothing if both lines have one. */
+    /**
+     * The amount of the one line that has an amount. If both lines have an amount, 0,00 when both
+     * read as 0,00, and nothing otherwise. Nothing if a line cannot be read.
+     */
     Optional<Money> oneOf(String first, String second) {
-      if (anyUnclear(first, second) || has(first) == has(second)) {
+      if (anyUnclear(first, second)) {
         return Optional.empty();
       }
-      return single(has(first) ? first : second);
+      if (has(first) != has(second)) {
+        return single(has(first) ? first : second);
+      }
+      if (!has(first)) {
+        return Optional.empty();
+      }
+      Optional<Money> a = single(first);
+      Optional<Money> b = single(second);
+      if (a.isPresent() && b.isPresent() && a.get().cents() == 0 && b.get().cents() == 0) {
+        return a;
+      }
+      return Optional.empty();
     }
 
     private boolean anyUnclear(String first, String second) {

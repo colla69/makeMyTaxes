@@ -347,6 +347,91 @@ class PayslipBrowserTest {
     assertThat(wageTax).containsText("Differenz 400,00 €: die Jahressumme ist höher");
   }
 
+  @Test
+  void storesEachFileOfOneUploadAndKeepsTheUnknownFileWaitingForItsKind() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+
+    upload(
+        page,
+        new FilePayload(
+            "made-up-certificate.pdf", "application/pdf", MadeUpCertificate.pdf("2022")),
+        payslip("Januar"),
+        payslip("Februar"),
+        new FilePayload("made-up-scan.png", "image/png", MADE_UP_PNG));
+
+    Locator results = page.locator("#upload-results li");
+    assertThat(results).hasCount(4);
+    assertThat(result(page, "made-up-certificate.pdf"))
+        .hasText("„made-up-certificate.pdf“: gespeichert als Lohnsteuerbescheinigung 2022");
+    assertThat(result(page, "made-up-januar.pdf"))
+        .hasText("„made-up-januar.pdf“: gespeichert als Lohnabrechnung Januar 2022");
+    assertThat(result(page, "made-up-februar.pdf"))
+        .hasText("„made-up-februar.pdf“: gespeichert als Lohnabrechnung Februar 2022");
+    assertThat(result(page, "made-up-scan.png")).containsText("Nicht erkannt");
+    assertThat(month(page, "Januar").getByRole(AriaRole.LINK)).hasText("made-up-januar.pdf");
+    assertThat(month(page, "Februar").getByRole(AriaRole.LINK)).hasText("made-up-februar.pdf");
+    assertThat(page.locator("#documents tbody tr")).hasCount(3);
+    assertThat(
+            page.locator("#documents tbody tr")
+                .filter(new Locator.FilterOptions().setHasText("made-up-certificate.pdf")))
+        .containsText("Lohnsteuerbescheinigung");
+
+    Locator waiting = page.locator("#waiting li");
+    assertThat(waiting).hasCount(1);
+    assertThat(waiting).containsText("made-up-scan.png");
+    waiting.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Art wählen")).click();
+    Locator form = page.locator("#kind-form");
+    form.getByLabel("Art").selectOption("OTHER");
+    form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    assertThat(page.locator("#waiting")).hasCount(0);
+    assertThat(page.locator("#documents tbody tr")).hasCount(4);
+  }
+
+  @Test
+  void saysWhyItDidNotStoreAFileAndStoresTheOthers() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadPayslip(page, "Mai", "4.000,00", "500,00");
+
+    upload(
+        page,
+        new FilePayload(
+            "made-up-mai-neu.pdf",
+            "application/pdf",
+            MadeUpPayslip.pdf("Mai 2022", "4.200,00", "520,00")),
+        new FilePayload(
+            "made-up-2021.pdf",
+            "application/pdf",
+            MadeUpPayslip.pdf("Mai 2021", "4.000,00", "500,00")),
+        new FilePayload("made-up.txt", "text/plain", "made-up".getBytes()),
+        // Larger than the old limit of the server, 25 MB, which stopped the whole upload.
+        new FilePayload("made-up-large.pdf", "application/pdf", new byte[30 * 1024 * 1024]),
+        payslip("Juni"));
+
+    assertThat(result(page, "made-up-mai-neu.pdf"))
+        .containsText("Mai hat schon eine Lohnabrechnung: „made-up-mai.pdf“");
+    assertThat(result(page, "made-up-2021.pdf")).containsText("Gehört zum Jahr 2021");
+    assertThat(result(page, "made-up.txt")).containsText("Nur PDF, JPEG und PNG");
+    assertThat(result(page, "made-up-large.pdf")).containsText("größer als 20 MB");
+    assertThat(result(page, "made-up-juni.pdf")).containsText("gespeichert als Lohnabrechnung Juni");
+    assertThat(month(page, "Mai").getByRole(AriaRole.LINK)).hasText("made-up-mai.pdf");
+    assertThat(page.locator("#documents tbody tr")).hasCount(2);
+    assertThat(page.locator("#waiting")).hasCount(0);
+  }
+
+  private static FilePayload payslip(String month) {
+    return new FilePayload(
+        "made-up-" + month.toLowerCase(Locale.ROOT) + ".pdf",
+        "application/pdf",
+        MadeUpPayslip.pdf(month + " 2022", "4.000,00", "500,00"));
+  }
+
+  private static Locator result(Page page, String fileName) {
+    return page.locator("#upload-results li[data-file-name='" + fileName + "']");
+  }
+
   private static void uploadPayslip(Page page, String month, String gross, String wageTax) {
     uploadPayslip(page, month, MadeUpPayslip.pdf(month + " 2022", gross, wageTax));
   }
@@ -360,8 +445,8 @@ class PayslipBrowserTest {
     assertThat(page.locator("#recognized")).containsText("Lohnabrechnung " + month);
   }
 
-  private static void upload(Page page, FilePayload file) {
-    page.getByLabel("Datei").setInputFiles(file);
+  private static void upload(Page page, FilePayload... files) {
+    page.getByLabel("Dateien").setInputFiles(files);
     page.waitForNavigation(
         () ->
             page.getByRole(
@@ -385,6 +470,6 @@ class PayslipBrowserTest {
         .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Steuererklärung 2022"))
         .click();
     page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Belege")).click();
-    assertThat(page.getByLabel("Datei")).isVisible();
+    assertThat(page.getByLabel("Dateien")).isVisible();
   }
 }

@@ -49,6 +49,8 @@ class DocumentController {
 
   static final long MAX_BYTES = 20L * 1024 * 1024;
   static final String TOO_LARGE = "Die Datei ist größer als 20 MB.";
+  static final String UPLOAD_TOO_LARGE =
+      "Eine Datei ist größer als 20 MB, oder alle Dateien zusammen sind größer als 100 MB.";
 
   record DocumentRow(long id, String kind, String fileName, String size, String uploadedOn) {
 
@@ -88,12 +90,113 @@ class DocumentController {
   }
 
   /**
+   * Stores each file where it belongs, if the app recognizes it. For one file, the page goes on
+   * as for a single upload. For several files, the page shows one result line per file, and each
+   * file that the app cannot recognize waits in the list of files without a kind.
+   */
+  @PostMapping("/returns/{returnId}/documents")
+  String upload(
+      @PathVariable long returnId,
+      @RequestParam(name = "file", required = false) List<MultipartFile> files,
+      Model model)
+      throws IOException {
+    if (files == null || files.isEmpty()) {
+      return pageWithError(
+          returnId, "Bitte eine Datei wählen. Eine leere Datei geht nicht.", model);
+    }
+    if (files.size() == 1) {
+      return uploadOne(returnId, files.getFirst(), model);
+    }
+    TaxYear taxYear = taxYearOf(returnId);
+    List<UploadResult> results = new ArrayList<>();
+    for (MultipartFile file : files) {
+      results.add(uploadOfMany(returnId, taxYear, file));
+    }
+    model.addAttribute(
+        "uploadResults", results.stream().map(result -> stillWaiting(returnId, result)).toList());
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /**
+   * What became of one file of an upload of several files.
+   *
+   * @param waitingToken the token of a file that waits for its kind, or null
+   */
+  record UploadResult(String fileName, boolean stored, String text, String waitingToken) {
+
+    UploadResult(String fileName, boolean stored, String text) {
+      this(fileName, stored, text, null);
+    }
+  }
+
+  /** The list of waiting files keeps only the newest few, so a later file can push one out. */
+  private UploadResult stillWaiting(long returnId, UploadResult result) {
+    if (result.waitingToken() == null
+        || pendingUploads.find(returnId, result.waitingToken()).isPresent()) {
+      return result;
+    }
+    return new UploadResult(
+        result.fileName(),
+        false,
+        "Nicht erkannt. Zu viele Dateien warten auf ihre Art, daher hat die App die Datei nicht"
+            + " behalten. Bitte später noch einmal hochladen.");
+  }
+
+  /**
+   * Stores one file of several. Unlike a single upload, a payslip for a month that has one
+   * already is not stored, because the page cannot ask about each file in turn.
+   */
+  private UploadResult uploadOfMany(long returnId, TaxYear taxYear, MultipartFile file)
+      throws IOException {
+    String fileName = fileNameOf(file.getOriginalFilename());
+    NewDocument document;
+    try {
+      document = toNewDocument(DocumentKind.OTHER, file);
+    } catch (IllegalArgumentException e) {
+      return new UploadResult(fileName, false, e.getMessage());
+    }
+    int year = taxYear.value();
+    return switch (FileRecognizer.recognize(document.bytes(), document.mediaType(), taxYear)) {
+      case Recognition.WageTaxCertificate certificate -> {
+        store(returnId, document, DocumentKind.WAGE_TAX_CERTIFICATE);
+        yield new UploadResult(
+            fileName, true, DocumentKind.WAGE_TAX_CERTIFICATE.label() + " " + year);
+      }
+      case Recognition.Payslip payslip -> {
+        String monthName = DocumentStore.monthName(payslip.month());
+        Optional<StoredPayslip> existing = documents.payslipOf(returnId, payslip.month());
+        if (existing.isPresent()) {
+          yield new UploadResult(
+              fileName,
+              false,
+              monthName + " hat schon eine Lohnabrechnung: „" + existing.get().fileName()
+                  + "“. Die App hat die Datei nicht gespeichert.");
+        }
+        long documentId = store(returnId, document, DocumentKind.PAYSLIP);
+        documents.fileAsPayslip(returnId, documentId, payslip.month());
+        yield new UploadResult(
+            fileName, true, DocumentKind.PAYSLIP.label() + " " + monthName + " " + year);
+      }
+      case Recognition.OtherYear other ->
+          new UploadResult(
+              fileName,
+              false,
+              "Gehört zum Jahr " + other.year() + ", nicht zu " + year
+                  + ". Die App hat die Datei nicht gespeichert.");
+      case Recognition.Unknown unknown -> {
+        String token = pendingUploads.put(returnId, document);
+        yield new UploadResult(
+            fileName, false, "Nicht erkannt. Die Datei wartet unten auf ihre Art.", token);
+      }
+    };
+  }
+
+  /**
    * Stores the file where it belongs, if the app recognizes it. A file of another year is not
    * stored. For a file that the app cannot recognize, the page asks for the kind.
    */
-  @PostMapping("/returns/{returnId}/documents")
-  String upload(@PathVariable long returnId, @RequestParam MultipartFile file, Model model)
-      throws IOException {
+  private String uploadOne(long returnId, MultipartFile file, Model model) throws IOException {
     TaxYear taxYear = taxYearOf(returnId);
     NewDocument document;
     try {
@@ -544,7 +647,7 @@ class DocumentController {
    */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
-    model.addAttribute("error", TOO_LARGE);
+    model.addAttribute("error", UPLOAD_TOO_LARGE);
     fillPage(returnIdOf(request), model);
     return "documents";
   }
@@ -630,6 +733,7 @@ class DocumentController {
     model.addAttribute("kinds", kindOptions());
     model.addAttribute(
         "rows", documents.documentsOf(returnId).stream().map(DocumentRow::of).toList());
+    model.addAttribute("waiting", pendingUploads.of(returnId));
     payslips.fill(returnId, taxYear, model);
   }
 

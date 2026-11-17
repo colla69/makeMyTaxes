@@ -46,12 +46,13 @@
         <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
         <div class="field">
           <label>
-            <span class="field-label">Datei</span>
-            <input type="file" name="file" required
+            <span class="field-label">Dateien</span>
+            <input type="file" name="file" required multiple
                    accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
           </label>
           <p class="help">
-            PDF, JPEG oder PNG, höchstens 20 MB. Die App erkennt eine Lohnsteuerbescheinigung und
+            Eine oder mehrere Dateien, auch per Ziehen und Ablegen. PDF, JPEG oder PNG, höchstens
+            20 MB je Datei und 100 MB zusammen. Die App erkennt eine Lohnsteuerbescheinigung und
             eine Lohnabrechnung mit ihrem Monat am Text einer PDF. Bei jeder anderen Datei fragt sie
             nach der Art.
           </p>
@@ -60,6 +61,34 @@
           <button>Hochladen</button>
         </p>
       </form>
+
+      <!-- One line per file of an upload of several files. -->
+      <section th:if="${uploadResults}" id="upload-results">
+        <h2>Ergebnis des Uploads</h2>
+        <ul>
+          <li th:each="result : ${uploadResults}"
+              th:classappend="${result.stored} ? 'stored' : 'not-stored'"
+              th:data-file-name="${result.fileName}"
+              th:text="'„' + ${result.fileName} + '“: ' + (${result.stored} ? 'gespeichert als ' : '') + ${result.text}">
+            „datei.pdf“: gespeichert als Lohnabrechnung März 2025
+          </li>
+        </ul>
+      </section>
+
+      <!-- The files that wait for their kind. The app stores none of them before the user chooses. -->
+      <section th:if="${!waiting.isEmpty()}" id="waiting">
+        <h2>Dateien ohne Art</h2>
+        <p class="help">
+          Die App hat diese Dateien nicht erkannt und noch nicht gespeichert. Bitte für jede Datei
+          die Art wählen.
+        </p>
+        <ul>
+          <li th:each="file : ${waiting}" th:data-file-name="${file.fileName}">
+            <span th:text="${file.fileName}">datei.pdf</span>
+            <a th:href="@{/returns/{r}/documents(r=${returnId},pending=${file.token})}">Art wählen</a>
+          </li>
+        </ul>
+      </section>
 
       <!-- What the app stored the last upload as, so the user can check it. -->
       <p th:if="${recognized}" id="recognized" class="note">

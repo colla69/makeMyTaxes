@@ -1,16 +1,16 @@
 package io.github.colla69.makemytaxes.app.web;
 
-import io.github.colla69.makemytaxes.app.document.CertificatePdfReader;
+import static io.github.colla69.makemytaxes.app.web.InterviewContext.interviewHref;
+
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
 import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.app.web.InterviewContext.FieldTarget;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
-import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
-import io.github.colla69.makemytaxes.core.form.CertificateValues;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
@@ -21,22 +21,17 @@ import io.github.colla69.makemytaxes.core.form.Interview.Topic;
 import io.github.colla69.makemytaxes.core.form.Interview.Type;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.form.MainForm;
-import io.github.colla69.makemytaxes.core.form.Sections;
 import io.github.colla69.makemytaxes.core.form.Source;
-import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
 import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -72,36 +67,20 @@ class InterviewController {
   /** The answer to the question for the certificate: a new file, or a document of the return. */
   record CertificateChoice(Long documentId, MultipartFile file) {}
 
-  /** The field of a form that a question or a certificate value writes into. */
-  record FieldTarget(String formId, String fieldId) {}
-
-  /** A field of the certificate, and the form that holds it. */
-  private record CertificateField(String formId, Field field) {}
-
-  /** The value read from the certificate, and the value of the input of its check row. */
-  record CheckValues(String read, String input) {}
-
-  /** One row of the check of an uploaded certificate. The input name holds the document. */
-  record CheckRow(
-      String name, String label, String certificateLine, String kind, CheckValues values) {}
-
-  /** An uploaded certificate with the values that the app read from it. */
-  record CertificateCheck(long id, String fileName, String href, List<CheckRow> rows) {}
-
-  /** The certificate values come from Anlage N and from Anlage Vorsorgeaufwand. */
-  private static final List<CertificateField> CERTIFICATE_FIELDS =
-      Stream.concat(
-              Sections.EMPLOYER.fields().stream()
-                  .map(field -> new CertificateField(AnlageN.ID, field)),
-              Sections.SOCIAL_INSURANCE.fields().stream()
-                  .map(field -> new CertificateField(AnlageVorsorgeaufwand.ID, field)))
-          .toList();
-
+  private final InterviewContext context;
+  private final InterviewDocuments certificates;
   private final HouseholdStore household;
   private final FormStore forms;
   private final DocumentStore documents;
 
-  InterviewController(HouseholdStore household, FormStore forms, DocumentStore documents) {
+  InterviewController(
+      InterviewContext context,
+      InterviewDocuments certificates,
+      HouseholdStore household,
+      FormStore forms,
+      DocumentStore documents) {
+    this.context = context;
+    this.certificates = certificates;
     this.household = household;
     this.forms = forms;
     this.documents = documents;
@@ -110,19 +89,19 @@ class InterviewController {
   /** The first open question, or the summary of all topics when each question has an answer. */
   @GetMapping("/returns/{returnId}/interview")
   String page(@PathVariable long returnId, Model model) {
-    YearDefinition definition = definitionOf(returnId);
+    YearDefinition definition = context.definitionOf(returnId);
     TaxYear taxYear = definition.pack().taxYear();
     Interview interview = definition.interview();
     Answers answers = forms.answers(returnId, Interview.ID);
     // Only a new interview starts with the upload. One in progress goes on with its questions.
     if (answers.values().isEmpty()) {
-      return documentsScreen(returnId, model);
+      return certificates.documentsScreen(returnId, model);
     }
     var next = interview.next(answers);
     if (next.isPresent()) {
       return questionScreen(returnId, next.get(), model);
     }
-    addCommon(returnId, model);
+    context.addCommon(returnId, model);
     model.addAttribute(
         "topics", Arrays.stream(Topic.values()).map(topic -> topicView(returnId, topic)).toList());
     model.addAttribute(
@@ -151,7 +130,7 @@ class InterviewController {
     model.addAttribute("saved", saved);
     Topic shown = topicOf(topic);
     Answers answers = forms.answers(returnId, Interview.ID);
-    addCommon(returnId, model);
+    context.addCommon(returnId, model);
     model.addAttribute("summary", topicView(returnId, shown));
     model.addAttribute(
         "back", questionHref(returnId, interview.questionsOf(answers, shown).getLast()));
@@ -193,7 +172,7 @@ class InterviewController {
       boolean changed = changes(returnId, question, answer.strip());
       String error = requiredError(returnId, question, answer.strip());
       if (error == null) {
-        error = saveField(returnId, targetOf(question), answer.strip());
+        error = context.saveField(returnId, targetOf(question), answer.strip());
       }
       if (error != null) {
         model.addAttribute("value", answer);
@@ -246,10 +225,6 @@ class InterviewController {
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
     long returnId = DocumentController.returnIdOf(request);
-    if (DocumentController.pathVariable(request, "questionId") == null) {
-      model.addAttribute("documentError", DocumentController.TOO_LARGE);
-      return documentsScreen(returnId, model);
-    }
     Question question =
         questionOf(returnId, DocumentController.pathVariable(request, "questionId"));
     model.addAttribute("documentError", DocumentController.TOO_LARGE);
@@ -311,7 +286,7 @@ class InterviewController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
     boolean changed = changes(returnId, question, value.strip());
-    String error = saveField(returnId, targetOf(question), value.strip());
+    String error = context.saveField(returnId, targetOf(question), value.strip());
     if (error != null) {
       return ResponseEntity.status(422).body(error);
     }
@@ -330,7 +305,7 @@ class InterviewController {
     if (saved.isEmpty() || value.isEmpty()) {
       return !saved.equals(value);
     }
-    Kind kind = formOf(returnId, question.formId()).field(question.id()).orElseThrow().kind();
+    Kind kind = context.formOf(returnId, question.formId()).field(question.id()).orElseThrow().kind();
     try {
       kind.validate(value);
     } catch (IllegalArgumentException e) {
@@ -351,135 +326,10 @@ class InterviewController {
     return own ? Interview.OWN : Interview.DONE;
   }
 
-  /**
-   * The step "Dokumente hochladen" before the first question: the uploaded certificates, each with
-   * the values that the app read from it for a check.
-   */
-  private String documentsScreen(long returnId, Model model) {
-    addCommon(returnId, model);
-    model.addAttribute("upload", true);
-    List<StoredDocument> certificates = certificatesOf(returnId);
-    List<CertificateCheck> checks = new ArrayList<>();
-    for (int employer = 1; employer <= certificates.size(); employer++) {
-      checks.add(checkOf(returnId, certificates.get(employer - 1), employer));
-    }
-    model.addAttribute("certificates", checks);
-    return "interview";
-  }
-
-  /**
-   * The rows of the check of the certificate of an employer. An input shows the value that the
-   * form already holds, or else the read value. A value that the app did not read stays empty.
-   */
-  private CertificateCheck checkOf(long returnId, StoredDocument stored, int employer) {
-    WageTaxCertificate certificate = definitionOf(returnId).certificate();
-    CertificateValues read = CertificatePdfReader.read(documents.content(stored.id()), certificate);
-    Map<String, Answers> saved =
-        Map.of(
-            AnlageN.ID, forms.answers(returnId, AnlageN.ID),
-            AnlageVorsorgeaufwand.ID, forms.answers(returnId, AnlageVorsorgeaufwand.ID));
-    List<CheckRow> rows =
-        CERTIFICATE_FIELDS.stream()
-            .filter(target -> certificate.fieldIds().contains(target.field().id()))
-            .map(
-                target -> {
-                  String id = target.field().id();
-                  String readValue = read.value(id).orElse("");
-                  String onForm =
-                      saved.get(target.formId()).text(AnlageN.employerFieldId(employer, id));
-                  return new CheckRow(
-                      inputName(stored.id(), id),
-                      target.field().label(),
-                      certificate.lineOf(id).orElse("ohne Zeile"),
-                      target.field().kind().name(),
-                      new CheckValues(readValue, onForm.isEmpty() ? readValue : onForm));
-                })
-            .toList();
-    return new CertificateCheck(
-        stored.id(), stored.fileName(), "/returns/" + returnId + "/documents/" + stored.id(), rows);
-  }
-
-  private static String inputName(long document, String fieldId) {
-    return "d" + document + "-" + fieldId;
-  }
-
-  private List<StoredDocument> certificatesOf(long returnId) {
-    return documents.documentsOf(returnId).stream()
-        .filter(document -> document.kind() == DocumentKind.WAGE_TAX_CERTIFICATE)
-        .toList();
-  }
-
-  /** Uploads one Lohnsteuerbescheinigung in the step "Dokumente hochladen". */
-  @PostMapping("/returns/{returnId}/interview/documents")
-  String uploadDocument(
-      @PathVariable long returnId, @RequestParam(required = false) MultipartFile file, Model model)
-      throws IOException {
-    definitionOf(returnId);
-    try {
-      if (file == null) {
-        throw new IllegalArgumentException("Bitte eine Datei wählen. Eine leere Datei geht nicht.");
-      }
-      documents.add(
-          returnId,
-          DocumentController.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, file),
-          LocalDate.now());
-    } catch (IllegalArgumentException e) {
-      model.addAttribute("documentError", e.getMessage());
-      return documentsScreen(returnId, model);
-    }
-    return "redirect:" + interviewHref(returnId);
-  }
-
-  /** Leaves the step "Dokumente hochladen" without values from documents. */
-  @PostMapping("/returns/{returnId}/interview/documents/skip")
-  String skipDocuments(@PathVariable long returnId) {
-    definitionOf(returnId);
-    Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
-    values.put(Interview.DOCUMENTS_STEP, Interview.DONE);
-    forms.save(returnId, Interview.ID, new Answers(values));
-    return "redirect:" + interviewHref(returnId);
-  }
-
-  /**
-   * Takes the checked values of the uploaded certificates: certificate {@code n} is the certificate
-   * of employer {@code n}. Each value that the user confirmed answers its question, with the
-   * certificate as its source. An empty or invalid value leaves its question open.
-   */
-  @PostMapping("/returns/{returnId}/interview/documents/confirm")
-  String confirmDocuments(
-      @PathVariable long returnId, @RequestParam Map<String, String> submitted) {
-    definitionOf(returnId);
-    List<StoredDocument> certificates = certificatesOf(returnId);
-    Map<String, String> fromCertificates =
-        Interview.certificateAnswers(certificates.stream().map(StoredDocument::id).toList());
-    Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
-    values.putAll(fromCertificates);
-    values.put(Interview.DOCUMENTS_STEP, Interview.DONE);
-    // The interview names the certificates first, so each value below takes its certificate as
-    // its source.
-    forms.save(returnId, Interview.ID, new Answers(values));
-    Set<String> prefilled = new LinkedHashSet<>(fromCertificates.keySet());
-    for (int employer = 1; employer <= certificates.size(); employer++) {
-      long document = certificates.get(employer - 1).id();
-      for (CertificateField target : CERTIFICATE_FIELDS) {
-        String value = submitted.getOrDefault(inputName(document, target.field().id()), "").strip();
-        String fieldId = AnlageN.employerFieldId(employer, target.field().id());
-        if (!value.isEmpty()
-            && saveField(returnId, new FieldTarget(target.formId(), fieldId), value) == null) {
-          prefilled.add(fieldId);
-          values.put(fieldId, Interview.DONE);
-        }
-      }
-    }
-    values.put(Interview.PREFILLED, Interview.prefilledText(prefilled));
-    forms.save(returnId, Interview.ID, new Answers(values));
-    return "redirect:" + interviewHref(returnId);
-  }
-
   /** Clears the interview answers. The values in the forms stay. */
   @PostMapping("/returns/{returnId}/interview/restart")
   String restart(@PathVariable long returnId) {
-    definitionOf(returnId);
+    context.definitionOf(returnId);
     forms.save(returnId, Interview.ID, new Answers(Map.of()));
     return "redirect:" + interviewHref(returnId);
   }
@@ -493,7 +343,7 @@ class InterviewController {
    * done interview leaves no required field empty. A save on leaving the field may still clear it.
    */
   private String requiredError(long returnId, Question question, String value) {
-    Field field = formOf(returnId, question.formId()).field(question.id()).orElseThrow();
+    Field field = context.formOf(returnId, question.formId()).field(question.id()).orElseThrow();
     return field.required() && value.isEmpty()
         ? "Die Erklärung braucht diesen Wert. Bitte füllen Sie das Feld aus."
         : null;
@@ -508,31 +358,8 @@ class InterviewController {
         .toList();
   }
 
-  /** Writes the value into the form, or returns the error. An empty value clears the field. */
-  private String saveField(long returnId, FieldTarget target, String value) {
-    FormModule form = formOf(returnId, target.formId());
-    Field field = form.field(target.fieldId()).orElseThrow();
-    Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, form.id()).values());
-    if (value.isEmpty()) {
-      values.remove(field.id());
-    } else {
-      try {
-        field.kind().validate(value);
-      } catch (IllegalArgumentException e) {
-        return e.getMessage();
-      }
-      values.put(field.id(), value);
-    }
-    List<String> formErrors = form.check(new Answers(values));
-    if (!formErrors.isEmpty()) {
-      return String.join(" ", formErrors);
-    }
-    forms.save(returnId, form.id(), new Answers(values));
-    return null;
-  }
-
   private String questionScreen(long returnId, Question question, Model model) {
-    addCommon(returnId, model);
+    context.addCommon(returnId, model);
     Answers answers = forms.answers(returnId, Interview.ID);
     List<Question> inTopic = interviewOf(returnId).questionsOf(answers, question.topic());
     model.addAttribute("question", question);
@@ -542,7 +369,7 @@ class InterviewController {
     model.addAttribute("back", backHref(returnId, answers, question));
     model.addAttribute("current", answers.text(question.id()));
     if (question.type() == Type.FIELD) {
-      FormModule form = formOf(returnId, question.formId());
+      FormModule form = context.formOf(returnId, question.formId());
       Field field = form.field(question.id()).orElseThrow();
       model.addAttribute("field", field);
       if (!model.containsAttribute("value")) {
@@ -554,7 +381,7 @@ class InterviewController {
               document -> {
                 model.addAttribute(
                     "certificateHref", "/returns/" + returnId + "/documents/" + document);
-                model.addAttribute("certificateRead", readValue(returnId, document, field));
+                model.addAttribute("certificateRead", certificates.readValue(returnId, document, field));
               });
     }
     if (question.type() == Type.DOCUMENT) {
@@ -574,38 +401,11 @@ class InterviewController {
     return "interview";
   }
 
-  /**
-   * The value of the field that the app reads from the stored certificate, or empty if it finds
-   * none. The page shows it beside the answer and marks an answer that differs. It is never saved.
-   */
-  private String readValue(long returnId, long document, Field field) {
-    return documents
-        .find(returnId, document)
-        .map(
-            stored ->
-                CertificatePdfReader.read(
-                    documents.content(stored.id()), definitionOf(returnId).certificate()))
-        .flatMap(read -> read.value(field.hintId()))
-        .orElse("");
-  }
-
   private List<Kind.Option> certificateOptions(long returnId) {
     return documents.documentsOf(returnId).stream()
         .filter(document -> document.kind() == DocumentKind.WAGE_TAX_CERTIFICATE)
         .map(document -> new Kind.Option(Long.toString(document.id()), document.fileName()))
         .toList();
-  }
-
-  private void addCommon(long returnId, Model model) {
-    YearDefinition definition = definitionOf(returnId);
-    Interview interview = definition.interview();
-    Answers answers = forms.answers(returnId, Interview.ID);
-    model.addAttribute("returnId", returnId);
-    model.addAttribute("tab", Interview.ID);
-    model.addAttribute("taxYear", definition.pack().taxYear().value());
-    model.addAttribute("forms", definition.forms());
-    model.addAttribute("answeredCount", interview.answeredCount(answers));
-    model.addAttribute("questionCount", interview.questions(answers).size());
   }
 
   private TopicView topicView(long returnId, Topic topic) {
@@ -641,7 +441,7 @@ class InterviewController {
         String value = forms.answers(returnId, question.formId()).text(question.id());
         yield value.isEmpty()
             ? "Keine Angabe"
-            : formOf(returnId, question.formId())
+            : context.formOf(returnId, question.formId())
                 .field(question.id())
                 .map(field -> field.kind().display(value))
                 .orElse(value);
@@ -679,10 +479,6 @@ class InterviewController {
         .orElse(null);
   }
 
-  private static String interviewHref(long returnId) {
-    return "/returns/" + returnId + "/interview";
-  }
-
   private static String questionHref(long returnId, Question question) {
     return interviewHref(returnId) + "/questions/" + question.id();
   }
@@ -708,33 +504,18 @@ class InterviewController {
   private Question questionOf(long returnId, String questionId) {
     return interviewOf(returnId)
         .find(forms.answers(returnId, Interview.ID), questionId)
-        .orElseThrow(InterviewController::notFound);
+        .orElseThrow(InterviewContext::notFound);
   }
 
   private static Topic topicOf(String name) {
     return Arrays.stream(Topic.values())
         .filter(topic -> topic.name().equals(name))
         .findFirst()
-        .orElseThrow(InterviewController::notFound);
-  }
-
-  private FormModule formOf(long returnId, String formId) {
-    return Forms.find(definitionOf(returnId).pack().taxYear(), formId).orElseThrow();
+        .orElseThrow(InterviewContext::notFound);
   }
 
   private Interview interviewOf(long returnId) {
-    return definitionOf(returnId).interview();
+    return context.definitionOf(returnId).interview();
   }
 
-  /** A year without a definition has no forms, so the interview could point nowhere. */
-  private YearDefinition definitionOf(long returnId) {
-    return household
-        .taxYearOf(returnId)
-        .flatMap(YearDefinition::of)
-        .orElseThrow(InterviewController::notFound);
-  }
-
-  private static ResponseStatusException notFound() {
-    return new ResponseStatusException(HttpStatus.NOT_FOUND);
-  }
 }

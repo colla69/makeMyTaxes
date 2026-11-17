@@ -261,7 +261,30 @@ class WageTaxCertificateReader2022Test {
 
   @ParameterizedTest
   @ValueSource(
-      strings = {"01.03.-30.06. 01.07.-31.12.", "01.03. 30.06. 31.12.", "01.03.-31.12. 31.12."})
+      strings = {
+        "01. 03. - 30. 09.",
+        "01. 03. - 30. 09. 2022",
+        "01. 03. 2022 - 30. 09. 2022",
+        "01. 03. bis 30. 09.",
+        "01. 03. -\n30. 09.",
+        "01.03.-30.09. 01. 03. - 30. 09."
+      })
+  void thePeriodIsReadWhenTheDatesHaveASpaceAfterEachDot(String period) {
+    CertificateValues values = read(right(SOCIAL).replace("01.03.-31.12.", period));
+
+    assertThat(values.value("employedFrom")).hasValue("01.03.2022");
+    assertThat(values.value("employedTo")).hasValue("30.09.2022");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "01.03.-30.06. 01.07.-31.12.",
+        "01.03. 30.06. 31.12.",
+        "01.03.-31.12. 31.12.",
+        "01. 03. - 30. 06. 01. 07. - 31. 12.",
+        "01. 03. - 31. 12. 31. 12."
+      })
   void twoDifferentPeriodsOrAStrayDateAreNotFound(String period) {
     CertificateValues values = read(right(SOCIAL).replace("01.03.-31.12.", period));
 

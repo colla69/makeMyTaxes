@@ -79,7 +79,7 @@ class PayslipBrowserTest {
   }
 
   @Test
-  void previewsAPayslipInThePageAndClosesThePreview() {
+  void previewsAPayslipInAModalAndClosesIt() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);
     uploadPayslip(page, "April", "4.000,00", "500,00");
@@ -88,13 +88,13 @@ class PayslipBrowserTest {
 
     april.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
 
-    Locator preview = page.locator("#document-preview");
-    assertThat(preview).containsText("made-up-april.pdf");
-    assertThat(preview.locator("iframe")).hasAttribute("src", href);
-    preview
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
+    Locator dialog = page.getByRole(AriaRole.DIALOG);
+    assertThat(dialog).hasAccessibleName("made-up-april.pdf");
+    assertThat(dialog.locator("iframe")).hasAttribute("src", href);
+    dialog
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
         .click();
-    assertThat(page.locator("#document-preview")).hasCount(0);
+    assertThat(dialog).isHidden();
     assertThat(month(page, "April").getByRole(AriaRole.LINK)).hasText("made-up-april.pdf");
   }
 

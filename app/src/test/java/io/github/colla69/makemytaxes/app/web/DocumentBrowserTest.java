@@ -61,10 +61,10 @@ class DocumentBrowserTest {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);
 
-    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
-    page.getByLabel("Datei")
-        .setInputFiles(new FilePayload("made-up-receipt.png", "image/png", madeUpPng()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    uploadAsKind(
+        page,
+        new FilePayload("made-up-receipt.png", "image/png", madeUpPng()),
+        "INVOICE_OR_RECEIPT");
 
     Locator row = page.locator("#documents tbody tr");
     assertThat(row).hasCount(1);
@@ -171,11 +171,10 @@ class DocumentBrowserTest {
   }
 
   private static void uploadPdf(Page page, String fileName) {
-    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
-    page.getByLabel("Datei")
-        .setInputFiles(
-            new FilePayload(fileName, "application/pdf", "%PDF-1.4 made-up".getBytes()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    uploadAsKind(
+        page,
+        new FilePayload(fileName, "application/pdf", "%PDF-1.4 made-up".getBytes()),
+        "INVOICE_OR_RECEIPT");
     assertThat(page.locator("#documents")).containsText(fileName);
   }
 
@@ -288,10 +287,17 @@ class DocumentBrowserTest {
   }
 
   private static void uploadReceipt(Page page, String fileName) throws IOException {
-    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
-    page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", madeUpPng()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    uploadAsKind(page, new FilePayload(fileName, "image/png", madeUpPng()), "INVOICE_OR_RECEIPT");
     assertThat(page.locator("#documents")).containsText(fileName);
+  }
+
+  /** The app does not recognize a made-up image or PDF, so it asks for the kind. */
+  private static void uploadAsKind(Page page, FilePayload file, String kind) {
+    page.getByLabel("Datei").setInputFiles(file);
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    Locator form = page.locator("#kind-form");
+    form.getByLabel("Art").selectOption(kind);
+    form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
   }
 
   private void openTheDocumentsOfANewReturn(Page page) {

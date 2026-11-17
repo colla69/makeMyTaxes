@@ -99,7 +99,8 @@ public final class WageTaxCertificateReader2022 {
     return new CertificateValues(found, emptyFields(amounts));
   }
 
-  private static Optional<Integer> yearOf(String page) {
+  /** The year in the title of the certificate, such as the 2022 of "Lohnsteuerbescheinigung für 2022". */
+  public static Optional<Integer> yearOf(String page) {
     Matcher matcher = TITLE.matcher(page);
     return matcher.find() ? Optional.of(Integer.parseInt(matcher.group(1))) : Optional.empty();
   }

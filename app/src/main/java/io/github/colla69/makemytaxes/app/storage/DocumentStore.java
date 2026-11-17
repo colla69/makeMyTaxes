@@ -69,26 +69,35 @@ public class DocumentStore {
     return documentId;
   }
 
-  /** A payslip and the month that it is for. */
-  public record NewPayslip(Month month, NewDocument document) {}
-
   /** A stored payslip: its month, and the ID and the file name of its document. */
   public record StoredPayslip(Month month, long documentId, String fileName) {}
 
   /**
-   * Stores a payslip as a document of the return. A new payslip for a month replaces the old one
-   * as the payslip of that month. The old document stays, because an expense can link to it.
+   * Gives a document of the return a new kind. A document that was the payslip of a month is no
+   * longer the payslip of that month.
    */
   @Transactional
-  public long addPayslip(long returnId, NewPayslip payslip, LocalDate uploadedOn) {
-    jdbc.sql("delete from payslip where tax_return_id = ? and month = ?")
-        .params(returnId, payslip.month().getValue())
+  public void changeKind(long returnId, long documentId, DocumentKind kind) {
+    jdbc.sql("delete from payslip where tax_return_id = ? and document_id = ?")
+        .params(returnId, documentId)
         .update();
-    long documentId = add(returnId, payslip.document(), uploadedOn);
+    jdbc.sql("update document set kind = ? where id = ? and tax_return_id = ?")
+        .params(kind.name(), documentId, returnId)
+        .update();
+  }
+
+  /**
+   * Makes a stored document of the kind payslip the payslip of the month. The caller checks first
+   * that the month has no other payslip, because the app never replaces one without asking.
+   */
+  public void fileAsPayslip(long returnId, long documentId, Month month) {
     jdbc.sql("insert into payslip(document_id, tax_return_id, month) values (?, ?, ?)")
-        .params(documentId, returnId, payslip.month().getValue())
+        .params(documentId, returnId, month.getValue())
         .update();
-    return documentId;
+  }
+
+  public Optional<StoredPayslip> payslipOf(long returnId, Month month) {
+    return payslipsOf(returnId).stream().filter(payslip -> payslip.month() == month).findFirst();
   }
 
   public List<StoredPayslip> payslipsOf(long returnId) {

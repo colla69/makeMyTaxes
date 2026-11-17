@@ -126,10 +126,12 @@ class DocumentFlowTest {
 
   @Test
   void deletesTheDocumentWithItsBytesItsPayslipMonthAndAWaitingProposal() throws Exception {
-    mockMvc.perform(
-        multipart("/returns/" + returnId + "/payslips")
-            .file(new MockMultipartFile("file", "januar.pdf", "application/pdf", MADE_UP_PDF))
-            .param("month", "1"));
+    chooseKind(
+        mockMvc.perform(
+            multipart("/returns/" + returnId + "/documents")
+                .file(new MockMultipartFile("file", "januar.pdf", "application/pdf", MADE_UP_PDF))),
+        "PAYSLIP",
+        "1");
     long documentId = onlyDocumentId();
     jdbcClient
         .sql(
@@ -367,11 +369,26 @@ class DocumentFlowTest {
     assertThat(DocumentController.mediaTypeOf(new byte[] {'G', 'I', 'F', '8'})).isNull();
   }
 
+  /** Uploads a file. The made-up files have no known layout, so the page asks for the kind. */
   private ResultActions upload(String fileName, byte[] bytes, String kind) throws Exception {
+    ResultActions upload =
+        mockMvc.perform(
+            multipart("/returns/" + returnId + "/documents")
+                .file(new MockMultipartFile("file", fileName, "application/octet-stream", bytes)));
+    return chooseKind(upload, kind, "");
+  }
+
+  private ResultActions chooseKind(ResultActions upload, String kind, String month)
+      throws Exception {
+    String location = upload.andReturn().getResponse().getRedirectedUrl();
+    if (location == null || !location.contains("pending=")) {
+      return upload;
+    }
+    String token = location.substring(location.indexOf("pending=") + "pending=".length());
     return mockMvc.perform(
-        multipart("/returns/" + returnId + "/documents")
-            .file(new MockMultipartFile("file", fileName, "application/octet-stream", bytes))
-            .param("kind", kind));
+        post("/returns/" + returnId + "/uploads/" + token)
+            .param("kind", kind)
+            .param("month", month));
   }
 
   private long newReturn() throws Exception {

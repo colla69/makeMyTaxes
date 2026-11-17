@@ -44,44 +44,56 @@
             enctype="multipart/form-data"
             th:action="@{/returns/{id}/documents(id=${returnId})}">
         <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
-        <div th:replace="~{fields :: field(name='kind', label='Art', options=${kinds})}"></div>
         <div class="field">
           <label>
             <span class="field-label">Datei</span>
             <input type="file" name="file" required
                    accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
           </label>
-          <p class="help">PDF, JPEG oder PNG, höchstens 20 MB.</p>
+          <p class="help">
+            PDF, JPEG oder PNG, höchstens 20 MB. Die App erkennt eine Lohnsteuerbescheinigung und
+            eine Lohnabrechnung mit ihrem Monat am Text einer PDF. Bei jeder anderen Datei fragt sie
+            nach der Art.
+          </p>
         </div>
         <p class="form-buttons">
           <button>Hochladen</button>
         </p>
       </form>
 
-      <h2>Lohnabrechnungen</h2>
-      <form id="payslip-form"
-            class="fields"
-            method="post"
-            enctype="multipart/form-data"
-            th:action="@{/returns/{id}/payslips(id=${returnId})}">
-        <p class="error" th:if="${payslipError}" th:text="${payslipError}">Fehler</p>
-        <div th:replace="~{fields :: field(name='month', label='Monat', options=${months})}"></div>
-        <div class="field">
-          <label>
-            <span class="field-label">Abrechnung</span>
-            <input type="file" name="file" required
-                   accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png">
-          </label>
-          <p class="help">
-            Eine Lohnabrechnung pro Monat. Eine neue Abrechnung ersetzt die alte des Monats, und die
-            alte bleibt unter „Dokumente“. Die App liest nur eine PDF mit Text.
-          </p>
-        </div>
-        <p class="form-buttons">
-          <button>Abrechnung speichern</button>
-        </p>
-      </form>
+      <!-- What the app stored the last upload as, so the user can check it. -->
+      <p th:if="${recognized}" id="recognized" class="note">
+        <span th:text="'„' + ${recognized.fileName} + '“ gespeichert als: ' + ${recognized.text}">
+          „datei.pdf“ gespeichert als: Lohnabrechnung März 2025
+        </span>
+        <a th:href="@{/returns/{r}/documents(r=${returnId},correct=${recognized.id})}">Art oder Monat korrigieren</a>
+      </p>
 
+      <!-- The kind of one file: a file the app could not recognize, or a correction. -->
+      <section th:if="${kindForm}" id="kind-form">
+        <h2 th:text="'Art von „' + ${kindForm.fileName} + '“'">Art von „datei.pdf“</h2>
+        <p class="help" th:if="${kindForm.cancelAction}">
+          Die App hat nicht erkannt, was diese Datei ist. Sie speichert die Datei erst, wenn Sie die
+          Art wählen. Eine Lohnabrechnung braucht auch ihren Monat.
+        </p>
+        <img th:if="${kindForm.image}" th:src="@{${kindForm.fileHref}}" th:alt="${kindForm.fileName}">
+        <iframe th:unless="${kindForm.image}" th:src="@{${kindForm.fileHref}}"
+                th:title="${kindForm.fileName}"></iframe>
+        <form class="fields" method="post" th:action="@{${kindForm.action}}">
+          <p class="error" th:if="${kindError}" th:text="${kindError}">Fehler</p>
+          <div th:replace="~{fields :: field(name='kind', label='Art', options=${kinds}, value=${kindForm.kind}, blankOption=false)}"></div>
+          <div th:replace="~{fields :: field(name='month', label='Monat', options=${months}, value=${kindForm.month}, blankOption=true, help='Nur für eine Lohnabrechnung.')}"></div>
+          <p class="form-buttons">
+            <button>Speichern</button>
+          </p>
+        </form>
+        <form th:if="${kindForm.cancelAction}" method="post" th:action="@{${kindForm.cancelAction}}">
+          <button>Abbrechen</button>
+        </form>
+        <a th:unless="${kindForm.cancelAction}" th:href="@{/returns/{r}/documents(r=${returnId})}">Abbrechen</a>
+      </section>
+
+      <h2>Lohnabrechnungen</h2>
       <table id="payslips">
         <thead>
           <tr><th>Monat</th><th>Lohnabrechnung</th><th>Steuer-Brutto</th><th>Lohnsteuer</th><th>Herkunft</th></tr>
@@ -163,11 +175,19 @@
         new version, so the old document and all values stay.
       -->
       <section th:if="${replaceOld}" id="version-check">
-        <h3 th:text="'Neue Version von „' + ${replaceOld.fileName()} + '“ prüfen'">Neue Version prüfen</h3>
-        <p class="help" th:text="'Die App hat diese Werte aus „' + ${replaceNew.fileName()} + '“ gelesen. Mit „Übernehmen“ ersetzen sie die bisherigen Werte, und die neue Version wird ihr Beleg. Die alte Datei wird gelöscht. Werte, die Sie selbst eingegeben haben, bleiben.'">
+        <h3 th:if="${replaceMonth}"
+            th:text="${replaceMonth} + ' hat schon eine Lohnabrechnung: „' + ${replaceOld.fileName()} + '“'">
+          März hat schon eine Lohnabrechnung
+        </h3>
+        <p class="help" th:if="${replaceMonth}"
+           th:text="'Mit „Übernehmen“ wird „' + ${replaceNew.fileName()} + '“ die Lohnabrechnung des Monats, und die alte Datei wird gelöscht. Mit „Abbrechen“ bleibt die alte Lohnabrechnung, und die neue Datei wird gelöscht.'">
           Hinweis
         </p>
-        <table>
+        <h3 th:unless="${replaceMonth}" th:text="'Neue Version von „' + ${replaceOld.fileName()} + '“ prüfen'">Neue Version prüfen</h3>
+        <p class="help" th:unless="${replaceMonth}" th:text="'Die App hat diese Werte aus „' + ${replaceNew.fileName()} + '“ gelesen. Mit „Übernehmen“ ersetzen sie die bisherigen Werte, und die neue Version wird ihr Beleg. Die alte Datei wird gelöscht. Werte, die Sie selbst eingegeben haben, bleiben.'">
+          Hinweis
+        </p>
+        <table th:unless="${#lists.isEmpty(replaceRows)}">
           <thead>
             <tr><th>Feld</th><th>Bisheriger Wert</th><th>Neue Version</th></tr>
           </thead>

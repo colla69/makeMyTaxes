@@ -12,6 +12,7 @@ import com.microsoft.playwright.options.SelectOption;
 import io.github.colla69.makemytaxes.app.document.MadeUpCertificate;
 import io.github.colla69.makemytaxes.app.document.MadeUpPayslip;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -30,6 +31,12 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PayslipBrowserTest {
+
+  /** A PNG of one pixel, with no text to recognize. */
+  private static final byte[] MADE_UP_PNG =
+      Base64.getDecoder()
+          .decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
 
   private static final List<String> FIRST_HALF =
       List.of("Januar", "Februar", "März", "April", "Mai", "Juni");
@@ -99,34 +106,142 @@ class PayslipBrowserTest {
   }
 
   @Test
-  void aNewPayslipReplacesTheOldOneOfTheMonth() {
+  void recognizesThePayslipWithoutAKindOrAMonth() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);
 
+    uploadPayslip(page, "August", "4.000,00", "500,00");
+
+    assertThat(page.locator("#recognized"))
+        .containsText("„made-up-august.pdf“ gespeichert als: Lohnabrechnung August 2022");
+    assertThat(month(page, "August").getByRole(AriaRole.LINK)).hasText("made-up-august.pdf");
+  }
+
+  @Test
+  void asksForTheKindAndTheMonthOfAFileThatItDoesNotRecognize() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+
+    upload(page, new FilePayload("made-up-scan.png", "image/png", MADE_UP_PNG));
+
+    Locator form = page.locator("#kind-form");
+    assertThat(form).containsText("Die App hat nicht erkannt, was diese Datei ist.");
+    assertThat(form.locator("img")).hasAttribute("alt", "made-up-scan.png");
+    assertThat(page.locator("#documents tbody tr")).hasCount(0);
+    form.getByLabel("Art").selectOption("PAYSLIP");
+    form.getByLabel("Monat").selectOption(new SelectOption().setLabel("Juni"));
+    form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    assertThat(month(page, "Juni").getByRole(AriaRole.LINK)).hasText("made-up-scan.png");
+  }
+
+  @Test
+  void doesNotStoreAPayslipOfAnotherYear() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+
+    upload(
+        page,
+        new FilePayload(
+            "made-up-2021.pdf",
+            "application/pdf",
+            MadeUpPayslip.pdf("Mai 2021", "4.000,00", "500,00")));
+
+    assertThat(page.locator(".error"))
+        .containsText("„made-up-2021.pdf“ gehört zum Jahr 2021, nicht zu 2022.");
+    assertThat(page.locator("#documents tbody tr")).hasCount(0);
+  }
+
+  @Test
+  void correctsTheMonthOfARecognizedPayslip() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadPayslip(page, "September", "4.000,00", "500,00");
+
+    page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Art oder Monat korrigieren"))
+        .click();
+    Locator form = page.locator("#kind-form");
+    form.getByLabel("Monat").selectOption(new SelectOption().setLabel("Oktober"));
+    form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    assertThat(page.locator("#recognized")).containsText("Lohnabrechnung Oktober 2022");
+    assertThat(month(page, "Oktober").getByRole(AriaRole.LINK)).hasText("made-up-september.pdf");
+    assertThat(month(page, "September")).containsText("fehlt");
+  }
+
+  @Test
+  void doesNotMoveAPayslipIntoAMonthThatHasOne() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadPayslip(page, "Juli", "4.000,00", "500,00");
+    uploadPayslip(page, "August", "4.100,00", "510,00");
+
+    page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Art oder Monat korrigieren"))
+        .click();
+    Locator form = page.locator("#kind-form");
+    form.getByLabel("Monat").selectOption(new SelectOption().setLabel("Juli"));
+    form.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    assertThat(form.locator(".error")).containsText("Juli hat schon eine Lohnabrechnung");
+    page.navigate(page.url().replaceAll("/documents.*", "/documents"));
+    assertThat(month(page, "Juli").getByRole(AriaRole.LINK)).hasText("made-up-juli.pdf");
+    assertThat(month(page, "August").getByRole(AriaRole.LINK)).hasText("made-up-august.pdf");
+  }
+
+  @Test
+  void asksBeforeANewPayslipReplacesTheOldOneOfTheMonth() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
     uploadPayslip(page, "Mai", "4.000,00", "500,00");
-    uploadPayslip(page, "Mai", "4.200,00", "520,00");
+
+    upload(
+        page,
+        new FilePayload(
+            "made-up-mai-neu.pdf",
+            "application/pdf",
+            MadeUpPayslip.pdf("Mai 2022", "4.200,00", "520,00")));
+
+    Locator check = page.locator("#version-check");
+    assertThat(check).containsText("Mai hat schon eine Lohnabrechnung: „made-up-mai.pdf“");
+    assertThat(month(page, "Mai")).containsText("4.000,00");
+    check.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Übernehmen")).click();
 
     Locator may = month(page, "Mai");
-    assertThat(may.getByRole(AriaRole.LINK)).hasCount(1);
+    assertThat(may.getByRole(AriaRole.LINK)).hasText("made-up-mai-neu.pdf");
     assertThat(may).containsText("4.200,00");
     assertThat(may).containsText("520,00");
-    // The old payslip stays as a document, because an expense can link to it.
-    assertThat(page.locator("#documents tbody tr")).hasCount(2);
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
+  }
+
+  @Test
+  void keepsTheOldPayslipIfTheUserCancelsTheReplacement() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+    uploadPayslip(page, "November", "4.000,00", "500,00");
+
+    upload(
+        page,
+        new FilePayload(
+            "made-up-november-neu.pdf",
+            "application/pdf",
+            MadeUpPayslip.pdf("November 2022", "4.200,00", "520,00")));
+    page.locator("#version-check")
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Abbrechen"))
+        .click();
+
+    assertThat(month(page, "November").getByRole(AriaRole.LINK)).hasText("made-up-november.pdf");
+    assertThat(page.locator("#documents tbody tr")).hasCount(1);
   }
 
   @Test
   void showsTheDifferenceToTheCertificate() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);
-    page.getByLabel("Art").selectOption("WAGE_TAX_CERTIFICATE");
-    page.getByLabel("Datei")
-        .setInputFiles(
-            new FilePayload(
-                "made-up-certificate.pdf", "application/pdf", MadeUpCertificate.pdf("2022")));
-    page.waitForNavigation(
-        () ->
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true))
-                .click());
+    upload(
+        page,
+        new FilePayload(
+            "made-up-certificate.pdf", "application/pdf", MadeUpCertificate.pdf("2022")));
+    assertThat(page.locator("#recognized")).containsText("Lohnsteuerbescheinigung 2022");
 
     // Six months of 4.000,00 match line 3. Six months of 500,00 are 100,00 below line 4.
     for (String month : FIRST_HALF) {
@@ -236,16 +351,21 @@ class PayslipBrowserTest {
     uploadPayslip(page, month, MadeUpPayslip.pdf(month + " 2022", gross, wageTax));
   }
 
+  /** The app recognizes the month from the text, so the upload names no month. */
   private static void uploadPayslip(Page page, String month, byte[] pdf) {
-    page.getByLabel("Monat").selectOption(new SelectOption().setLabel(month));
-    page.getByLabel("Abrechnung")
-        .setInputFiles(
-            new FilePayload(
-                "made-up-" + month.toLowerCase(Locale.ROOT) + ".pdf", "application/pdf", pdf));
+    upload(
+        page,
+        new FilePayload(
+            "made-up-" + month.toLowerCase(Locale.ROOT) + ".pdf", "application/pdf", pdf));
+    assertThat(page.locator("#recognized")).containsText("Lohnabrechnung " + month);
+  }
+
+  private static void upload(Page page, FilePayload file) {
+    page.getByLabel("Datei").setInputFiles(file);
     page.waitForNavigation(
         () ->
             page.getByRole(
-                    AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Abrechnung speichern"))
+                    AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true))
                 .click());
   }
 

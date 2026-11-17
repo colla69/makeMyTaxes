@@ -4,11 +4,12 @@ import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.expense.Money;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,8 +26,10 @@ import java.util.stream.Collectors;
  *       splits each amount into running pay ("Steuerbrutto, lfd.") and one-off pay ("Steuerbrutto,
  *       EZ"). The amount is the sum of both lines. Each line shows the amount of the month first,
  *       then the sum of the year. In a month without one-off pay, the EZ line shows only the sum of
- *       the year, so the one-off pay of the month is 0,00. One file can hold corrections of other months, each under its own
- *       period, so the reader reads only the text under the period of the month.
+ *       the year, so the one-off pay of the month is 0,00. One file can hold corrections of other
+ *       months of the year, each under its own period, with the change as one amount that can be
+ *       negative: "Lohnsteuer, lfd. 10,00 -". {@link #read} reads only the text under the period
+ *       of the month. {@link #readContent} also reads the corrections and the year column.
  * </ul>
  *
  * <p>The reader never guesses. It reads nothing if the text does not name the month and the year.
@@ -51,12 +54,20 @@ public final class PayslipReader {
       Pattern.compile(
           "Zeitraum\\s+vom\\s+\\d{2}\\.(\\d{2})\\.(\\d{4})?\\s+bis\\s+\\d{2}\\.(\\d{2})\\.(\\d{4})");
 
+  private static final String GROSS_LABEL = "Steuer-?[Bb]rutto";
+
+  private static final String WAGE_TAX_LABEL = "Lohnsteuer";
+
+  private static final PayslipValues NO_CHANGE =
+      new PayslipValues(Optional.of(Money.ofCents(0)), Optional.of(Money.ofCents(0)));
+
   private PayslipReader() {}
 
   public static PayslipValues read(String text, YearMonth month) {
     List<MatchResult> periods = PERIOD.matcher(text).results().toList();
     if (!periods.isEmpty()) {
-      return readEntgeltabrechnung(statementOf(text, periods, month));
+      return readEntgeltabrechnung(
+          Optional.ofNullable(statementsByMonth(text, periods).get(month)));
     }
     if (!namesMonth(text, month)) {
       return PayslipValues.NONE;
@@ -64,41 +75,125 @@ public final class PayslipReader {
     return new PayslipValues(amountOf(text, TAXABLE_GROSS), amountOf(text, WAGE_TAX));
   }
 
+  /**
+   * The amounts of the month, the corrections of other months of the same year, and the year
+   * column of the month. Only an Entgeltabrechnung has corrections and a year column.
+   */
+  public static PayslipContent readContent(String text, YearMonth month) {
+    List<MatchResult> periods = PERIOD.matcher(text).results().toList();
+    if (periods.isEmpty()) {
+      return new PayslipContent(read(text, month), List.of(), PayslipValues.NONE);
+    }
+    Map<YearMonth, String> statements = statementsByMonth(text, periods);
+    Optional<String> own = Optional.ofNullable(statements.get(month));
+    return new PayslipContent(
+        readEntgeltabrechnung(own),
+        correctionsOf(statements, month),
+        own.map(PayslipReader::yearToDate).orElse(PayslipValues.NONE));
+  }
+
   private static PayslipValues readEntgeltabrechnung(Optional<String> statement) {
     if (statement.isEmpty()) {
       return PayslipValues.NONE;
     }
     String text = statement.get();
-    return new PayslipValues(
-        sumOf(text, "Steuer-?[Bb]rutto"), sumOf(text, "Lohnsteuer"));
+    return new PayslipValues(sumOf(text, GROSS_LABEL), sumOf(text, WAGE_TAX_LABEL));
   }
 
   /**
-   * The text under each period of the month, up to the next period. A statement over several
-   * pages can repeat its period on each page.
+   * The text under each period of one month, up to the next period, by month. A statement over
+   * several pages can repeat its period on each page.
    */
-  private static Optional<String> statementOf(
-      String text, List<MatchResult> periods, YearMonth month) {
-    List<String> parts = new ArrayList<>();
+  private static Map<YearMonth, String> statementsByMonth(String text, List<MatchResult> periods) {
+    Map<YearMonth, String> statements = new TreeMap<>();
     for (int i = 0; i < periods.size(); i++) {
       MatchResult period = periods.get(i);
-      if (isMonth(period, month)) {
-        int end = i + 1 < periods.size() ? periods.get(i + 1).start() : text.length();
-        parts.add(text.substring(period.end(), end));
-      }
+      int end = i + 1 < periods.size() ? periods.get(i + 1).start() : text.length();
+      String part = text.substring(period.end(), end);
+      monthOf(period).ifPresent(month -> statements.merge(month, part, (a, b) -> a + "\n" + b));
     }
-    return parts.isEmpty() ? Optional.empty() : Optional.of(String.join("\n", parts));
+    return statements;
   }
 
-  private static boolean isMonth(MatchResult period, YearMonth month) {
+  /** The month of a period that starts and ends in the same month. */
+  private static Optional<YearMonth> monthOf(MatchResult period) {
     int startMonth = Integer.parseInt(period.group(1));
     String startYear = period.group(2);
     int endMonth = Integer.parseInt(period.group(3));
     int endYear = Integer.parseInt(period.group(4));
-    return startMonth == month.getMonthValue()
-        && endMonth == month.getMonthValue()
-        && endYear == month.getYear()
-        && (startYear == null || Integer.parseInt(startYear) == month.getYear());
+    if (startMonth != endMonth || (startYear != null && Integer.parseInt(startYear) != endYear)) {
+      return Optional.empty();
+    }
+    return Optional.of(YearMonth.of(endYear, endMonth));
+  }
+
+  private static List<PayslipCorrection> correctionsOf(
+      Map<YearMonth, String> statements, YearMonth month) {
+    return statements.entrySet().stream()
+        .filter(entry -> entry.getKey().getYear() == month.getYear())
+        .filter(entry -> !entry.getKey().equals(month))
+        .map(entry -> new PayslipCorrection(entry.getKey(), changesOf(entry.getValue())))
+        .filter(correction -> !correction.values().equals(NO_CHANGE))
+        .toList();
+  }
+
+  private static PayslipValues changesOf(String correction) {
+    return new PayslipValues(
+        changeOf(correction, GROSS_LABEL), changeOf(correction, WAGE_TAX_LABEL));
+  }
+
+  /**
+   * The change of the running pay: the first amount on the "lfd." line, with its sign. Without the
+   * line, nothing changed. A correction with an EZ line is not read, because an EZ line can show
+   * the sum of the year alone, and the reader cannot tell the columns apart.
+   */
+  private static Optional<Money> changeOf(String correction, String label) {
+    if (Pattern.compile("(?:^|\\s)" + label + ",\\s*EZ(?=\\s|$)").matcher(correction).find()) {
+      return Optional.empty();
+    }
+    Pattern running =
+        Pattern.compile("(?:^|\\s)" + label + ",\\s*lfd\\.\\s+" + AMOUNT + "(?=\\s|$)");
+    if (!running.matcher(correction).find()) {
+      return Optional.of(Money.ofCents(0));
+    }
+    return signedAmountOf(correction, running);
+  }
+
+  /** The year column of the "lfd." line, plus the year column of the EZ line if there is one. */
+  private static PayslipValues yearToDate(String statement) {
+    return new PayslipValues(
+        yearSumOf(statement, GROSS_LABEL), yearSumOf(statement, WAGE_TAX_LABEL));
+  }
+
+  private static Optional<Money> yearSumOf(String statement, String label) {
+    String endOfLine = "(?=[ \\t]*(?:\\r?\\n|\\z))";
+    Pattern running =
+        Pattern.compile(
+            "(?:^|\\s)" + label + ",\\s*lfd\\.[ \\t]+" + YEAR_AMOUNT + "[ \\t]+" + AMOUNT
+                + endOfLine);
+    Optional<Money> runningSum = signedAmountOf(statement, running);
+    String oneOffLabel = "(?:^|\\s)" + label + ",\\s*EZ(?=\\s|$)";
+    if (runningSum.isEmpty() || !Pattern.compile(oneOffLabel).matcher(statement).find()) {
+      return runningSum;
+    }
+    Pattern oneOff =
+        Pattern.compile(
+            "(?:^|\\s)" + label + ",\\s*EZ[ \\t]+(?:" + YEAR_AMOUNT + "[ \\t]+)?" + AMOUNT
+                + endOfLine);
+    return signedAmountOf(statement, oneOff).map(runningSum.get()::plus);
+  }
+
+  /** The one amount, with its sign, that the pattern finds. Two different amounts are not read. */
+  private static Optional<Money> signedAmountOf(String text, Pattern pattern) {
+    Set<Money> amounts =
+        pattern.matcher(text).results().map(PayslipReader::signed).collect(Collectors.toSet());
+    return amounts.size() == 1 ? Optional.of(amounts.iterator().next()) : Optional.empty();
+  }
+
+  private static Money signed(MatchResult amount) {
+    Money money = GermanFormats.parseMoney(amount.group(2));
+    boolean negative = amount.group(1) != null || amount.group(3) != null;
+    return negative ? Money.ofCents(-money.cents()) : money;
   }
 
   private static boolean namesMonth(String text, YearMonth month) {

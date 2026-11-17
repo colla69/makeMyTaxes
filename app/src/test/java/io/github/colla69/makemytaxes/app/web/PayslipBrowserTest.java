@@ -154,14 +154,94 @@ class PayslipBrowserTest {
     assertThat(page.locator("#payslip-check")).containsText("kein Vergleich möglich");
   }
 
+  @Test
+  void addsTheCorrectionsOfEarlierMonthsAndChecksTheYearColumn() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+
+    uploadPayslip(
+        page,
+        "Januar",
+        MadeUpPayslip.pdfOf(
+            List.of(
+                "Entgeltabrechnung für den Zeitraum vom 01.01. bis 31.01.2022",
+                "Steuerbrutto, lfd. 3.000,00 3.000,00",
+                "Lohnsteuer, lfd. 400,00 400,00")));
+    uploadPayslip(
+        page,
+        "Februar",
+        MadeUpPayslip.pdfOf(
+            List.of(
+                "Entgeltabrechnung für den Zeitraum vom 01.02. bis 28.02.2022",
+                "Steuerbrutto, lfd. 3.000,00 6.000,00",
+                "Lohnsteuer, lfd. 400,00 800,00")));
+    // March holds a correction of January and a negative correction of February.
+    uploadPayslip(
+        page,
+        "März",
+        MadeUpPayslip.pdfOf(
+            List.of(
+                "Entgeltabrechnung für den Zeitraum vom 01.03. bis 31.03.2022",
+                "Steuerbrutto, lfd. 3.000,00 9.150,00",
+                "Lohnsteuer, lfd. 400,00 1.190,00",
+                "Entgeltabrechnung für den Zeitraum vom 01.01. bis 31.01.2022",
+                "Steuerbrutto, lfd. 150,00",
+                "Lohnsteuer, lfd. 40,00",
+                "Entgeltabrechnung für den Zeitraum vom 01.02. bis 28.02.2022",
+                "Lohnsteuer, lfd. 50,00 -")));
+
+    Locator january = month(page, "Januar");
+    assertThat(january).containsText("3.150,00");
+    assertThat(january).containsText("440,00");
+    assertThat(january).containsText("Abrechnung des Monats: Steuer-Brutto 3.000,00, Lohnsteuer 400,00");
+    assertThat(january)
+        .containsText("Korrektur in made-up-märz.pdf: Steuer-Brutto 150,00, Lohnsteuer 40,00");
+    assertThat(month(page, "Februar")).containsText("350,00");
+    assertThat(month(page, "Februar")).containsText("Lohnsteuer -50,00");
+    assertThat(month(page, "März")).not().containsText("Korrektur");
+
+    Locator yearCheck = page.locator("#payslip-year-check");
+    assertThat(yearCheck).containsText("Lohnabrechnung für März (made-up-märz.pdf)");
+    Locator gross =
+        yearCheck.locator("tr").filter(new Locator.FilterOptions().setHasText("Steuer-Brutto"));
+    assertThat(gross).containsText("9.150,00");
+    assertThat(gross).containsText("stimmt überein");
+    Locator wageTax =
+        yearCheck.locator("tr").filter(new Locator.FilterOptions().setHasText("Lohnsteuer"));
+    assertThat(wageTax).containsText("1.190,00");
+    assertThat(wageTax).containsText("stimmt überein");
+  }
+
+  @Test
+  void saysSoIfTheSumOfTheMonthsDoesNotMatchTheYearColumn() {
+    Page page = browser.newPage();
+    openTheDocumentsOfANewReturn(page);
+
+    uploadPayslip(
+        page,
+        "Februar",
+        MadeUpPayslip.pdfOf(
+            List.of(
+                "Entgeltabrechnung für den Zeitraum vom 01.02. bis 28.02.2022",
+                "Steuerbrutto, lfd. 3.000,00 6.000,00",
+                "Lohnsteuer, lfd. 400,00 800,00")));
+
+    Locator wageTax =
+        page.locator("#payslip-year-check tr")
+            .filter(new Locator.FilterOptions().setHasText("Lohnsteuer"));
+    assertThat(wageTax).containsText("Differenz 400,00 €: die Jahressumme ist höher");
+  }
+
   private static void uploadPayslip(Page page, String month, String gross, String wageTax) {
+    uploadPayslip(page, month, MadeUpPayslip.pdf(month + " 2022", gross, wageTax));
+  }
+
+  private static void uploadPayslip(Page page, String month, byte[] pdf) {
     page.getByLabel("Monat").selectOption(new SelectOption().setLabel(month));
     page.getByLabel("Abrechnung")
         .setInputFiles(
             new FilePayload(
-                "made-up-" + month.toLowerCase(Locale.ROOT) + ".pdf",
-                "application/pdf",
-                MadeUpPayslip.pdf(month + " 2022", gross, wageTax)));
+                "made-up-" + month.toLowerCase(Locale.ROOT) + ".pdf", "application/pdf", pdf));
     page.waitForNavigation(
         () ->
             page.getByRole(

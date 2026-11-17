@@ -1,7 +1,7 @@
 package io.github.colla69.makemytaxes.app.document;
 
 import io.github.colla69.makemytaxes.core.document.PayslipReader;
-import io.github.colla69.makemytaxes.core.document.PayslipValues;
+import io.github.colla69.makemytaxes.core.document.PayslipContent;
 import java.io.IOException;
 import java.time.YearMonth;
 import org.apache.pdfbox.Loader;
@@ -16,13 +16,13 @@ public final class PayslipPdfReader {
 
   private PayslipPdfReader() {}
 
-  public static PayslipValues read(byte[] pdf, YearMonth month) {
+  public static PayslipContent read(byte[] pdf, YearMonth month) {
     try (PDDocument document = Loader.loadPDF(pdf)) {
       PDFTextStripper stripper = new PDFTextStripper();
       stripper.setSortByPosition(true);
-      return PayslipReader.read(stripper.getText(document), month);
+      return PayslipReader.readContent(stripper.getText(document), month);
     } catch (IOException e) {
-      return PayslipValues.NONE;
+      return PayslipContent.NONE;
     }
   }
 }

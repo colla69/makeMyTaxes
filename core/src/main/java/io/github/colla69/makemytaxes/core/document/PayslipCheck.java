@@ -32,16 +32,27 @@ public record PayslipCheck(Optional<Money> sum, Optional<Money> certificate) {
   }
 
   public String result() {
-    return differenceCents().map(PayslipCheck::resultOf).orElse("kein Vergleich möglich");
+    return result("die Bescheinigung");
   }
 
-  private static String resultOf(long difference) {
+  /**
+   * The result against another amount than the certificate.
+   *
+   * @param other the name of the other amount, such as "die Jahressumme"
+   */
+  public String result(String other) {
+    return differenceCents()
+        .map(difference -> resultOf(difference, other))
+        .orElse("kein Vergleich möglich");
+  }
+
+  private static String resultOf(long difference, String other) {
     if (difference == 0) {
       return "stimmt überein";
     }
     String amount = GermanFormats.format(Money.ofCents(Math.abs(difference)));
     return difference > 0
-        ? "Differenz " + amount + " €: die Bescheinigung ist höher"
+        ? "Differenz " + amount + " €: " + other + " ist höher"
         : "Differenz " + amount + " €: die Lohnabrechnungen sind höher";
   }
 }

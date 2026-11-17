@@ -84,7 +84,7 @@
 
       <table id="payslips">
         <thead>
-          <tr><th>Monat</th><th>Lohnabrechnung</th><th>Steuer-Brutto</th><th>Lohnsteuer</th></tr>
+          <tr><th>Monat</th><th>Lohnabrechnung</th><th>Steuer-Brutto</th><th>Lohnsteuer</th><th>Herkunft</th></tr>
         </thead>
         <tbody>
           <tr th:each="row : ${payslipMonths}" th:data-month="${row.month}"
@@ -92,20 +92,49 @@
             <td th:text="${row.month}">Januar</td>
             <td th:if="${row.payslip == null}">fehlt</td>
             <td th:if="${row.payslip != null}">
-              <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.payslip.stored.documentId})}"
+              <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.payslip.documentId})}"
                  target="_blank" rel="noopener"
-                 th:text="${row.payslip.stored.fileName}">abrechnung.pdf</a>
+                 th:text="${row.payslip.fileName}">abrechnung.pdf</a>
               <form method="get" class="inline preview"
                     th:action="@{/returns/{r}/documents(r=${returnId})}">
-                <input type="hidden" name="preview" th:value="${row.payslip.stored.documentId}">
+                <input type="hidden" name="preview" th:value="${row.payslip.documentId}">
                 <button>Vorschau</button>
               </form>
             </td>
-            <td class="amount" th:text="${row.payslip == null} ? '' : ${row.taxableGross}">1,00</td>
-            <td class="amount" th:text="${row.payslip == null} ? '' : ${row.wageTax}">1,00</td>
+            <td class="amount" th:text="${row.value == null} ? '' : ${row.taxableGross}">1,00</td>
+            <td class="amount" th:text="${row.value == null} ? '' : ${row.wageTax}">1,00</td>
+            <td class="sources">
+              <ul th:if="${!row.sources.isEmpty()}">
+                <li th:each="source : ${row.sources}" th:text="${source}">Korrektur in abrechnung.pdf</li>
+              </ul>
+            </td>
           </tr>
         </tbody>
       </table>
+
+      <section th:if="${payslipYearChecks}" id="payslip-year-check">
+        <h3>Summe der Monate und Jahressumme</h3>
+        <p class="help">
+          Jeder Monat enthält seine Korrekturen aus allen Lohnabrechnungen des Jahres.
+          <span th:text="${payslipYearSource}">Die Jahressumme steht in der Lohnabrechnung für Dezember.</span>
+          Eine Korrektur, die mehrere Abrechnungen mit denselben Beträgen zeigen, zählt einmal.
+          Wenn die Summen nicht übereinstimmen, fehlt ein Monat oder eine Korrektur, oder eine
+          wiederholte Korrektur war doch eine neue. Die App rät keinen Wert.
+        </p>
+        <table>
+          <thead>
+            <tr><th>Betrag</th><th>Summe der Monate</th><th>Jahressumme</th><th>Ergebnis</th></tr>
+          </thead>
+          <tbody>
+            <tr th:each="row : ${payslipYearChecks}">
+              <td th:text="${row.amount}">Lohnsteuer</td>
+              <td class="amount" th:text="${row.sum}">1,00</td>
+              <td class="amount" th:text="${row.compared}">1,00</td>
+              <td th:text="${row.result}">stimmt überein</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       <section th:if="${payslipChecks}" id="payslip-check">
         <h3>Vergleich mit der Lohnsteuerbescheinigung</h3>
@@ -121,7 +150,7 @@
             <tr th:each="row : ${payslipChecks}">
               <td th:text="${row.amount}">Lohnsteuer</td>
               <td class="amount" th:text="${row.sum}">1,00</td>
-              <td class="amount" th:text="${row.certificate}">1,00</td>
+              <td class="amount" th:text="${row.compared}">1,00</td>
               <td th:text="${row.result}">stimmt überein</td>
             </tr>
           </tbody>

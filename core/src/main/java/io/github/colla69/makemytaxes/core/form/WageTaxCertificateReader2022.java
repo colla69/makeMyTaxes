@@ -18,8 +18,8 @@ import java.util.regex.Pattern;
  * Lohnsteuerbescheinigung for 2022. The layout is the one of the official sample, which {@code
  * WageTaxCertificate2022Test} names.
  *
- * <p>The reader never guesses. A field is not found if its line is missing, holds two amounts or a
- * negative amount, or if the certificate is for another year. A field is empty if its line is
+ * <p>The reader never guesses. A field is not found if its line is missing, holds two amounts, a
+ * negative amount or digits that the reader cannot read, or if the certificate is for another year. A field is empty if its line is
  * printed and holds no amount.
  */
 public final class WageTaxCertificateReader2022 {
@@ -160,8 +160,7 @@ public final class WageTaxCertificateReader2022 {
       }
     }
     putPeriod(periodText.toString(), year, found);
-    printed.removeAll(unclear);
-    return new Amounts(amounts, printed);
+    return new Amounts(amounts, printed, unclear);
   }
 
   private static boolean holdsUnreadDigits(String text) {
@@ -280,14 +279,17 @@ public final class WageTaxCertificateReader2022 {
 
   /**
    * The amounts of each line, such as "3" or "22a", as they appear on the certificate, and the
-   * lines whose number or letter is printed, without digits that the reader cannot read.
+   * lines whose number or letter is printed. A line is unclear if it holds digits that the reader
+   * cannot read, such as the "1" of "1 234 56". The reader gives no value and no empty state for an
+   * unclear line, because it cannot tell which amount the certificate shows.
    */
-  private record Amounts(Map<String, List<String>> byLine, Set<String> printed) {
+  private record Amounts(
+      Map<String, List<String>> byLine, Set<String> printed, Set<String> unclear) {
 
-    /** True if each line is printed and none holds an amount. */
+    /** True if each line is printed, is clear and holds no amount. */
     boolean empty(String... lines) {
       for (String line : lines) {
-        if (!printed.contains(line) || has(line)) {
+        if (!printed.contains(line) || unclear.contains(line) || has(line)) {
           return false;
         }
       }
@@ -297,7 +299,7 @@ public final class WageTaxCertificateReader2022 {
     /** The amount of a line with exactly one usable amount. */
     Optional<Money> single(String line) {
       List<String> texts = byLine.getOrDefault(line, List.of());
-      if (texts.size() != 1 || texts.getFirst().equals(UNUSABLE)) {
+      if (unclear.contains(line) || texts.size() != 1 || texts.getFirst().equals(UNUSABLE)) {
         return Optional.empty();
       }
       try {
@@ -313,7 +315,7 @@ public final class WageTaxCertificateReader2022 {
 
     /** The sum of the lines that have an amount. Nothing if a line cannot be read. */
     Optional<Money> sum(String first, String second) {
-      if (!has(first) && !has(second)) {
+      if (anyUnclear(first, second) || (!has(first) && !has(second))) {
         return Optional.empty();
       }
       Money total = Money.ofCents(0);
@@ -331,10 +333,14 @@ public final class WageTaxCertificateReader2022 {
 
     /** The amount of the one line that has an amount. Nothing if both lines have one. */
     Optional<Money> oneOf(String first, String second) {
-      if (has(first) == has(second)) {
+      if (anyUnclear(first, second) || has(first) == has(second)) {
         return Optional.empty();
       }
       return single(has(first) ? first : second);
+    }
+
+    private boolean anyUnclear(String first, String second) {
+      return unclear.contains(first) || unclear.contains(second);
     }
   }
 }

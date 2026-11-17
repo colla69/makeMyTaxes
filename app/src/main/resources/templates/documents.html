@@ -7,6 +7,7 @@
     <link rel="stylesheet" th:href="@{/app.css}">
     <script th:src="@{/fields.js}" defer></script>
     <script th:src="@{/dialog.js}" defer></script>
+    <script th:src="@{/preview.js}" defer></script>
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
@@ -14,7 +15,9 @@
     <main class="panel">
       <h1 th:text="'Belege ' + ${taxYear}">Belege</h1>
 
-      <section th:if="${preview}" id="document-preview" th:data-document="${preview.id}">
+      <!-- Without JavaScript, a "Vorschau" button loads the page with this panel. -->
+      <section th:if="${preview}" id="document-preview" th:data-document="${preview.id}"
+               th:data-file-name="${preview.fileName}">
         <h2 th:text="'Vorschau: ' + ${preview.fileName}">Vorschau: datei.pdf</h2>
         <p>
           <a th:href="@{/returns/{r}/documents(r=${returnId})}">Vorschau schließen</a>
@@ -26,6 +29,14 @@
                 th:src="@{/returns/{r}/documents/{d}(r=${returnId},d=${preview.id})}"
                 th:title="${preview.fileName}"></iframe>
       </section>
+      <!-- preview.js loads the panel above for a "Vorschau" button and shows it in this dialog. -->
+      <dialog id="preview-dialog" class="preview-dialog" aria-labelledby="preview-dialog-title">
+        <form method="dialog" class="close">
+          <button aria-label="Vorschau schließen">×</button>
+        </form>
+        <h2 id="preview-dialog-title"></h2>
+        <div class="preview-body"></div>
+      </dialog>
 
       <form id="document-form"
             class="fields"
@@ -84,7 +95,7 @@
               <a th:href="@{/returns/{r}/documents/{d}(r=${returnId},d=${row.payslip.stored.documentId})}"
                  target="_blank" rel="noopener"
                  th:text="${row.payslip.stored.fileName}">abrechnung.pdf</a>
-              <form method="get" class="inline"
+              <form method="get" class="inline preview"
                     th:action="@{/returns/{r}/documents(r=${returnId})}">
                 <input type="hidden" name="preview" th:value="${row.payslip.stored.documentId}">
                 <button>Vorschau</button>
@@ -194,7 +205,7 @@
             <td class="amount" th:text="${row.size}">1 KB</td>
             <td th:text="${row.uploadedOn}">01.01.2022</td>
             <td>
-              <form method="get" th:action="@{/returns/{r}/documents(r=${returnId})}">
+              <form method="get" class="preview" th:action="@{/returns/{r}/documents(r=${returnId})}">
                 <input type="hidden" name="preview" th:value="${row.id}">
                 <button>Vorschau</button>
               </form>

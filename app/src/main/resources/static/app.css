@@ -308,13 +308,27 @@ form.inline {
   margin-left: 0.5rem;
 }
 
-#document-preview iframe {
+/* The preview of a document, a modal dialog above the list. */
+.preview-dialog {
+  max-width: 60rem;
+  width: 90vw;
+}
+
+.preview-dialog .close {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+}
+
+#document-preview iframe,
+.preview-dialog iframe {
   border: 1px solid #ccc;
   height: 80vh;
   width: 100%;
 }
 
-#document-preview img {
+#document-preview img,
+.preview-dialog img {
   max-width: 100%;
 }
 

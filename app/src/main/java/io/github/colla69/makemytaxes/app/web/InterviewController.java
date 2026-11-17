@@ -11,6 +11,7 @@ import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.CertificateEvidence;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
@@ -262,7 +263,7 @@ class InterviewController {
    */
   private String nextHref(long returnId, Answers answers, Question question) {
     Interview interview = interviewOf(returnId);
-    Set<String> prefilled = Interview.prefilled(answers);
+    Set<String> prefilled = CertificateEvidence.prefilled(answers);
     Optional<Question> next = interview.nextInTopic(answers, question);
     while (next.isPresent() && prefilled.contains(next.get().id())) {
       next = interview.nextInTopic(answers, next.get());
@@ -290,8 +291,8 @@ class InterviewController {
     if (error != null) {
       return ResponseEntity.status(422).body(error);
     }
-    if (fieldAnswer(returnId, question, changed).equals(Interview.OWN)) {
-      record(returnId, question, Interview.OWN);
+    if (fieldAnswer(returnId, question, changed).equals(CertificateEvidence.OWN)) {
+      record(returnId, question, CertificateEvidence.OWN);
     }
     return ResponseEntity.ok("");
   }
@@ -321,9 +322,9 @@ class InterviewController {
   private String fieldAnswer(long returnId, Question question, boolean changed) {
     Answers answers = forms.answers(returnId, Interview.ID);
     boolean own =
-        Interview.OWN.equals(answers.text(question.id()))
-            || (changed && Interview.prefilled(answers).contains(question.id()));
-    return own ? Interview.OWN : Interview.DONE;
+        CertificateEvidence.OWN.equals(answers.text(question.id()))
+            || (changed && CertificateEvidence.prefilled(answers).contains(question.id()));
+    return own ? CertificateEvidence.OWN : Interview.DONE;
   }
 
   /** Clears the interview answers. The values in the forms stay. */
@@ -376,7 +377,7 @@ class InterviewController {
         model.addAttribute("value", forms.answers(returnId, form.id()).text(question.id()));
       }
       model.addAttribute("source", sourceOf(returnId, question));
-      Interview.certificateDocument(answers, question.id())
+      CertificateEvidence.certificateDocument(answers, question.id())
           .ifPresent(
               document -> {
                 model.addAttribute(

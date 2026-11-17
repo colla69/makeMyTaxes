@@ -191,14 +191,13 @@ class WageTaxCertificateReader2022Test {
   }
 
   @Test
-  void commuteOnLine18IsReadWhenLine17PrintsZero() {
-    assertThat(read(right(commute("0,00", "80,00"))).value("employerCommute")).hasValue("80,00");
+  void commuteIsNotFoundWhenLine17PrintsZeroAndLine18AnAmount() {
+    assertThat(read(right(commute("0,00", "80,00"))).value("employerCommute")).isEmpty();
   }
 
   @Test
-  void commuteOnLine17IsReadWhenLine18PrintsZero() {
-    assertThat(read(right(commute("300,00", "0,00"))).value("employerCommute"))
-        .hasValue("300,00");
+  void commuteIsNotFoundWhenLine17PrintsAnAmountAndLine18Zero() {
+    assertThat(read(right(commute("300,00", "0,00"))).value("employerCommute")).isEmpty();
   }
 
   @Test

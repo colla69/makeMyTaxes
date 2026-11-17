@@ -285,6 +285,10 @@ class ExpenseBrowserTest {
     page.navigate(returnUrl + "/documents");
     page.getByLabel("Datei").setInputFiles(new FilePayload(fileName, "image/png", MADE_UP_PNG));
     page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    // The app does not recognize an image, so it asks for the kind.
+    Locator kindForm = page.locator("#kind-form");
+    kindForm.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
+    kindForm.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
     assertThat(page.locator("#documents tbody tr")).hasCount(1);
   }
 

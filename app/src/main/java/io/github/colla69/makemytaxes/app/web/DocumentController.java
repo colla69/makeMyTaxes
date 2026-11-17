@@ -1,16 +1,18 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.document.FileRecognizer;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
-import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewPayslip;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.AnswerUse;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.ExpenseUse;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredDocument;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.StoredPayslip;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore.Uses;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
+import io.github.colla69.makemytaxes.core.document.Recognition;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
@@ -64,16 +66,19 @@ class DocumentController {
   private final DocumentStore documents;
   private final PayslipOverview payslips;
   private final DocumentReplacement replacement;
+  private final PendingUploads pendingUploads;
 
   DocumentController(
       HouseholdStore household,
       DocumentStore documents,
       PayslipOverview payslips,
-      DocumentReplacement replacement) {
+      DocumentReplacement replacement,
+      PendingUploads pendingUploads) {
     this.household = household;
     this.documents = documents;
     this.payslips = payslips;
     this.replacement = replacement;
+    this.pendingUploads = pendingUploads;
   }
 
   @GetMapping("/returns/{returnId}/documents")
@@ -82,48 +87,256 @@ class DocumentController {
     return "documents";
   }
 
+  /**
+   * Stores the file where it belongs, if the app recognizes it. A file of another year is not
+   * stored. For a file that the app cannot recognize, the page asks for the kind.
+   */
   @PostMapping("/returns/{returnId}/documents")
-  String upload(
-      @PathVariable long returnId,
-      @RequestParam DocumentKind kind,
-      @RequestParam MultipartFile file,
-      Model model)
+  String upload(@PathVariable long returnId, @RequestParam MultipartFile file, Model model)
       throws IOException {
-    taxYearOf(returnId);
+    TaxYear taxYear = taxYearOf(returnId);
+    NewDocument document;
     try {
-      if (kind == DocumentKind.PAYSLIP) {
-        throw new IllegalArgumentException("Eine Lohnabrechnung gehört in die Liste der Monate.");
-      }
-      documents.add(returnId, toNewDocument(kind, file), LocalDate.now());
+      document = toNewDocument(DocumentKind.OTHER, file);
     } catch (IllegalArgumentException e) {
-      model.addAttribute("error", e.getMessage());
-      fillPage(returnId, model);
-      return "documents";
+      return pageWithError(returnId, e.getMessage(), model);
+    }
+    return switch (FileRecognizer.recognize(document.bytes(), document.mediaType(), taxYear)) {
+      case Recognition.WageTaxCertificate certificate ->
+          recognized(
+              returnId, store(returnId, document, DocumentKind.WAGE_TAX_CERTIFICATE));
+      case Recognition.Payslip payslip ->
+          storeAsPayslip(returnId, store(returnId, document, DocumentKind.PAYSLIP), payslip.month());
+      case Recognition.OtherYear other ->
+          pageWithError(
+              returnId,
+              "„" + document.fileName() + "“ gehört zum Jahr " + other.year() + ", nicht zu "
+                  + taxYear.value() + ". Die App hat die Datei nicht gespeichert.",
+              model);
+      case Recognition.Unknown unknown ->
+          "redirect:/returns/" + returnId + "/documents?pending="
+              + pendingUploads.put(returnId, document);
+    };
+  }
+
+  /** The form for the kind of a file that the app could not recognize, with the file beside it. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "pending")
+  String pending(@PathVariable long returnId, @RequestParam String pending, Model model) {
+    NewDocument document = pendingDocument(returnId, pending);
+    model.addAttribute(
+        "kindForm",
+        new KindForm(
+            document.fileName(),
+            "/returns/" + returnId + "/uploads/" + pending,
+            document.mediaType().startsWith("image/"),
+            "/returns/" + returnId + "/uploads/" + pending,
+            "/returns/" + returnId + "/uploads/" + pending + "/cancel",
+            "",
+            ""));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /** The bytes of a file that waits for its kind, for the preview beside the form. */
+  @GetMapping("/returns/{returnId}/uploads/{token}")
+  void openPending(
+      @PathVariable long returnId, @PathVariable String token, HttpServletResponse response)
+      throws IOException {
+    NewDocument document = pendingDocument(returnId, token);
+    response.setContentType(document.mediaType());
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.getOutputStream().write(document.bytes());
+  }
+
+  /** Stores a file that waits for its kind, with the kind and the month that the user chose. */
+  @PostMapping("/returns/{returnId}/uploads/{token}")
+  String storePending(
+      @PathVariable long returnId,
+      @PathVariable String token,
+      @RequestParam DocumentKind kind,
+      @RequestParam(defaultValue = "0") int month,
+      Model model) {
+    NewDocument document = pendingDocument(returnId, token);
+    if (kind == DocumentKind.PAYSLIP && (month < 1 || month > 12)) {
+      model.addAttribute("kindError", "Bitte den Monat der Lohnabrechnung wählen.");
+      return pending(returnId, token, model);
+    }
+    pendingUploads.remove(token);
+    long documentId = store(returnId, document, kind);
+    if (kind == DocumentKind.PAYSLIP) {
+      return storeAsPayslip(returnId, documentId, Month.of(month));
     }
     return "redirect:/returns/" + returnId + "/documents";
   }
 
-  @PostMapping("/returns/{returnId}/payslips")
-  String uploadPayslip(
-      @PathVariable long returnId,
-      @RequestParam int month,
-      @RequestParam MultipartFile file,
-      Model model)
-      throws IOException {
-    taxYearOf(returnId);
-    try {
-      if (month < 1 || month > 12) {
-        throw new IllegalArgumentException("Bitte einen Monat wählen.");
-      }
-      NewPayslip payslip =
-          new NewPayslip(Month.of(month), toNewDocument(DocumentKind.PAYSLIP, file));
-      documents.addPayslip(returnId, payslip, LocalDate.now());
-    } catch (IllegalArgumentException e) {
-      model.addAttribute("payslipError", e.getMessage());
-      fillPage(returnId, model);
-      return "documents";
-    }
+  /** "Abbrechen": the app forgets the file and stores nothing. */
+  @PostMapping("/returns/{returnId}/uploads/{token}/cancel")
+  String cancelPending(@PathVariable long returnId, @PathVariable String token) {
+    pendingUploads.remove(token);
     return "redirect:/returns/" + returnId + "/documents";
+  }
+
+  /** The form for the kind and the month of a stored document, to correct what the app found. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "correct")
+  String correct(@PathVariable long returnId, @RequestParam long correct, Model model) {
+    StoredDocument stored = correctable(returnId, correct);
+    String month =
+        documents.payslipsOf(returnId).stream()
+            .filter(payslip -> payslip.documentId() == stored.id())
+            .map(payslip -> String.valueOf(payslip.month().getValue()))
+            .findFirst()
+            .orElse("");
+    String href = "/returns/" + returnId + "/documents/" + stored.id();
+    model.addAttribute(
+        "kindForm",
+        new KindForm(
+            stored.fileName(),
+            href,
+            stored.mediaType().startsWith("image/"),
+            href + "/kind",
+            null,
+            stored.kind().name(),
+            month));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /** Gives a stored document the kind and the month that the user chose. */
+  @PostMapping("/returns/{returnId}/documents/{documentId}/kind")
+  String changeKind(
+      @PathVariable long returnId,
+      @PathVariable long documentId,
+      @RequestParam DocumentKind kind,
+      @RequestParam(defaultValue = "0") int month,
+      Model model) {
+    StoredDocument stored = correctable(returnId, documentId);
+    if (kind == DocumentKind.PAYSLIP && (month < 1 || month > 12)) {
+      model.addAttribute("kindError", "Bitte den Monat der Lohnabrechnung wählen.");
+      return correct(returnId, stored.id(), model);
+    }
+    // The replace flow deletes the new file on a cancel. This file is already stored, so a
+    // correction into a month with another payslip stops here instead.
+    if (kind == DocumentKind.PAYSLIP) {
+      var other =
+          documents
+              .payslipOf(returnId, Month.of(month))
+              .filter(payslip -> payslip.documentId() != stored.id());
+      if (other.isPresent()) {
+        model.addAttribute(
+            "kindError",
+            DocumentStore.monthName(Month.of(month))
+                + " hat schon eine Lohnabrechnung: „"
+                + other.get().fileName()
+                + "“. Bitte zuerst diese löschen.");
+        return correct(returnId, stored.id(), model);
+      }
+    }
+    documents.changeKind(returnId, stored.id(), kind);
+    if (kind == DocumentKind.PAYSLIP) {
+      return storeAsPayslip(returnId, stored.id(), Month.of(month));
+    }
+    return "redirect:/returns/" + returnId + "/documents?recognized=" + stored.id();
+  }
+
+  /** What the app recognized in the file that it just stored, so the user can check it. */
+  @GetMapping(value = "/returns/{returnId}/documents", params = "recognized")
+  String recognized(@PathVariable long returnId, @RequestParam long recognized, Model model) {
+    StoredDocument stored = storedDocument(returnId, recognized);
+    model.addAttribute(
+        "recognized", new Recognized(stored.id(), stored.fileName(), recognizedText(returnId, stored)));
+    fillPage(returnId, model);
+    return "documents";
+  }
+
+  /**
+   * The form for the kind of one file.
+   *
+   * @param fileHref the address of the file, for the preview
+   * @param action where the form sends the kind and the month
+   * @param cancelAction where "Abbrechen" sends a file that waits for its kind, so the app forgets
+   *     it, or null for a stored document
+   * @param kind the kind that the form shows first, or empty
+   * @param month the number of the month that the form shows first, or empty
+   */
+  record KindForm(
+      String fileName,
+      String fileHref,
+      boolean image,
+      String action,
+      String cancelAction,
+      String kind,
+      String month) {}
+
+  record Recognized(long id, String fileName, String text) {}
+
+  /** The kind, such as "Lohnabrechnung März 2025" or "Lohnsteuerbescheinigung 2025". */
+  private String recognizedText(long returnId, StoredDocument stored) {
+    int year = taxYearOf(returnId).value();
+    Optional<String> payslipMonth =
+        documents.payslipsOf(returnId).stream()
+            .filter(payslip -> payslip.documentId() == stored.id())
+            .map(payslip -> DocumentStore.monthName(payslip.month()))
+            .findFirst();
+    if (payslipMonth.isPresent()) {
+      return stored.kind().label() + " " + payslipMonth.get() + " " + year;
+    }
+    if (stored.kind() == DocumentKind.WAGE_TAX_CERTIFICATE) {
+      return stored.kind().label() + " " + year;
+    }
+    return stored.kind().label();
+  }
+
+  private String recognized(long returnId, long documentId) {
+    return "redirect:/returns/" + returnId + "/documents?recognized=" + documentId;
+  }
+
+  /**
+   * Makes the stored payslip the payslip of the month. If the month has a payslip already, the
+   * page asks first: "Übernehmen" replaces the old payslip, and "Abbrechen" deletes the new file.
+   */
+  private String storeAsPayslip(long returnId, long documentId, Month month) {
+    Optional<StoredPayslip> existing = documents.payslipOf(returnId, month);
+    if (existing.isPresent() && existing.get().documentId() != documentId) {
+      return "redirect:/returns/" + returnId + "/documents?replace="
+          + existing.get().documentId() + "&with=" + documentId;
+    }
+    if (existing.isEmpty()) {
+      documents.fileAsPayslip(returnId, documentId, month);
+    }
+    return recognized(returnId, documentId);
+  }
+
+  private long store(long returnId, NewDocument document, DocumentKind kind) {
+    return documents.add(
+        returnId,
+        new NewDocument(kind, document.fileName(), document.mediaType(), document.bytes()),
+        LocalDate.now());
+  }
+
+  private NewDocument pendingDocument(long returnId, String token) {
+    return pendingUploads
+        .find(returnId, token)
+        .orElseThrow(
+            () ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Die Datei ist nicht mehr da. Bitte laden Sie sie noch einmal hoch."));
+  }
+
+  /** Only a document that no entry uses yet can change its kind, so no entry loses its meaning. */
+  private StoredDocument correctable(long returnId, long documentId) {
+    StoredDocument stored = storedDocument(returnId, documentId);
+    if (!documents.usesOf(returnId, documentId).isEmpty()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Ein Eintrag verwendet das Dokument schon als Beleg.");
+    }
+    return stored;
+  }
+
+  private String pageWithError(long returnId, String error, Model model) {
+    model.addAttribute("error", error);
+    fillPage(returnId, model);
+    return "documents";
   }
 
   /**
@@ -230,6 +443,12 @@ class DocumentController {
     model.addAttribute("replaceOld", old);
     model.addAttribute("replaceNew", version);
     model.addAttribute("replaceRows", replacement.rows(returnId, old, version));
+    documents.payslipsOf(returnId).stream()
+        .filter(payslip -> payslip.documentId() == old.id())
+        .findFirst()
+        .ifPresent(
+            payslip ->
+                model.addAttribute("replaceMonth", DocumentStore.monthName(payslip.month())));
     fillPage(returnId, model);
     return "documents";
   }
@@ -416,7 +635,6 @@ class DocumentController {
 
   private static List<Kind.Option> kindOptions() {
     return Arrays.stream(DocumentKind.values())
-        .filter(kind -> kind != DocumentKind.PAYSLIP)
         .map(kind -> new Kind.Option(kind.name(), kind.label()))
         .toList();
   }

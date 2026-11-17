@@ -241,11 +241,20 @@ class FormAnswerSourceTest {
             .param("documentId", Long.toString(documentId)));
   }
 
+  /** The made-up file has no known layout, so the page asks for its kind. */
   private long uploadOnDocumentsPage(String kind) throws Exception {
-    mockMvc.perform(
-        multipart("/returns/" + returnId + "/documents")
-            .file(new MockMultipartFile("file", "made-up.pdf", "application/pdf", MADE_UP_PDF))
-            .param("kind", kind));
+    String location =
+        mockMvc
+            .perform(
+                multipart("/returns/" + returnId + "/documents")
+                    .file(
+                        new MockMultipartFile(
+                            "file", "made-up.pdf", "application/pdf", MADE_UP_PDF)))
+            .andReturn()
+            .getResponse()
+            .getRedirectedUrl();
+    String token = location.substring(location.indexOf("pending=") + "pending=".length());
+    mockMvc.perform(post("/returns/" + returnId + "/uploads/" + token).param("kind", kind));
     return jdbcClient
         .sql("select id from document where tax_return_id = ?")
         .param(returnId)

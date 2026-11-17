@@ -17,12 +17,17 @@ public final class PayslipPdfReader {
   private PayslipPdfReader() {}
 
   public static PayslipContent read(byte[] pdf, YearMonth month) {
+    return PayslipReader.readContent(textOf(pdf), month);
+  }
+
+  /** The text that both the recognition and the payslip table read, so that they agree. */
+  static String textOf(byte[] pdf) {
     try (PDDocument document = Loader.loadPDF(pdf)) {
       PDFTextStripper stripper = new PDFTextStripper();
       stripper.setSortByPosition(true);
-      return PayslipReader.readContent(stripper.getText(document), month);
+      return stripper.getText(document);
     } catch (IOException e) {
-      return PayslipContent.NONE;
+      return "";
     }
   }
 }

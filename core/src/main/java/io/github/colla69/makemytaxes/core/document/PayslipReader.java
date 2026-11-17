@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.core.document;
 
 import io.github.colla69.makemytaxes.core.GermanFormats;
 import io.github.colla69.makemytaxes.core.expense.Money;
+import java.time.Month;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.List;
@@ -61,7 +62,38 @@ public final class PayslipReader {
   private static final PayslipValues NO_CHANGE =
       new PayslipValues(Optional.of(Money.ofCents(0)), Optional.of(Money.ofCents(0)));
 
+  /** A month as a word with its year, such as "März 2022". */
+  private static final Pattern MONTH_NAME =
+      Pattern.compile(
+          "(?:^|\\s)(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November"
+              + "|Dezember)\\s+(\\d{4})(?!\\d)",
+          Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
   private PayslipReader() {}
+
+  /**
+   * The month that the payslip is for: the month of its first period, or else the one month that
+   * it names as a word. Nothing if the first period spans more than one month, or if the text names
+   * more than one month as a word.
+   */
+  public static Optional<YearMonth> monthOf(String text) {
+    Matcher period = PERIOD.matcher(text);
+    if (period.find()) {
+      return monthOf(period.toMatchResult());
+    }
+    Set<YearMonth> named =
+        MONTH_NAME.matcher(text).results().map(PayslipReader::namedMonth).collect(Collectors.toSet());
+    return named.size() == 1 ? Optional.of(named.iterator().next()) : Optional.empty();
+  }
+
+  private static YearMonth namedMonth(MatchResult name) {
+    for (Month month : Month.values()) {
+      if (month.getDisplayName(TextStyle.FULL, Locale.GERMAN).equalsIgnoreCase(name.group(1))) {
+        return YearMonth.of(Integer.parseInt(name.group(2)), month);
+      }
+    }
+    throw new IllegalStateException("Kein Monat: " + name.group(1));
+  }
 
   public static PayslipValues read(String text, YearMonth month) {
     List<MatchResult> periods = PERIOD.matcher(text).results().toList();

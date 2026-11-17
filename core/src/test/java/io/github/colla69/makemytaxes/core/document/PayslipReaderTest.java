@@ -162,10 +162,37 @@ class PayslipReaderTest {
   }
 
   @Test
-  void doesNotTakeTheSumOfTheYearFromAnEzLineWithoutTheMonthColumn() {
+  void readsAMonthWithoutOneOffPayWhereTheEzLineShowsOnlyTheSumOfTheYear() {
+    String text =
+        """
+        Zeitraum vom 01.04. bis 30.04.2025
+        Steuerbrutto, lfd. 3.000,00 12.000,00
+        Lohnsteuer, lfd. 400,00 1.600,00
+        Steuerbrutto, EZ 500,00
+        Lohnsteuer, EZ 100,00
+        """;
+
+    PayslipValues values = PayslipReader.read(text, YearMonth.of(2025, 4));
+
+    assertThat(values.taxableGross()).contains(Money.ofCents(300_000));
+    assertThat(values.wageTax()).contains(Money.ofCents(40_000));
+  }
+
+  @Test
+  void doesNotReadAnEzLineWithOnlyANegativeAmount() {
     String text =
         ENTGELTABRECHNUNG.replace(
-            "Steuerbrutto, EZ    1.000,00    1.000,00", "Steuerbrutto, EZ                1.000,00");
+            "Lohnsteuer, EZ        300,00      300,00", "Lohnsteuer, EZ       -300,00");
+
+    assertThat(PayslipReader.read(text, MARCH_2025).wageTax()).isEmpty();
+  }
+
+  @Test
+  void doesNotReadEzLinesWithOneAndTwoColumnsInTheSameMonth() {
+    String text =
+        ENTGELTABRECHNUNG.replace(
+            "Steuerbrutto, EZ    1.000,00    1.000,00\n",
+            "Steuerbrutto, EZ    1.000,00    1.000,00\nSteuerbrutto, EZ    1.000,00\n");
 
     assertThat(PayslipReader.read(text, MARCH_2025).taxableGross()).isEmpty();
   }

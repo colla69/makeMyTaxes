@@ -78,8 +78,11 @@ class InterviewController {
   /** A field of the certificate, and the form that holds it. */
   private record CertificateField(String formId, Field field) {}
 
-  /** The value read from the certificate, and the value of the input of its check row. */
-  record CheckValues(String read, String input) {}
+  /**
+   * The value read from the certificate, the text that the check shows for it ("leer auf der
+   * Bescheinigung" or "nicht gefunden" if there is no value), and the value of the input.
+   */
+  record CheckValues(String read, String readText, String input) {}
 
   /** One row of the check of an uploaded certificate. The input name holds the document. */
   record CheckRow(
@@ -392,7 +395,8 @@ class InterviewController {
                       target.field().label(),
                       certificate.lineOf(id).orElse("ohne Zeile"),
                       target.field().kind().name(),
-                      new CheckValues(readValue, onForm.isEmpty() ? readValue : onForm));
+                      new CheckValues(
+                          readValue, read.readText(id), onForm.isEmpty() ? readValue : onForm));
                 })
             .toList();
     return new CertificateCheck(

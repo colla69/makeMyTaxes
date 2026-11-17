@@ -41,7 +41,8 @@ class CertificatePdfReaderTest {
         .containsEntry("careEmployee", "366,00")
         .containsEntry("unemploymentEmployee", "288,00")
         .doesNotContainValue("1.200,00");
-    assertThat(values.valueOrNotFound("solidarity")).isEqualTo("nicht gefunden");
+    assertThat(values.readText("solidarity")).isEqualTo("leer auf der Bescheinigung");
+    assertThat(values.readText("shortTimeWork")).isEqualTo("nicht gefunden");
   }
 
   @Test
@@ -61,7 +62,7 @@ class CertificatePdfReaderTest {
 
   private static void assertNothingFound(CertificateValues values) {
     for (String fieldId : WageTaxCertificate2022.LAYOUT.fieldIds()) {
-      assertThat(values.valueOrNotFound(fieldId)).isEqualTo("nicht gefunden");
+      assertThat(values.readText(fieldId)).isEqualTo("nicht gefunden");
     }
   }
 

@@ -19,7 +19,8 @@ import java.util.regex.Pattern;
  * WageTaxCertificate2022Test} names.
  *
  * <p>The reader never guesses. A field is not found if its line is missing, holds two amounts or a
- * negative amount, or if the certificate is for another year.
+ * negative amount, or if the certificate is for another year. A field is empty if its line is
+ * printed and holds no amount.
  */
 public final class WageTaxCertificateReader2022 {
 
@@ -40,7 +41,13 @@ public final class WageTaxCertificateReader2022 {
       Pattern.compile(
           "(?:^|\\s)(-\\s*)?((?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{2})(\\s*-)?(?=\\s|$)");
 
-  private static final String DATE = "(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)";
+  /**
+   * Digits that look like an amount the reader cannot read, such as "1.234,56€" or "24000 00". A
+   * line with such digits is not empty. The labels hold only short numbers, such as "von 3.".
+   */
+  private static final Pattern UNREAD_AMOUNT = Pattern.compile("\\d,\\d|\\d{3,}");
+
+  private static final String DATE ="(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)";
 
   private static final Pattern ANY_DATE = Pattern.compile(DATE);
 
@@ -76,8 +83,9 @@ public final class WageTaxCertificateReader2022 {
       return new CertificateValues(found);
     }
     readLeftColumn(text.leftColumn(), found);
-    readRightColumn(text.rightColumn(), year, found);
-    return new CertificateValues(found);
+    Amounts amounts = readRightColumn(text.rightColumn(), year, found);
+    putAmounts(amounts, found);
+    return new CertificateValues(found, emptyFields(amounts));
   }
 
   private static Optional<Integer> yearOf(String page) {
@@ -105,8 +113,11 @@ public final class WageTaxCertificateReader2022 {
     return Optional.empty();
   }
 
-  private static void readRightColumn(String column, int year, Map<String, String> found) {
+  /** Puts the period of line 1, and gives the amounts and the printed lines of the column. */
+  private static Amounts readRightColumn(String column, int year, Map<String, String> found) {
     Map<String, List<String>> amounts = new HashMap<>();
+    Set<String> printed = new HashSet<>();
+    Set<String> unclear = new HashSet<>();
     StringBuilder periodText = new StringBuilder();
     int line = 0;
     String part = "";
@@ -126,13 +137,20 @@ public final class WageTaxCertificateReader2022 {
       if (line == 1) {
         periodText.append(text).append(' ');
       }
+      if (line > 0) {
+        printed.add(line + part);
+      }
+      if (line > 0 && UNREAD_AMOUNT.matcher(AMOUNT.matcher(text).replaceAll(" ")).find()) {
+        unclear.add(line + part);
+      }
       Matcher amount = AMOUNT.matcher(text);
       while (line > 0 && amount.find()) {
         amounts.computeIfAbsent(line + part, key -> new ArrayList<>()).add(amountText(amount));
       }
     }
     putPeriod(periodText.toString(), year, found);
-    putAmounts(new Amounts(amounts), found);
+    printed.removeAll(unclear);
+    return new Amounts(amounts, printed);
   }
 
   /** A new line number must be higher, because a label such as "von 9. und 10." names others. */
@@ -192,20 +210,7 @@ public final class WageTaxCertificateReader2022 {
    * them. The sources are named in {@code WageTaxCertificateReader2022Test}.
    */
   private static void putAmounts(Amounts amounts, Map<String, String> found) {
-    String[][] singles = {
-      {"grossWage", "3"},
-      {"wageTax", "4"},
-      {"solidarity", "5"},
-      {"churchTax", "6"},
-      {"shortTimeWork", "15"},
-      {"healthAllowanceStatutory", "24a"},
-      {"healthAllowancePrivate", "24b"},
-      {"careAllowance", "24c"},
-      {"healthEmployee", "25"},
-      {"careEmployee", "26"},
-      {"unemploymentEmployee", "27"}
-    };
-    for (String[] single : singles) {
+    for (String[] single : SINGLES) {
       amounts.single(single[1]).ifPresent(money -> put(found, single[0], money));
     }
     amounts.sum("22a", "22b").ifPresent(money -> put(found, "pensionEmployer", money));
@@ -213,12 +218,63 @@ public final class WageTaxCertificateReader2022 {
     amounts.oneOf("17", "18").ifPresent(money -> put(found, "employerCommute", money));
   }
 
+  /** The fields of the fixed lines, with the line that holds the amount. */
+  private static final String[][] SINGLES = {
+    {"grossWage", "3"},
+    {"wageTax", "4"},
+    {"solidarity", "5"},
+    {"churchTax", "6"},
+    {"shortTimeWork", "15"},
+    {"healthAllowanceStatutory", "24a"},
+    {"healthAllowancePrivate", "24b"},
+    {"careAllowance", "24c"},
+    {"healthEmployee", "25"},
+    {"careEmployee", "26"},
+    {"unemploymentEmployee", "27"}
+  };
+
+  /**
+   * The fields whose lines are all printed and hold no amount. The reader gives no value for them:
+   * an empty line is not an amount of 0,00.
+   */
+  private static Set<String> emptyFields(Amounts amounts) {
+    Set<String> empty = new HashSet<>();
+    for (String[] single : SINGLES) {
+      if (amounts.empty(single[1])) {
+        empty.add(single[0]);
+      }
+    }
+    if (amounts.empty("22a", "22b")) {
+      empty.add("pensionEmployer");
+    }
+    if (amounts.empty("23a", "23b")) {
+      empty.add("pensionEmployee");
+    }
+    if (amounts.empty("17", "18")) {
+      empty.add("employerCommute");
+    }
+    return empty;
+  }
+
   private static void put(Map<String, String> found, String fieldId, Money money) {
     found.put(fieldId, GermanFormats.format(money));
   }
 
-  /** The amounts of each line, such as "3" or "22a", as they appear on the certificate. */
-  private record Amounts(Map<String, List<String>> byLine) {
+  /**
+   * The amounts of each line, such as "3" or "22a", as they appear on the certificate, and the
+   * lines whose number or letter is printed, without digits that the reader cannot read.
+   */
+  private record Amounts(Map<String, List<String>> byLine, Set<String> printed) {
+
+    /** True if each line is printed and none holds an amount. */
+    boolean empty(String... lines) {
+      for (String line : lines) {
+        if (!printed.contains(line) || has(line)) {
+          return false;
+        }
+      }
+      return true;
+    }
 
     /** The amount of a line with exactly one usable amount. */
     Optional<Money> single(String line) {

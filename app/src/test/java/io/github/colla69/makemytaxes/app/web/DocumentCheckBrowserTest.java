@@ -29,7 +29,7 @@ import org.springframework.test.context.DynamicPropertySource;
 /**
  * The values of a certificate pass a check by the user in a modal dialog before they are saved. The
  * certificate is generated with made-up values: Bruttoarbeitslohn 24.000,00, Lohnsteuer 3.100,00
- * and no Solidaritätszuschlag.
+ * and an empty line 5 (Solidaritätszuschlag). It has no line 15.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DocumentCheckBrowserTest {
@@ -84,11 +84,15 @@ class DocumentCheckBrowserTest {
     // A read value fills an empty input and matches.
     assertThat(row(page, "wageTax").locator("input")).hasValue("3.100,00");
     assertThat(row(page, "wageTax").locator(".mark")).isEmpty();
-    // A value that the app did not find stays empty. The app suggests nothing of its own.
+    // Line 5 is printed without an amount: it is empty, and the app suggests nothing of its own.
     Locator solidarity = row(page, "solidarity");
-    assertThat(solidarity.locator(".read")).hasText("nicht gefunden");
+    assertThat(solidarity.locator(".read")).hasText("leer auf der Bescheinigung");
     assertThat(solidarity.locator("input")).hasValue("");
     assertThat(solidarity.locator(".mark")).isEmpty();
+    // Line 15 is not on the certificate, so the app did not find it.
+    Locator shortTimeWork = row(page, "shortTimeWork");
+    assertThat(shortTimeWork.locator(".read")).hasText("nicht gefunden");
+    assertThat(shortTimeWork.locator("input")).hasValue("");
     assertThat(row(page, "taxClass").locator("input")).hasValue("3");
 
     // Cancel saves nothing.

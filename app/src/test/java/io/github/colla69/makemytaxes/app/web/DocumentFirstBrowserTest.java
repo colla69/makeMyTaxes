@@ -72,7 +72,9 @@ class DocumentFirstBrowserTest {
     Locator grossWageRow = check.locator("tr[data-field$=-grossWage]");
     assertThat(grossWageRow.locator(".read")).hasText("24.000,00");
     assertThat(grossWageRow.locator("input")).hasValue("24.000,00");
-    assertThat(check.locator("tr[data-field$=-solidarity] .read")).hasText("nicht gefunden");
+    assertThat(check.locator("tr[data-field$=-solidarity] .read"))
+        .hasText("leer auf der Bescheinigung");
+    assertThat(check.locator("tr[data-field$=-shortTimeWork] .read")).hasText("nicht gefunden");
     button(upload, "Werte übernehmen").click();
 
     // The personal details come first. Then the interview skips each question that the

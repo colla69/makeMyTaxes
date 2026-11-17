@@ -209,6 +209,27 @@ class WageTaxCertificateReader2022Test {
     assertThat(read(bothEmpty).readText("pensionEmployer")).isEqualTo("leer auf der Bescheinigung");
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"1.234.56", "1 234 56"})
+  void aSumWithAnUnclearPartIsNotFound(String amount) {
+    String text =
+        right(SOCIAL)
+            .replace("Rentenversicherung 2.790,00\nanteil/", "Rentenversicherung " + amount + "\nanteil/");
+
+    assertThat(read(text).readText("pensionEmployer")).isEqualTo("nicht gefunden");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1.234.56", "1 234 56"})
+  void commuteWithAnUnclearLine17AndAnAmountOnLine18IsNotFound(String amount) {
+    String text =
+        right(SOCIAL)
+            .replace("auf die 300,00", "auf die " + amount)
+            .replace("erster Tätigkeitsstätte", "erster Tätigkeitsstätte 50,00");
+
+    assertThat(read(text).readText("employerCommute")).isEqualTo("nicht gefunden");
+  }
+
   @Test
   void commuteIsEmptyIfLines17And18AreEmpty() {
     String text = right(SOCIAL).replace("auf die 300,00", "auf die");

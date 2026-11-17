@@ -15,6 +15,7 @@ import io.github.colla69.makemytaxes.core.form.WageTaxCertificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
@@ -30,8 +31,11 @@ class InterviewDocuments {
   /** A field of the certificate, and the form that holds it. */
   record CertificateField(String formId, Field field) {}
 
-  /** The value read from the certificate, and the value of the input of its check row. */
-  record CheckValues(String read, String input) {}
+  /**
+   * The value read from the certificate, the text that the check shows for it ("leer auf der
+   * Bescheinigung" or "nicht gefunden" if there is no value), and the value of the input.
+   */
+  record CheckValues(String read, String readText, String input) {}
 
   /** One row of the check of an uploaded certificate. The input name holds the document. */
   record CheckRow(
@@ -100,7 +104,8 @@ class InterviewDocuments {
                       target.field().label(),
                       certificate.lineOf(id).orElse("ohne Zeile"),
                       target.field().kind().name(),
-                      new CheckValues(readValue, onForm.isEmpty() ? readValue : onForm));
+                      new CheckValues(
+                          readValue, read.readText(id), onForm.isEmpty() ? readValue : onForm));
                 })
             .toList();
     return new CertificateCheck(
@@ -118,17 +123,15 @@ class InterviewDocuments {
   }
 
   /**
-   * The value of the field that the app reads from the stored certificate, or empty if it finds
-   * none. The page shows it beside the answer and marks an answer that differs. It is never saved.
+   * The values that the app reads from the stored certificate. The page shows the value of a field
+   * beside the answer and marks an answer that differs. It is never saved.
    */
-  String readValue(long returnId, long document, Field field) {
+  Optional<CertificateValues> readCertificate(long returnId, long document) {
     return documents
         .find(returnId, document)
         .map(
             stored ->
                 CertificatePdfReader.read(
-                    documents.content(stored.id()), context.definitionOf(returnId).certificate()))
-        .flatMap(read -> read.value(field.hintId()))
-        .orElse("");
+                    documents.content(stored.id()), context.definitionOf(returnId).certificate()));
   }
 }

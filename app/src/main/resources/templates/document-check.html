@@ -28,7 +28,7 @@
               th:data-kind="${row.kind}">
             <td th:text="${row.label}">Feld</td>
             <td th:text="${row.certificateLine}">Zeile 3</td>
-            <td class="read" th:text="${#strings.isEmpty(row.read)} ? 'nicht gefunden' : ${row.read}">1,00</td>
+            <td class="read" th:text="${row.readText}">1,00</td>
             <td>
               <input th:value="${row.input}" th:data-kind="${row.kind}" th:aria-label="${row.label}"
                      th:inputmode="${row.kind == 'MONEY' ? 'decimal' : (row.kind == 'DATE' or row.kind == 'WHOLE_NUMBER' ? 'numeric' : null)}">

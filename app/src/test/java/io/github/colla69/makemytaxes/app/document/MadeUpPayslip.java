@@ -31,6 +31,11 @@ public final class MadeUpPayslip {
             "Steuer-Brutto " + amounts[0],
             "Lohnsteuer " + amounts[1],
             "Kirchensteuer 0,00");
+    return pdfOf(lines);
+  }
+
+  /** A PDF with one line of text for each line, such as a made-up Entgeltabrechnung. */
+  public static byte[] pdfOf(List<String> lines) {
     try (PDDocument document = new PDDocument()) {
       PDPage page = new PDPage(PDRectangle.A4);
       document.addPage(page);

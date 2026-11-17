@@ -2,10 +2,12 @@ package io.github.colla69.makemytaxes.core.form;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -153,12 +155,86 @@ class WageTaxCertificateReader2022Test {
   }
 
   @Test
-  void aFieldWithoutAnAmountIsNotFound() {
+  void aPrintedLineWithoutAnAmountIsEmptyAndHasNoValue() {
     CertificateValues values = read(right(SOCIAL));
 
-    assertThat(values.valueOrNotFound("solidarity")).isEqualTo("nicht gefunden");
-    assertThat(values.valueOrNotFound("healthEmployee")).isEqualTo("nicht gefunden");
-    assertThat(values.valueOrNotFound("healthAllowanceStatutory")).isEqualTo("nicht gefunden");
+    for (String fieldId : new String[] {"solidarity", "healthEmployee", "healthAllowanceStatutory"}) {
+      assertThat(values.readText(fieldId)).isEqualTo("leer auf der Bescheinigung");
+      assertThat(values.value(fieldId)).isEmpty();
+    }
+  }
+
+  @Test
+  void anEmptyLine15IsEmptyAndAMissingLine15IsNotFound() {
+    String[] lines = SOCIAL.clone();
+    lines[2] = lines[2].replace(" 150,00", "");
+
+    assertThat(read(right(lines)).readText("shortTimeWork")).isEqualTo("leer auf der Bescheinigung");
+
+    String[] withoutLine15 = Arrays.copyOfRange(SOCIAL, 3, SOCIAL.length);
+
+    assertThat(read(right(withoutLine15)).readText("shortTimeWork")).isEqualTo("nicht gefunden");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"150,00€", "1.234.56", "87.5", "1 234 56", "1 150,00"})
+  void aLineWithAnAmountThatCannotBeReadIsNotFoundAndNotEmpty(String amount) {
+    String[] lines = SOCIAL.clone();
+    lines[2] = lines[2].replace("150,00", amount);
+
+    assertThat(read(right(lines)).readText("shortTimeWork")).isEqualTo("nicht gefunden");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "150 00, '150,00'",
+    "24000 00, '24.000,00'",
+    "87 50, '87,50'",
+    "5 00, '5,00'",
+    "50.00, '50,00'"
+  })
+  void anAmountInEuroAndCentColumnsOrWithADotIsRead(String printed, String read) {
+    String[] lines = SOCIAL.clone();
+    lines[2] = lines[2].replace("150,00", printed);
+
+    assertThat(read(right(lines)).readText("shortTimeWork")).isEqualTo(read);
+  }
+
+  @Test
+  void aSumIsEmptyOnlyIfBothPartsAreEmpty() {
+    String emptyA = right(SOCIAL).replace("Rentenversicherung 2.790,00\nanteil/", "Rentenversicherung\nanteil/");
+    String bothEmpty = emptyA.replace("einrichtungen 100,00", "einrichtungen");
+
+    assertThat(read(emptyA).readText("pensionEmployer")).isEqualTo("100,00");
+    assertThat(read(bothEmpty).readText("pensionEmployer")).isEqualTo("leer auf der Bescheinigung");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1.234.56", "1 234 56"})
+  void aSumWithAnUnclearPartIsNotFound(String amount) {
+    String text =
+        right(SOCIAL)
+            .replace("Rentenversicherung 2.790,00\nanteil/", "Rentenversicherung " + amount + "\nanteil/");
+
+    assertThat(read(text).readText("pensionEmployer")).isEqualTo("nicht gefunden");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"1.234.56", "1 234 56"})
+  void commuteWithAnUnclearLine17AndAnAmountOnLine18IsNotFound(String amount) {
+    String text =
+        right(SOCIAL)
+            .replace("auf die 300,00", "auf die " + amount)
+            .replace("erster Tätigkeitsstätte", "erster Tätigkeitsstätte 50,00");
+
+    assertThat(read(text).readText("employerCommute")).isEqualTo("nicht gefunden");
+  }
+
+  @Test
+  void commuteIsEmptyIfLines17And18AreEmpty() {
+    String text = right(SOCIAL).replace("auf die 300,00", "auf die");
+
+    assertThat(read(text).readText("employerCommute")).isEqualTo("leer auf der Bescheinigung");
   }
 
   @Test
@@ -315,8 +391,8 @@ class WageTaxCertificateReader2022Test {
   void twoDifferentPeriodsOrAStrayDateAreNotFound(String period) {
     CertificateValues values = read(right(SOCIAL).replace("01.03.-31.12.", period));
 
-    assertThat(values.valueOrNotFound("employedFrom")).isEqualTo("nicht gefunden");
-    assertThat(values.valueOrNotFound("employedTo")).isEqualTo("nicht gefunden");
+    assertThat(values.readText("employedFrom")).isEqualTo("nicht gefunden");
+    assertThat(values.readText("employedTo")).isEqualTo("nicht gefunden");
   }
 
   @Test
@@ -340,7 +416,7 @@ class WageTaxCertificateReader2022Test {
     CertificateValues values = WageTaxCertificateReader2022.read(CertificateText.EMPTY);
 
     for (String fieldId : WageTaxCertificate2022.LAYOUT.fieldIds()) {
-      assertThat(values.valueOrNotFound(fieldId)).isEqualTo("nicht gefunden");
+      assertThat(values.readText(fieldId)).isEqualTo("nicht gefunden");
     }
   }
 }

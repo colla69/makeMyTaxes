@@ -37,10 +37,9 @@ public final class GermanFormats {
   }
 
   public static String format(Money money) {
-    long euros = money.cents() / 100;
-    long cents = money.cents() % 100;
-    String grouped = String.valueOf(euros).replaceAll("(\\d)(?=(\\d{3})+$)", "$1.");
-    return "%s,%02d".formatted(grouped, cents);
+    long absolute = Math.abs(money.cents());
+    String grouped = String.valueOf(absolute / 100).replaceAll("(\\d)(?=(\\d{3})+$)", "$1.");
+    return "%s%s,%02d".formatted(money.cents() < 0 ? "-" : "", grouped, absolute % 100);
   }
 
   public static LocalDate parseDate(String input) {

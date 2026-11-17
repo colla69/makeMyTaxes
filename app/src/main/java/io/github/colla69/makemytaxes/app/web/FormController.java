@@ -40,11 +40,12 @@ class FormController {
   /**
    * One field in the check against a certificate. {@code read} is the value that the app read from
    * the certificate, or empty if it did not find one. {@code input} is the value on the page, or
-   * the read value if the page has none.
+   * the read value if the page has none. {@code readText} is what the dialog shows for the read
+   * value: the value, "leer auf der Bescheinigung" or "nicht gefunden".
    */
   record CheckRow(
       String fieldId, String label, String certificateLine, String kind, String read,
-      String input) {}
+      String readText, String input) {}
 
   private final ReturnYears years;
   private final FormStore forms;
@@ -160,6 +161,7 @@ class FormController {
                 certificate.lineOf(certificateId).orElse("ohne Zeile"),
                 field.kind().name(),
                 readValue,
+                read.readText(certificateId),
                 onPage.isEmpty() ? readValue : onPage));
       }
     }

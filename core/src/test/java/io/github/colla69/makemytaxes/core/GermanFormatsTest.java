@@ -42,6 +42,12 @@ class GermanFormatsTest {
   }
 
   @Test
+  void writesANegativeAmountWithOneMinusSign() {
+    assertThat(GermanFormats.format(Money.ofCents(-123_456))).isEqualTo("-1.234,56");
+    assertThat(GermanFormats.format(Money.ofCents(-50))).isEqualTo("-0,50");
+  }
+
+  @Test
   void readsAGermanDateAsDayFirst() {
     assertThat(GermanFormats.parseDate("03.02.2022")).isEqualTo(LocalDate.of(2022, 2, 3));
     assertThat(GermanFormats.parseDate("3.2.2022")).isEqualTo(LocalDate.of(2022, 2, 3));

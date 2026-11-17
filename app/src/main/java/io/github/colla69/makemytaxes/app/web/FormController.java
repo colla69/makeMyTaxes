@@ -6,6 +6,7 @@ import io.github.colla69.makemytaxes.app.storage.FormStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.filing.FilingCheck;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.CertificateEvidence;
 import io.github.colla69.makemytaxes.core.form.CertificateValues;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FilingCheckForm;
@@ -147,7 +148,7 @@ class FormController {
     Answers interview = forms.answers(returnId, Interview.ID);
     List<CheckRow> rows = new ArrayList<>();
     for (Field field : form.fields(forms.answers(returnId, formId))) {
-      OptionalLong source = Interview.certificateDocument(interview, field.id());
+      OptionalLong source = CertificateEvidence.certificateDocument(interview, field.id());
       if (source.isPresent() && source.getAsLong() == document) {
         // A value that the app did not read stays empty: the app never suggests a value of its own.
         String certificateId = field.hintId();
@@ -206,7 +207,7 @@ class FormController {
         .map(
             entry -> {
               OptionalLong document =
-                  Interview.certificateDocument(interview, entry.getValue().getFirst().id());
+                  CertificateEvidence.certificateDocument(interview, entry.getValue().getFirst().id());
               return document.isPresent()
                   ? new FieldGroup(
                       entry.getKey(),

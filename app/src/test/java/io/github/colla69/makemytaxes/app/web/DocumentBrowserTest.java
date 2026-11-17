@@ -1,8 +1,10 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
@@ -14,6 +16,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -82,31 +85,41 @@ class DocumentBrowserTest {
   }
 
   @Test
-  void previewsAPdfInThePageAndClosesThePreview() {
+  void previewsAPdfInAModalAndClosesItWithTheButtonAndWithEscape() {
     Page page = browser.newPage();
     openTheDocumentsOfANewReturn(page);
-    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
-    page.getByLabel("Datei")
-        .setInputFiles(
-            new FilePayload(
-                "made-up-invoice.pdf", "application/pdf", "%PDF-1.4 made-up".getBytes()));
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    uploadPdf(page, "made-up-invoice.pdf");
     Locator row = page.locator("#documents tbody tr");
     assertThat(row).hasCount(1);
     String href =
         row.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("made-up-invoice.pdf"))
             .getAttribute("href");
+    Locator previewButton =
+        row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau"));
+    // A reload of the page would lose this mark.
+    page.evaluate("window.madeUpMark = true");
 
-    row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+    previewButton.click();
 
-    Locator preview = page.locator("#document-preview");
-    assertThat(preview).containsText("made-up-invoice.pdf");
-    assertThat(preview.locator("iframe")).hasAttribute("src", href);
-    assertThat(page.locator("#documents tbody tr")).hasCount(1);
-    preview
-        .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
+    Locator dialog = page.getByRole(AriaRole.DIALOG);
+    assertThat(dialog).isVisible();
+    assertThat(dialog).hasAccessibleName("made-up-invoice.pdf");
+    assertThat(dialog.locator("iframe")).hasAttribute("src", href);
+    dialog
+        .getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
         .click();
+    assertThat(dialog).isHidden();
+    assertThat(previewButton).isFocused();
+
+    previewButton.click();
+    assertThat(dialog).isVisible();
+    assertThat(dialog.locator("iframe")).hasAttribute("src", href);
+    page.keyboard().press("Escape");
+    assertThat(dialog).isHidden();
+    assertThat(previewButton).isFocused();
+    assertThat(page).not().hasURL(Pattern.compile("preview="));
     assertThat(page.locator("#document-preview")).hasCount(0);
+    assertEquals(true, page.evaluate("window.madeUpMark"));
   }
 
   @Test
@@ -121,16 +134,49 @@ class DocumentBrowserTest {
     Locator second =
         page.locator("#documents tbody tr")
             .filter(new Locator.FilterOptions().setHasText("made-up-second.png"));
+    Locator dialog = page.getByRole(AriaRole.DIALOG);
 
     first.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
-    assertThat(page.locator("#document-preview")).containsText("made-up-first.png");
+    assertThat(dialog).hasAccessibleName("made-up-first.png");
+    page.keyboard().press("Escape");
     second.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
 
-    assertThat(page.locator("#document-preview")).hasCount(1);
-    assertThat(page.locator("#document-preview")).containsText("made-up-second.png");
-    Locator image = page.locator("#document-preview img");
+    assertThat(dialog).hasAccessibleName("made-up-second.png");
+    Locator image = dialog.locator("img");
+    assertThat(image).hasCount(1);
+    assertThat(image).hasAttribute("alt", "made-up-second.png");
     page.waitForCondition(
         () -> ((Number) image.evaluate("img => img.naturalWidth")).intValue() == 3);
+  }
+
+  @Test
+  void previewsADocumentInThePageWithoutJavaScript() {
+    try (BrowserContext context =
+        browser.newContext(new Browser.NewContextOptions().setJavaScriptEnabled(false))) {
+      Page page = context.newPage();
+      openTheDocumentsOfANewReturn(page);
+      uploadPdf(page, "made-up-invoice.pdf");
+      Locator row = page.locator("#documents tbody tr");
+
+      row.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Vorschau")).click();
+
+      Locator preview = page.locator("#document-preview");
+      assertThat(preview).containsText("made-up-invoice.pdf");
+      assertThat(preview.locator("iframe")).hasCount(1);
+      preview
+          .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Vorschau schließen"))
+          .click();
+      assertThat(page.locator("#document-preview")).hasCount(0);
+    }
+  }
+
+  private static void uploadPdf(Page page, String fileName) {
+    page.getByLabel("Art").selectOption("INVOICE_OR_RECEIPT");
+    page.getByLabel("Datei")
+        .setInputFiles(
+            new FilePayload(fileName, "application/pdf", "%PDF-1.4 made-up".getBytes()));
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Hochladen").setExact(true)).click();
+    assertThat(page.locator("#documents")).containsText(fileName);
   }
 
   @Test

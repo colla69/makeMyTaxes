@@ -3,6 +3,7 @@ package io.github.colla69.makemytaxes.app.storage;
 import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.CertificateEvidence;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.MainForm;
 import java.util.LinkedHashMap;
@@ -184,7 +185,7 @@ public class FormStore {
       FormAnswer answer, Answers interview, Map<String, AnswerSource> confirmed) {
     OptionalLong document =
         CERTIFICATE_FORMS.contains(answer.formId())
-            ? Interview.certificateDocument(interview, answer.fieldId())
+            ? CertificateEvidence.certificateDocument(interview, answer.fieldId())
             : OptionalLong.empty();
     AnswerSource kept = confirmed.get(answer.fieldId());
     boolean replacedByCertificate = kept != null && kept.proof().missing() && document.isPresent();

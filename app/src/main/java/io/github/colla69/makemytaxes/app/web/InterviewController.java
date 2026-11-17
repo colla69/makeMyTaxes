@@ -12,6 +12,7 @@ import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.form.AnlageVorsorgeaufwand;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.CertificateEvidence;
+import io.github.colla69.makemytaxes.core.form.CertificateValues;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
 import io.github.colla69.makemytaxes.core.form.Forms;
@@ -382,7 +383,15 @@ class InterviewController {
               document -> {
                 model.addAttribute(
                     "certificateHref", "/returns/" + returnId + "/documents/" + document);
-                model.addAttribute("certificateRead", certificates.readValue(returnId, document, field));
+                Optional<CertificateValues> read =
+                    certificates.readCertificate(returnId, document);
+                model.addAttribute(
+                    "certificateRead",
+                    read.flatMap(values -> values.value(field.hintId())).orElse(""));
+                model.addAttribute(
+                    "certificateReadText",
+                    read.map(values -> values.readText(field.hintId()))
+                        .orElse(CertificateValues.NOT_FOUND));
               });
     }
     if (question.type() == Type.DOCUMENT) {

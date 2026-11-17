@@ -69,7 +69,7 @@
                   th:data-kind="${row.kind}">
                 <td th:text="${row.label}">Feld</td>
                 <td th:text="${row.certificateLine}">Zeile 3</td>
-                <td class="read" th:text="${#strings.isEmpty(row.values.read)} ? 'nicht gefunden' : ${row.values.read}">1,00</td>
+                <td class="read" th:text="${row.values.readText}">1,00</td>
                 <td>
                   <input th:name="${row.name}" th:value="${row.values.input}" th:data-kind="${row.kind}" th:aria-label="${row.label}"
                          th:inputmode="${row.kind == 'MONEY' ? 'decimal' : (row.kind == 'DATE' or row.kind == 'WHOLE_NUMBER' ? 'numeric' : null)}">
@@ -119,7 +119,7 @@
           <p class="certificate-check" th:if="${certificateRead != null}"
              th:data-read="${certificateRead}" th:data-kind="${field.kind.name()}">
             Gelesen von der Lohnsteuerbescheinigung:
-            <span class="read" th:text="${#strings.isEmpty(certificateRead)} ? 'nicht gefunden' : ${certificateRead}">1,00</span>
+            <span class="read" th:text="${certificateReadText}">1,00</span>
             <span class="mark"></span>
           </p>
           <p class="form-buttons"><button>Weiter</button></p>

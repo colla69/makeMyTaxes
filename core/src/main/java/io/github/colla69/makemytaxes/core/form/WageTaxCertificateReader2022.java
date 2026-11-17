@@ -47,7 +47,8 @@ public final class WageTaxCertificateReader2022 {
    */
   private static final Pattern UNREAD_AMOUNT = Pattern.compile("\\d,\\d|\\d{3,}");
 
-  private static final String DATE ="(\\d{1,2}\\.\\d{1,2}\\.(?:\\d{4})?)";
+  /** A date such as "01.03.", "01.03.2022" or "01. 03. 2022", with one space after each dot. */
+  private static final String DATE = "(\\d{1,2}\\.\\s?\\d{1,2}\\.(?:\\s?\\d{4})?)";
 
   private static final Pattern ANY_DATE = Pattern.compile(DATE);
 
@@ -195,7 +196,8 @@ public final class WageTaxCertificateReader2022 {
     }
   }
 
-  private static Optional<LocalDate> dateOf(String text, int year) {
+  private static Optional<LocalDate> dateOf(String printed, int year) {
+    String text = printed.replaceAll("\\s", "");
     String withYear = text.endsWith(".") ? text + year : text;
     try {
       return Optional.of(GermanFormats.parseDate(withYear)).filter(date -> date.getYear() == year);

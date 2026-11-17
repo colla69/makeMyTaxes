@@ -98,11 +98,14 @@ class InterviewController {
           .toList();
 
   private final HouseholdStore household;
+  private final ReturnYears years;
   private final FormStore forms;
   private final DocumentStore documents;
 
-  InterviewController(HouseholdStore household, FormStore forms, DocumentStore documents) {
+  InterviewController(
+      HouseholdStore household, ReturnYears years, FormStore forms, DocumentStore documents) {
     this.household = household;
+    this.years = years;
     this.forms = forms;
     this.documents = documents;
   }
@@ -110,7 +113,7 @@ class InterviewController {
   /** The first open question, or the summary of all topics when each question has an answer. */
   @GetMapping("/returns/{returnId}/interview")
   String page(@PathVariable long returnId, Model model) {
-    YearDefinition definition = definitionOf(returnId);
+    YearDefinition definition = years.definitionOf(returnId);
     TaxYear taxYear = definition.pack().taxYear();
     Interview interview = definition.interview();
     Answers answers = forms.answers(returnId, Interview.ID);
@@ -330,7 +333,7 @@ class InterviewController {
     if (saved.isEmpty() || value.isEmpty()) {
       return !saved.equals(value);
     }
-    Kind kind = formOf(returnId, question.formId()).field(question.id()).orElseThrow().kind();
+    Kind kind = years.formOf(returnId, question.formId()).field(question.id()).orElseThrow().kind();
     try {
       kind.validate(value);
     } catch (IllegalArgumentException e) {
@@ -372,7 +375,7 @@ class InterviewController {
    * form already holds, or else the read value. A value that the app did not read stays empty.
    */
   private CertificateCheck checkOf(long returnId, StoredDocument stored, int employer) {
-    WageTaxCertificate certificate = definitionOf(returnId).certificate();
+    WageTaxCertificate certificate = years.definitionOf(returnId).certificate();
     CertificateValues read = CertificatePdfReader.read(documents.content(stored.id()), certificate);
     Map<String, Answers> saved =
         Map.of(
@@ -414,7 +417,7 @@ class InterviewController {
   String uploadDocument(
       @PathVariable long returnId, @RequestParam(required = false) MultipartFile file, Model model)
       throws IOException {
-    definitionOf(returnId);
+    years.definitionOf(returnId);
     try {
       if (file == null) {
         throw new IllegalArgumentException("Bitte eine Datei wählen. Eine leere Datei geht nicht.");
@@ -433,7 +436,7 @@ class InterviewController {
   /** Leaves the step "Dokumente hochladen" without values from documents. */
   @PostMapping("/returns/{returnId}/interview/documents/skip")
   String skipDocuments(@PathVariable long returnId) {
-    definitionOf(returnId);
+    years.definitionOf(returnId);
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
     values.put(Interview.DOCUMENTS_STEP, Interview.DONE);
     forms.save(returnId, Interview.ID, new Answers(values));
@@ -448,7 +451,7 @@ class InterviewController {
   @PostMapping("/returns/{returnId}/interview/documents/confirm")
   String confirmDocuments(
       @PathVariable long returnId, @RequestParam Map<String, String> submitted) {
-    definitionOf(returnId);
+    years.definitionOf(returnId);
     List<StoredDocument> certificates = certificatesOf(returnId);
     Map<String, String> fromCertificates =
         Interview.certificateAnswers(certificates.stream().map(StoredDocument::id).toList());
@@ -479,7 +482,7 @@ class InterviewController {
   /** Clears the interview answers. The values in the forms stay. */
   @PostMapping("/returns/{returnId}/interview/restart")
   String restart(@PathVariable long returnId) {
-    definitionOf(returnId);
+    years.definitionOf(returnId);
     forms.save(returnId, Interview.ID, new Answers(Map.of()));
     return "redirect:" + interviewHref(returnId);
   }
@@ -493,7 +496,7 @@ class InterviewController {
    * done interview leaves no required field empty. A save on leaving the field may still clear it.
    */
   private String requiredError(long returnId, Question question, String value) {
-    Field field = formOf(returnId, question.formId()).field(question.id()).orElseThrow();
+    Field field = years.formOf(returnId, question.formId()).field(question.id()).orElseThrow();
     return field.required() && value.isEmpty()
         ? "Die Erklärung braucht diesen Wert. Bitte füllen Sie das Feld aus."
         : null;
@@ -510,7 +513,7 @@ class InterviewController {
 
   /** Writes the value into the form, or returns the error. An empty value clears the field. */
   private String saveField(long returnId, FieldTarget target, String value) {
-    FormModule form = formOf(returnId, target.formId());
+    FormModule form = years.formOf(returnId, target.formId());
     Field field = form.field(target.fieldId()).orElseThrow();
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, form.id()).values());
     if (value.isEmpty()) {
@@ -542,7 +545,7 @@ class InterviewController {
     model.addAttribute("back", backHref(returnId, answers, question));
     model.addAttribute("current", answers.text(question.id()));
     if (question.type() == Type.FIELD) {
-      FormModule form = formOf(returnId, question.formId());
+      FormModule form = years.formOf(returnId, question.formId());
       Field field = form.field(question.id()).orElseThrow();
       model.addAttribute("field", field);
       if (!model.containsAttribute("value")) {
@@ -584,7 +587,7 @@ class InterviewController {
         .map(
             stored ->
                 CertificatePdfReader.read(
-                    documents.content(stored.id()), definitionOf(returnId).certificate()))
+                    documents.content(stored.id()), years.definitionOf(returnId).certificate()))
         .flatMap(read -> read.value(field.hintId()))
         .orElse("");
   }
@@ -597,7 +600,7 @@ class InterviewController {
   }
 
   private void addCommon(long returnId, Model model) {
-    YearDefinition definition = definitionOf(returnId);
+    YearDefinition definition = years.definitionOf(returnId);
     Interview interview = definition.interview();
     Answers answers = forms.answers(returnId, Interview.ID);
     model.addAttribute("returnId", returnId);
@@ -641,7 +644,7 @@ class InterviewController {
         String value = forms.answers(returnId, question.formId()).text(question.id());
         yield value.isEmpty()
             ? "Keine Angabe"
-            : formOf(returnId, question.formId())
+            : years.formOf(returnId, question.formId())
                 .field(question.id())
                 .map(field -> field.kind().display(value))
                 .orElse(value);
@@ -708,33 +711,17 @@ class InterviewController {
   private Question questionOf(long returnId, String questionId) {
     return interviewOf(returnId)
         .find(forms.answers(returnId, Interview.ID), questionId)
-        .orElseThrow(InterviewController::notFound);
+        .orElseThrow(ReturnYears::notFound);
   }
 
   private static Topic topicOf(String name) {
     return Arrays.stream(Topic.values())
         .filter(topic -> topic.name().equals(name))
         .findFirst()
-        .orElseThrow(InterviewController::notFound);
-  }
-
-  private FormModule formOf(long returnId, String formId) {
-    return Forms.find(definitionOf(returnId).pack().taxYear(), formId).orElseThrow();
+        .orElseThrow(ReturnYears::notFound);
   }
 
   private Interview interviewOf(long returnId) {
-    return definitionOf(returnId).interview();
-  }
-
-  /** A year without a definition has no forms, so the interview could point nowhere. */
-  private YearDefinition definitionOf(long returnId) {
-    return household
-        .taxYearOf(returnId)
-        .flatMap(YearDefinition::of)
-        .orElseThrow(InterviewController::notFound);
-  }
-
-  private static ResponseStatusException notFound() {
-    return new ResponseStatusException(HttpStatus.NOT_FOUND);
+    return years.definitionOf(returnId).interview();
   }
 }

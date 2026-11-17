@@ -561,7 +561,14 @@ class InterviewController {
               document -> {
                 model.addAttribute(
                     "certificateHref", "/returns/" + returnId + "/documents/" + document);
-                model.addAttribute("certificateRead", readValue(returnId, document, field));
+                Optional<CertificateValues> read = readCertificate(returnId, document);
+                model.addAttribute(
+                    "certificateRead",
+                    read.flatMap(values -> values.value(field.hintId())).orElse(""));
+                model.addAttribute(
+                    "certificateReadText",
+                    read.map(values -> values.readText(field.hintId()))
+                        .orElse(CertificateValues.NOT_FOUND));
               });
     }
     if (question.type() == Type.DOCUMENT) {
@@ -582,18 +589,16 @@ class InterviewController {
   }
 
   /**
-   * The value of the field that the app reads from the stored certificate, or empty if it finds
-   * none. The page shows it beside the answer and marks an answer that differs. It is never saved.
+   * The values that the app reads from the stored certificate. The page shows the value of the
+   * field beside the answer and marks an answer that differs. It is never saved.
    */
-  private String readValue(long returnId, long document, Field field) {
+  private Optional<CertificateValues> readCertificate(long returnId, long document) {
     return documents
         .find(returnId, document)
         .map(
             stored ->
                 CertificatePdfReader.read(
-                    documents.content(stored.id()), years.definitionOf(returnId).certificate()))
-        .flatMap(read -> read.value(field.hintId()))
-        .orElse("");
+                    documents.content(stored.id()), years.definitionOf(returnId).certificate()));
   }
 
   private List<Kind.Option> certificateOptions(long returnId) {

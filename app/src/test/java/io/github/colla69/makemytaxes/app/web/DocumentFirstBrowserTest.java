@@ -81,6 +81,8 @@ class DocumentFirstBrowserTest {
     // certificate answered, up to the first value that the app did not find.
     button(page.locator("#question"), "Ja, die Angaben stimmen").click();
     assertThat(page.locator("#question h2")).containsText("Solidaritätszuschlag");
+    assertThat(page.locator("#question .certificate-check .read"))
+        .hasText("leer auf der Bescheinigung");
     answerField(page, "");
     answerField(page, "");
     answerField(page, "");

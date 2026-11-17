@@ -155,9 +155,9 @@ class DocumentCheckBrowserTest {
     page.locator("[name=answer]").fill("24000");
     assertThat(check.locator(".mark")).isEmpty();
 
-    // A value that the app did not read stays "nicht gefunden", and any typed value differs.
+    // A line that is empty on the certificate has no value, and any typed value differs.
     page.navigate(questions + "solidarity");
-    assertThat(check.locator(".read")).hasText("nicht gefunden");
+    assertThat(check.locator(".read")).hasText("leer auf der Bescheinigung");
     assertThat(page.locator("[name=answer]")).hasValue("");
     page.locator("[name=answer]").fill("10,00");
     assertThat(check.locator(".mark")).hasText(MARK);

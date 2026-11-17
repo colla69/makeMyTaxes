@@ -504,14 +504,14 @@ class InterviewController {
   private Question questionOf(long returnId, String questionId) {
     return interviewOf(returnId)
         .find(forms.answers(returnId, Interview.ID), questionId)
-        .orElseThrow(InterviewContext::notFound);
+        .orElseThrow(ReturnYears::notFound);
   }
 
   private static Topic topicOf(String name) {
     return Arrays.stream(Topic.values())
         .filter(topic -> topic.name().equals(name))
         .findFirst()
-        .orElseThrow(InterviewContext::notFound);
+        .orElseThrow(ReturnYears::notFound);
   }
 
   private Interview interviewOf(long returnId) {

@@ -1,20 +1,16 @@
 package io.github.colla69.makemytaxes.app.web;
 
 import io.github.colla69.makemytaxes.app.storage.FormStore;
-import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import io.github.colla69.makemytaxes.core.form.Field;
 import io.github.colla69.makemytaxes.core.form.FormModule;
-import io.github.colla69.makemytaxes.core.form.Forms;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import io.github.colla69.makemytaxes.core.form.YearDefinition;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The parts that the questions of the interview and its step "Dokumente hochladen" share: the year
@@ -26,11 +22,11 @@ class InterviewContext {
   /** The field of a form that a question or a certificate value writes into. */
   record FieldTarget(String formId, String fieldId) {}
 
-  private final HouseholdStore household;
+  private final ReturnYears years;
   private final FormStore forms;
 
-  InterviewContext(HouseholdStore household, FormStore forms) {
-    this.household = household;
+  InterviewContext(ReturnYears years, FormStore forms) {
+    this.years = years;
     this.forms = forms;
   }
 
@@ -70,22 +66,14 @@ class InterviewContext {
   }
 
   FormModule formOf(long returnId, String formId) {
-    return Forms.find(definitionOf(returnId).pack().taxYear(), formId).orElseThrow();
+    return years.formOf(returnId, formId);
   }
 
-  /** A year without a definition has no forms, so the interview could point nowhere. */
   YearDefinition definitionOf(long returnId) {
-    return household
-        .taxYearOf(returnId)
-        .flatMap(YearDefinition::of)
-        .orElseThrow(InterviewContext::notFound);
+    return years.definitionOf(returnId);
   }
 
   static String interviewHref(long returnId) {
     return "/returns/" + returnId + "/interview";
-  }
-
-  static ResponseStatusException notFound() {
-    return new ResponseStatusException(HttpStatus.NOT_FOUND);
   }
 }

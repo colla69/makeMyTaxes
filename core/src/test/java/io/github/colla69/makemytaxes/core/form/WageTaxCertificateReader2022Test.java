@@ -176,7 +176,7 @@ class WageTaxCertificateReader2022Test {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"150,00€", "150 00"})
+  @ValueSource(strings = {"150,00€", "150 00", "87 50", "50.00"})
   void aLineWithAnAmountThatCannotBeReadIsNotFoundAndNotEmpty(String amount) {
     String[] lines = SOCIAL.clone();
     lines[2] = lines[2].replace("150,00", amount);

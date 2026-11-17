@@ -42,10 +42,15 @@ public final class WageTaxCertificateReader2022 {
           "(?:^|\\s)(-\\s*)?((?:\\d{1,3}(?:\\.\\d{3})+|\\d+),\\d{2})(\\s*-)?(?=\\s|$)");
 
   /**
-   * Digits that look like an amount the reader cannot read, such as "1.234,56€" or "24000 00". A
-   * line with such digits is not empty. The labels hold only short numbers, such as "von 3.".
+   * A reference to a line in a label, such as "15.", "15a." or "von 3.", or a rate, such as the
+   * "15 %" of line 18. The labels of the lines that can be empty hold no other digits. So a digit
+   * that is left after the reader removes the amounts and these parts of labels belongs to an
+   * amount the reader cannot read, such as "87 50" or "1.234,56€", and the line is not empty.
    */
-  private static final Pattern UNREAD_AMOUNT = Pattern.compile("\\d,\\d|\\d{3,}");
+  private static final Pattern LABEL_NUMBER =
+      Pattern.compile("\\d{1,2}[a-c]?\\.(?!\\d)|\\d{1,2}\\s?%");
+
+  private static final Pattern DIGIT = Pattern.compile("\\d");
 
   /** A date such as "01.03.", "01.03.2022" or "01. 03. 2022", with one space after each dot. */
   private static final String DATE = "(\\d{1,2}\\.\\s?\\d{1,2}\\.(?:\\s?\\d{4})?)";
@@ -141,7 +146,7 @@ public final class WageTaxCertificateReader2022 {
       if (line > 0) {
         printed.add(line + part);
       }
-      if (line > 0 && UNREAD_AMOUNT.matcher(AMOUNT.matcher(text).replaceAll(" ")).find()) {
+      if (line > 0 && holdsUnreadDigits(text)) {
         unclear.add(line + part);
       }
       Matcher amount = AMOUNT.matcher(text);
@@ -152,6 +157,11 @@ public final class WageTaxCertificateReader2022 {
     putPeriod(periodText.toString(), year, found);
     printed.removeAll(unclear);
     return new Amounts(amounts, printed);
+  }
+
+  private static boolean holdsUnreadDigits(String text) {
+    String withoutAmounts = AMOUNT.matcher(text).replaceAll(" ");
+    return DIGIT.matcher(LABEL_NUMBER.matcher(withoutAmounts).replaceAll(" ")).find();
   }
 
   /** A new line number must be higher, because a label such as "von 9. und 10." names others. */

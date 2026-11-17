@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
  *   <li>An "Entgeltabrechnung" names the period as dates, "Zeitraum vom 01.03. bis 31.03.2025", and
  *       splits each amount into running pay ("Steuerbrutto, lfd.") and one-off pay ("Steuerbrutto,
  *       EZ"). The amount is the sum of both lines. Each line shows the amount of the month first,
- *       then the sum of the year. One file can hold corrections of other months, each under its own
+ *       then the sum of the year. In a month without one-off pay, the EZ line shows only the sum of
+ *       the year, so the one-off pay of the month is 0,00. One file can hold corrections of other months, each under its own
  *       period, so the reader reads only the text under the period of the month.
  * </ul>
  *
@@ -116,7 +117,34 @@ public final class PayslipReader {
     if (running.isEmpty() || !Pattern.compile(oneOffLabel).matcher(text).find()) {
       return running;
     }
-    return amountOf(text, splitLine(label, "EZ")).map(running.get()::plus);
+    return oneOffOfMonth(text, label).map(running.get()::plus);
+  }
+
+  /**
+   * The one-off pay of the month. In a month without one-off pay, the EZ line shows only the sum
+   * of the year, and the one-off pay of the month is 0,00. The text has no x positions, so the
+   * reader tells the columns apart by their count: an amount of the month is part of the sum of
+   * the year, so a line with an amount of the month always has the year column too. A single
+   * negative amount, or both kinds of line in one statement, is not read.
+   */
+  private static Optional<Money> oneOffOfMonth(String text, String label) {
+    Pattern twoColumns = splitLine(label, "EZ");
+    Pattern yearOnly = yearOnlyLine(label);
+    boolean hasTwoColumns = twoColumns.matcher(text).find();
+    boolean hasYearOnly = yearOnly.matcher(text).find();
+    if (hasTwoColumns && hasYearOnly) {
+      return Optional.empty();
+    }
+    if (hasYearOnly) {
+      return amountOf(text, yearOnly).map(yearSum -> Money.ofCents(0));
+    }
+    return amountOf(text, twoColumns);
+  }
+
+  /** "Label, EZ" with one amount and nothing else up to the end of the line. */
+  private static Pattern yearOnlyLine(String label) {
+    return Pattern.compile(
+        "(?:^|\\s)" + label + ",\\s*EZ[ \\t]+" + AMOUNT + "(?=[ \\t]*(?:\\r?\\n|\\z))");
   }
 
   /**

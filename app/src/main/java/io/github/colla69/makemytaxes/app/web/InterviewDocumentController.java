@@ -10,6 +10,7 @@ import io.github.colla69.makemytaxes.app.web.InterviewDocuments.CertificateField
 import io.github.colla69.makemytaxes.core.document.DocumentKind;
 import io.github.colla69.makemytaxes.core.form.AnlageN;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import io.github.colla69.makemytaxes.core.form.CertificateEvidence;
 import io.github.colla69.makemytaxes.core.form.Interview;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -84,7 +85,7 @@ class InterviewDocumentController {
   String skipDocuments(@PathVariable long returnId) {
     context.definitionOf(returnId);
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
-    values.put(Interview.DOCUMENTS_STEP, Interview.DONE);
+    values.put(CertificateEvidence.DOCUMENTS_STEP, Interview.DONE);
     forms.save(returnId, Interview.ID, new Answers(values));
     return "redirect:" + interviewHref(returnId);
   }
@@ -100,10 +101,10 @@ class InterviewDocumentController {
     context.definitionOf(returnId);
     List<StoredDocument> stored = certificates.certificatesOf(returnId);
     Map<String, String> fromCertificates =
-        Interview.certificateAnswers(stored.stream().map(StoredDocument::id).toList());
+        CertificateEvidence.certificateAnswers(stored.stream().map(StoredDocument::id).toList());
     Map<String, String> values = new LinkedHashMap<>(forms.answers(returnId, Interview.ID).values());
     values.putAll(fromCertificates);
-    values.put(Interview.DOCUMENTS_STEP, Interview.DONE);
+    values.put(CertificateEvidence.DOCUMENTS_STEP, Interview.DONE);
     // The interview names the certificates first, so each value below takes its certificate as
     // its source.
     forms.save(returnId, Interview.ID, new Answers(values));
@@ -124,7 +125,7 @@ class InterviewDocumentController {
         }
       }
     }
-    values.put(Interview.PREFILLED, Interview.prefilledText(prefilled));
+    values.put(CertificateEvidence.PREFILLED, CertificateEvidence.prefilledText(prefilled));
     forms.save(returnId, Interview.ID, new Answers(values));
     return "redirect:" + interviewHref(returnId);
   }

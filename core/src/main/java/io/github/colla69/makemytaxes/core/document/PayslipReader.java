@@ -131,7 +131,7 @@ public final class PayslipReader {
       Map<YearMonth, String> statements, YearMonth month) {
     return statements.entrySet().stream()
         .filter(entry -> entry.getKey().getYear() == month.getYear())
-        .filter(entry -> !entry.getKey().equals(month))
+        .filter(entry -> entry.getKey().isBefore(month))
         .map(entry -> new PayslipCorrection(entry.getKey(), changesOf(entry.getValue())))
         .filter(correction -> !correction.values().equals(NO_CHANGE))
         .toList();

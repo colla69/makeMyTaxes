@@ -273,6 +273,17 @@ class PayslipReaderTest {
   }
 
   @Test
+  void doesNotReadALaterMonthAsACorrection() {
+    String text =
+        WITH_CORRECTIONS
+            + "für den Zeitraum vom 01.04. bis 30.04.2025\nSteuerbrutto, lfd.  3.000,00  12.000,00\n";
+
+    assertThat(PayslipReader.readContent(text, MARCH_2025).corrections())
+        .extracting(PayslipCorrection::month)
+        .containsExactly(YearMonth.of(2025, 1), YearMonth.of(2025, 2));
+  }
+
+  @Test
   void hasNoCorrectionsAndNoYearColumnInADatevPayslip() {
     PayslipContent content = PayslipReader.readContent(PAYSLIP, MARCH_2022);
 

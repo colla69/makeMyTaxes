@@ -365,6 +365,28 @@ check "a merge by the owner deploys the dev container once" test "$(wc -l <"$cas
 run agent-loop.sh
 check "the next round does not deploy again" test "$(wc -l <"$case_dir/deploy.log")" -eq 1
 
+# An untracked file in the main checkout does not stop the update of dev.
+new_case untracked-file
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+echo "made-up note" >"$repo/notes.txt"
+git clone -q -b dev "$case_dir/origin.git" "$case_dir/other"
+git -C "$case_dir/other" -c user.email=test@example.org -c user.name=Test commit -q --allow-empty -m "made-up merge"
+git -C "$case_dir/other" push -q origin dev
+run agent-loop.sh
+check "an untracked file does not stop the update of dev" \
+  test "$(git -C "$repo" rev-parse dev)" = "$(git -C "$case_dir/other" rev-parse dev)"
+
+# A change to a tracked file stops the update of dev, so the owner's work stays as it is.
+new_case changed-file
+echo 'respond() { :; }' >"$case_dir/rules.sh"
+echo "made-up change" >>"$repo/.gitignore"
+git clone -q -b dev "$case_dir/origin.git" "$case_dir/other"
+git -C "$case_dir/other" -c user.email=test@example.org -c user.name=Test commit -q --allow-empty -m "made-up merge"
+git -C "$case_dir/other" push -q origin dev
+run agent-loop.sh
+check "a changed tracked file stops the update of dev" \
+  test "$(git -C "$repo" rev-parse dev)" = "$sha"
+
 if [ "$failures" -ne 0 ]; then
   echo "agent-loop-test: $failures failure(s)" >&2
   exit 1

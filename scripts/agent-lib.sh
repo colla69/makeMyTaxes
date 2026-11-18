@@ -127,10 +127,10 @@ sync_dev_now() {
   local target
   target=$(git -C "$root" rev-parse origin/dev)
   if [[ "$(git -C "$root" rev-parse HEAD)" != "$target" ]]; then
-    if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain)" ]]; then
+    if [[ "$(git -C "$root" branch --show-current)" == dev && -z "$(git -C "$root" status --porcelain --untracked-files=no)" ]]; then
       git_locked -C "$root" merge -q --ff-only origin/dev || echo "The local dev branch did not fast-forward." >&2
     else
-      echo "The main checkout is not a clean dev branch, so it stays as it is." >&2
+      echo "The main checkout is not on dev or has changed files, so it stays as it is." >&2
     fi
   fi
   # The commit is noted even when the deploy fails, so a broken deploy does not run every minute.

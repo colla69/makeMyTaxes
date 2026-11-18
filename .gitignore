@@ -31,3 +31,6 @@ law/guidance/
 
 # Decision records stay on the owner's machine
 docs/adr/
+
+# Documents the owner keeps next to the deploy, one folder per tax year.
+deploy/20*/

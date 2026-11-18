@@ -103,6 +103,20 @@ export PRIVATE_TERMS=$'\n# only a comment\n'
 expect_staged 0 "blank lines in the private terms match nothing" a.md "An ordinary line."
 unset PRIVATE_TERMS
 
+# A worktree has no .privacy folder of its own, so the scan reads the terms of the main checkout.
+mkdir -p .privacy
+printf '%s\n' "$PRIVATE_TERM" >.privacy/terms.txt
+git commit -q --no-verify --allow-empty -m "Start the history"
+git worktree add -q "$repo-worktree"
+(
+  cd "$repo-worktree" || exit 1
+  stage a.md "Name: $PRIVATE_TERM"
+  expect 1 "a private term fails in a worktree" --staged
+  exit "$failures"
+) || failures=$((failures + $?))
+git worktree remove --force "$repo-worktree"
+rm -rf .privacy
+
 printf 'Fix for %s\n' "$VALID_TAX_ID" >message.txt
 expect 1 "a commit message with a tax ID fails" --message message.txt
 rm -f message.txt

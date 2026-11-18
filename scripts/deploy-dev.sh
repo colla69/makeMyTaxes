@@ -30,7 +30,7 @@ MAKEMYTAXES_UID=$(id -u) MAKEMYTAXES_GID=$(id -g) docker compose \
   -f deploy/compose-dev.yaml --env-file deploy/.env.dev up -d
 
 for _ in {1..30}; do
-  if curl -fsS -o /dev/null http://127.0.0.1:9091/; then
+  if curl -fs -o /dev/null http://127.0.0.1:9091/; then
     echo "deploy-dev: ${commit:0:7} runs on http://127.0.0.1:9091/"
     exit 0
   fi

@@ -235,6 +235,8 @@ respond() {
 }
 EOF
 run work-next-issue.sh
+status=$?
+check "a worker that ends with a question ends with exit code 0" test "$status" -eq 0
 check "the pull request of issue 104 does not count for issue 10" not_logged "pull/116 --repo colla69/makeMyTaxes --add-label needs-review"
 check "issue 10 without its own pull request gets needs-input" logged "issue edit 10 --repo colla69/makeMyTaxes --add-label needs-input"
 

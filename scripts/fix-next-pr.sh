@@ -41,13 +41,12 @@ status=0
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Skill" "WebSearch" "WebFetch" \
     "Bash(scripts/build.sh ./mvnw -q -B test -Dtest=*)" "Bash(scripts/build.sh ./mvnw -q -B -DskipTests test-compile)" \
     "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" \
-    "Bash(curl:*)" "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
-    "Bash(python3:*)" "Bash(claude -p:*)" \
+    "Bash(java scripts/*)" "Bash(scripts/*-test.sh)" \
     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
     "Bash(git add:*)" "Bash(git rm:*)" "Bash(git mv:*)" "Bash(git commit:*)" \
-    "Bash(git fetch origin dev)" "Bash(git merge origin/dev:*)" \
+    "Bash(git fetch origin:*)" "Bash(git merge origin/dev:*)" "Bash(git merge --no-edit origin/dev:*)" \
     "Bash(git push:*)" \
-    "Bash(gh pr view:*)" "Bash(gh pr edit:*)" "Bash(gh pr diff:*)" "Bash(gh pr checks:*)" "Bash(gh issue view:*)" \
+    "Bash(gh pr view:*)" "Bash(gh pr edit:*)" "Bash(gh pr diff:*)" "Bash(gh pr checks:*)" "Bash(gh pr comment:*)" "Bash(gh issue view:*)" \
     "Bash(rm target-test.log)" \
     --disallowedTools "Bash(*--no-verify*)" "Bash(git push*--force*)" "Bash(git push*-f*)" "Bash(git push*+*)"
 ) || status=$?

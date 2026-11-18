@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Puts the law library into law/text of the current checkout. The other hooks call it; the engine does not.
+# The library is 73 MB, so a copy for each version of law/sources.tsv stays in the cache of this machine.
+set -euo pipefail
+
+[[ -d law/text ]] && exit 0
+version=$(sha256sum law/sources.tsv | cut -c1-12)
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/makemytaxes/law-text-$version
+if [[ ! -d "$cache" ]]; then
+  java scripts/FetchLaws.java
+  mkdir -p "$(dirname "$cache")"
+  cp -r --reflink=auto law/text "$cache.new"
+  mv "$cache.new" "$cache"
+  exit 0
+fi
+cp -r --reflink=auto "$cache" law/text

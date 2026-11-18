@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Runs in the review worktree before the review agent starts. A failure sends the pull request to the owner.
+# The commit hook can be skipped, so the privacy scan and gitleaks check the whole history again here.
+set -euo pipefail
+
+scripts/privacy-scan.sh --history
+"$(scripts/ensure-gitleaks.sh)" git --redact --no-banner --log-level error .

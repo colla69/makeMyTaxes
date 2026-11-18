@@ -162,6 +162,9 @@ not switch to a cheaper model.
   must fail if the feature breaks.
 - A tax rule needs a test case that cites an official source. A reviewer's approval is not
   proof of a tax rule.
+- If a change touches a tax rule, a year pack value, a deadline or a legal citation, start the
+  `tax-law-checker` agent with those parts of the diff. A worker fixes each `WRONG` and stops at a
+  `NO SOURCE`. A review approves only when each part is `CORRECT`.
 - Before you answer a tax question or write a tax rule, read the law in `law/text/` with
   `scripts/law.sh`. Do not answer from memory. The date of a version does not decide which
   wording applies to a year, so for each provision:

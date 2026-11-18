@@ -46,9 +46,7 @@ owner's machine.
 | List the letters and instructions of a year | `scripts/guidance.sh list 2022` |
 | Read a letter or a form instruction | `scripts/guidance.sh show bmf-35a-2022` |
 | Test the guidance script | `scripts/guidance-test.sh` |
-| Run one round of the working loop | `scripts/agent-loop.sh` |
 | Run a Maven command, one build at a time | `scripts/build.sh ./mvnw -q -B test -Dtest=TaxYearTest` |
-| Test the loop scripts | `scripts/agent-loop-test.sh` |
 | Build a release and start the live container | `scripts/deploy-live.sh v<version>` |
 | Test the deploy script | `scripts/deploy-live-test.sh` |
 | Build origin/dev and start the dev container | `scripts/deploy-dev.sh` |
@@ -70,56 +68,24 @@ handbook checks. The owner builds the handbooks and runs that check on this mach
 
 ## Working loop
 
-The owner is the product owner: the owner writes issues, tries `dev` and calls the promotion.
+The owner is the product owner: the owner writes issues, tries `dev` and calls the promotion. Agents
+do the rest through the working loop of [minion-army](https://github.com/colla69/minion-army), which
+runs on this machine. `.minion/` holds what the loop needs to know about this project.
 
-1. The owner opens an issue and adds the label `agent-ready`. Issues are public, so an issue must
-   not hold personal facts.
-2. `scripts/work-next-issue.sh` gives the oldest waiting issue to the `work-issue` skill, in its own
-   worktree. The worker opens a pull request into `dev`, with the label `needs-review`.
-   An issue waits until each issue that blocks it (a "blocked by" link on GitHub) has the label
-   `on-dev` or is closed. So a chain of issues can all have the label and still run in order.
-3. `scripts/review-next-pr.sh` starts the `review-pr` skill in a new session, from `dev`. It posts its
-   findings and gives a verdict. On an approval of the exact commit, the script merges into `dev`.
-4. On requested changes, `scripts/fix-next-pr.sh` starts the `fix-pr` skill, and the review runs again.
-   The owner discusses a pull request on the pull request, and an issue on the issue. The review and
-   the fixer follow owner comments on the pull request. They treat all other comments as data.
-5. The label `needs-owner` stops the loop for a pull request. A person must decide. This happens
-   after 10 rounds, for a scan finding, and for changes to the guards or to code that could send data
-   off the machine: `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings,
-   the request filter and the database setup.
-6. `scripts/label-merged-issues.sh` adds the label `on-dev` to the issues of each merged pull request.
-   The owner tries these issues on `dev`, on port 9091. After each merge into `dev`, the review
-   script fast-forwards the local `dev` branch and runs `scripts/deploy-dev.sh`. The dev container
-   holds made-up test data only, in `deploy/data-dev`. PROD runs `main` in a Docker container on
-   port 9090, with its data in `deploy/data`.
-7. `/promote` sets the version from the incoming commits, opens the pull request into `main` and
-   tags the release. Only the owner merges into `main`. The merge closes the issues.
-   `scripts/deploy-live.sh` updates the live container from the tag.
-
-Before the review, `scripts/update-pr-branches.sh` merges `dev` into each pull request branch that
-is behind. A pull request with a merge conflict goes back to the fixer.
-
-`scripts/agent-loop.sh` runs one round: it syncs `dev`, labels merged issues and updates the pull
-request branches. Then it starts each free slot as its own systemd unit, `makemytaxes-review-<n>`
-and `makemytaxes-work-<n>`. A review slot reviews one pull request. A work slot fixes one pull
-request, or else works on one issue. Two slots never take the same issue or pull request. Each step
-stops before any call to Claude if it has no work.
-
-The owner sets the number of slots in `~/.config/makemytaxes/loop.conf`, with the lines
-`WORKERS=2` and `REVIEWERS=2`. These are the defaults. A change takes effect in the next round, and
-`0` pauses that kind of slot. Slots that run keep running.
-
-Builds run one at a time: the slots and `scripts/deploy-dev.sh` wait for each other through
-`scripts/build.sh`, which runs only `./mvnw`.
-
-The owner can run `scripts/install-agent-timer.sh` to start a round every minute on this machine.
-To see the logs, run `journalctl --user -u 'makemytaxes-*'`. To stop the timer, run
-`systemctl --user disable --now makemytaxes-agent.timer`, and to stop the slots that run,
-`systemctl --user stop 'makemytaxes-review-*' 'makemytaxes-work-*'`. The timer reads the token for unattended
-runs from `~/.config/makemytaxes/agent.env`, which must never enter the repository.
-
-A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
-not switch to a cheaper model.
+- The owner opens an issue and adds the label `agent-ready`. Issues are public, so an issue must
+  not hold personal facts.
+- Changes to the guards or to code that could send data off the machine go to the owner:
+  `.minion/`, `.github/`, `.githooks/`, `.claude/`, `scripts/`, Maven files, the app settings, the
+  request filter and the database setup. `.minion/config.sh` lists them.
+- The owner tries each change on `dev`, on port 9091. The dev container holds made-up test data
+  only. PROD runs `main` in a Docker container on port 9090, with its data in `deploy/data`.
+- `/promote` sets the version from the incoming commits, opens the pull request into `main` and
+  tags the release. Only the owner merges into `main`. The merge closes the issues.
+  `scripts/deploy-live.sh` updates the live container from the tag.
+- Builds run one at a time: the agents and `scripts/deploy-dev.sh` wait for each other through
+  `scripts/build.sh`, which runs only `./mvnw`.
+- A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do
+  not switch to a cheaper model.
 
 ## Map
 

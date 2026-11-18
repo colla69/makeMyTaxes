@@ -59,8 +59,7 @@ Then:
 
 ## 4. Open the pull request into main
 
-If the version on `dev` is higher than the version on `main`, run `scripts/label-merged-issues.sh`.
-Then run `gh pr create --base main --head dev`. The title is `release: <version>`. The body lists the incoming
+If the version on `dev` is higher than the version on `main`, run `gh pr create --base main --head dev`. The title is `release: <version>`. The body lists the incoming
 commits under `Features`, `Fixes` and `Other`. GitHub closes an issue only when its change reaches
 `main`, so add `Closes #<issue>` for each number in
 `gh issue list --state open --label on-dev --json number --jq '.[].number'`. Add a section for any database migration in the

@@ -74,13 +74,12 @@ scripts/deploy-dev.sh
 ```
 
 On the first start, the script writes a fixed test passphrase to `deploy/.env.dev`. Do not put real
-data in the dev container. The review script runs `scripts/deploy-dev.sh` after each merge into `dev`.
+data in the dev container. The working loop runs `scripts/deploy-dev.sh` after each merge into `dev`.
 
 ## Run the agents
 
 Agents build this project. You write an issue with the label `agent-ready`, and agents work on it up
 to a merge into `dev`. Only you merge into `main`.
-[The agentic workflow](docs/agentic-workflow.md) explains each step, with pictures.
 
 ```mermaid
 flowchart LR
@@ -88,26 +87,10 @@ flowchart LR
     review -->|"changes"| fix["Fix agent"] --> review
 ```
 
-You need the [`claude`](https://claude.com/claude-code) and [`gh`](https://cli.github.com/) command
-line tools, with a login for each, and Docker for the dev container. Prepare the clone once:
-
-```
-git config core.hooksPath .githooks   # turn on the commit checks
-java scripts/FetchLaws.java           # build the law library
-```
-
-The scripts also need the private scan terms in `.privacy/terms.txt`. Git ignores this file. Without
-it, the agents do not start.
-
-| Task | Command |
-|---|---|
-| Run one round | `scripts/agent-loop.sh` |
-| Start a round every minute, as a systemd user service | `scripts/install-agent-timer.sh` |
-| Read the logs of the service | `journalctl --user -u makemytaxes-agent` |
-| Stop the service | `systemctl --user disable --now makemytaxes-agent.timer` |
-
-A round with no work makes no call to Claude. For unattended runs, the service reads
-`CLAUDE_CODE_OAUTH_TOKEN` from `~/.config/makemytaxes/agent.env`. Keep this file outside the
-repository.
+The working loop is its own project, [minion-army](https://github.com/colla69/minion-army). It runs on
+the owner's machine and works on each repository that has a `.minion/config.sh` on `dev`. The folder
+`.minion/` holds what the loop needs to know about makeMyTaxes: the paths that only the owner reviews,
+the commands of the agents, and the hooks that prepare a worktree, scan before a review and deploy
+the dev container. The hooks read the private scan terms from `~/.config/makemytaxes/privacy/`.
 
 `CLAUDE.md` holds the other commands and the rules of the project.

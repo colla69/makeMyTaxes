@@ -1,5 +1,5 @@
 # The dev container. It runs the latest dev branch with made-up test data only.
-# Start or update it with scripts/deploy-dev.sh. The review script runs it after each merge into dev.
+# Start or update it with scripts/deploy-dev.sh. The working loop runs it after each merge into dev.
 name: makemytaxes-dev
 
 services:

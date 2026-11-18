@@ -183,7 +183,7 @@ class FormAnswerSourceTest {
   @Test
   void aFileOverTheLimitOfTheAppIsRefused() throws Exception {
     answer("wageCertificate", "YES");
-    byte[] large = new byte[(int) DocumentController.MAX_BYTES + 1];
+    byte[] large = new byte[(int) UploadedFiles.MAX_BYTES + 1];
     System.arraycopy(MADE_UP_PDF, 0, large, 0, MADE_UP_PDF.length);
 
     upload(DOCUMENT_QUESTION, "large.pdf", large)

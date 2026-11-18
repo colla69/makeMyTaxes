@@ -7,7 +7,8 @@
 #   privacy-scan.sh --history         every file and message in every commit (CI)
 #
 # Private terms come from .privacy/terms.txt, or from the variable PRIVATE_TERMS. They are the things
-# a pattern cannot know, such as real names and addresses.
+# a pattern cannot know, such as real names and addresses. In a worktree without its own
+# .privacy/terms.txt, the scan reads the file of the main checkout.
 #
 # A file of a blocked type passes only in the fixtures folder, or when its SHA-256 is in
 # scripts/privacy-scan-approved.sha256. The list holds published official documents, such as blank
@@ -40,8 +41,13 @@ report() { # location, rule
 
 load_private_terms() {
   : >"$work/terms"
-  if [[ -f "$root/.privacy/terms.txt" ]]; then
-    cat "$root/.privacy/terms.txt" >>"$work/terms"
+  local main_root terms_file=$root/.privacy/terms.txt
+  main_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+  if [[ ! -f "$terms_file" ]]; then
+    terms_file=$main_root/.privacy/terms.txt
+  fi
+  if [[ -f "$terms_file" ]]; then
+    cat "$terms_file" >>"$work/terms"
   fi
   printf '%s\n' "${PRIVATE_TERMS:-}" >>"$work/terms"
   # A blank line would match every line, so blank lines and comments must go.

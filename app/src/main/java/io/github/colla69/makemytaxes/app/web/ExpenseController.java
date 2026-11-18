@@ -141,8 +141,8 @@ class ExpenseController {
   /** The server stops a file over its own limit before the add method runs. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
-    model.addAttribute("error", DocumentController.TOO_LARGE);
-    fillPanel(DocumentController.returnIdOf(request), ExpenseForm.empty(), model);
+    model.addAttribute("error", UploadedFiles.TOO_LARGE);
+    fillPanel(UploadedFiles.returnIdOf(request), ExpenseForm.empty(), model);
     return "return :: panel";
   }
 
@@ -175,7 +175,7 @@ class ExpenseController {
     expenses.addWithNewDocument(
         returnId,
         expense,
-        DocumentController.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file));
+        UploadedFiles.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file));
   }
 
   private Long checkedDocumentId(long returnId, Long documentId) {

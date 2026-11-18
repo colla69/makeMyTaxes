@@ -64,7 +64,7 @@ class InterviewDocumentController {
       }
       documents.add(
           returnId,
-          DocumentController.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, file),
+          UploadedFiles.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, file),
           LocalDate.now());
     } catch (IllegalArgumentException e) {
       model.addAttribute("documentError", e.getMessage());
@@ -76,8 +76,8 @@ class InterviewDocumentController {
   /** The server stops a file over its own limit before the method for the upload runs. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
-    model.addAttribute("documentError", DocumentController.TOO_LARGE);
-    return certificates.documentsScreen(DocumentController.returnIdOf(request), model);
+    model.addAttribute("documentError", UploadedFiles.TOO_LARGE);
+    return certificates.documentsScreen(UploadedFiles.returnIdOf(request), model);
   }
 
   /** Leaves the step "Dokumente hochladen" without values from documents. */

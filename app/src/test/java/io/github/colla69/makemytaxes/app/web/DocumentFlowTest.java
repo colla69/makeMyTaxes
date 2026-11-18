@@ -340,7 +340,7 @@ class DocumentFlowTest {
 
   @Test
   void rejectsAFileOverTwentyMegabytes() throws Exception {
-    byte[] large = new byte[(int) DocumentController.MAX_BYTES + 1];
+    byte[] large = new byte[(int) UploadedFiles.MAX_BYTES + 1];
     System.arraycopy(MADE_UP_PDF, 0, large, 0, MADE_UP_PDF.length);
     upload("large.pdf", large, "OTHER")
         .andExpect(status().isOk())
@@ -351,7 +351,7 @@ class DocumentFlowTest {
 
   @Test
   void acceptsAFileOfExactlyTwentyMegabytes() throws Exception {
-    byte[] limit = new byte[(int) DocumentController.MAX_BYTES];
+    byte[] limit = new byte[(int) UploadedFiles.MAX_BYTES];
     System.arraycopy(MADE_UP_PDF, 0, limit, 0, MADE_UP_PDF.length);
     upload("limit.pdf", limit, "OTHER").andExpect(status().is3xxRedirection());
 
@@ -360,13 +360,13 @@ class DocumentFlowTest {
 
   @Test
   void detectsJpegAndPngFromTheFirstBytes() {
-    assertThat(DocumentController.mediaTypeOf(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF}))
+    assertThat(UploadedFiles.mediaTypeOf(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF}))
         .isEqualTo("image/jpeg");
     assertThat(
-            DocumentController.mediaTypeOf(
+            UploadedFiles.mediaTypeOf(
                 new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0}))
         .isEqualTo("image/png");
-    assertThat(DocumentController.mediaTypeOf(new byte[] {'G', 'I', 'F', '8'})).isNull();
+    assertThat(UploadedFiles.mediaTypeOf(new byte[] {'G', 'I', 'F', '8'})).isNull();
   }
 
   /** Uploads a file. The made-up files have no known layout, so the page asks for the kind. */

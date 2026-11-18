@@ -226,10 +226,10 @@ class InterviewController {
   /** The server stops a file over its own limit before the method for the document runs. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
-    long returnId = DocumentController.returnIdOf(request);
+    long returnId = UploadedFiles.returnIdOf(request);
     Question question =
-        questionOf(returnId, DocumentController.pathVariable(request, "questionId"));
-    model.addAttribute("documentError", DocumentController.TOO_LARGE);
+        questionOf(returnId, UploadedFiles.pathVariable(request, "questionId"));
+    model.addAttribute("documentError", UploadedFiles.TOO_LARGE);
     return questionScreen(returnId, question, model);
   }
 
@@ -237,7 +237,7 @@ class InterviewController {
     if (choice.file() != null && !choice.file().isEmpty()) {
       return documents.add(
           returnId,
-          DocumentController.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, choice.file()),
+          UploadedFiles.toNewDocument(DocumentKind.WAGE_TAX_CERTIFICATE, choice.file()),
           LocalDate.now());
     }
     return Optional.ofNullable(choice.documentId())

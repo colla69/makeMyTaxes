@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Runs in the engine's clone once for each new commit on dev, and starts the dev container on port 9091.
+# The dev container mounts deploy/data-dev and law/ of this clone. Git ignores both, so they stay here.
+set -euo pipefail
+
+"$(dirname "$0")/law-text"
+exec scripts/deploy-dev.sh

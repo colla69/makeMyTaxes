@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Adds the files that git ignores and that the checks need to a new worktree of the working loop.
+# The private terms of the privacy scan and the gitleaks binary live on this machine, outside every clone.
+set -euo pipefail
+
+privacy=${MAKEMYTAXES_PRIVACY_DIR:-$HOME/.config/makemytaxes/privacy}
+if [[ ! -s "$privacy/terms.txt" ]]; then
+  echo "The private terms are missing at $privacy/terms.txt, so the privacy scan cannot check them." >&2
+  exit 1
+fi
+rm -rf .privacy
+cp -r "$privacy" .privacy
+
+# The commit hook runs the privacy scan and gitleaks on each commit of an agent.
+git config core.hooksPath .githooks
+
+"$(dirname "$0")/law-text"

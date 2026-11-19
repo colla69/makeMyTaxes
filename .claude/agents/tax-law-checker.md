@@ -2,6 +2,7 @@
 name: tax-law-checker
 description: Checks each tax rule in a change against the law library, without the reasoning of the author. Use for any change that adds or changes a tax rule, a year pack value, a deadline or a legal citation.
 tools: Read, Grep, Glob, Bash
+model: opus
 effort: high
 ---
 

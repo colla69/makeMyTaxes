@@ -6,6 +6,7 @@ import io.github.colla69.makemytaxes.app.storage.ChatStore.Author;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Exchange;
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Message;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -71,6 +72,29 @@ class ReturnChat {
     return tokens.open(new DocumentAccess.Question(
             request.returnId(), request.seenReturns(), request.taxYear()));
   }
+
+  /**
+   * A one-time folder with one file that the app has not stored yet, such as a new receipt. The
+   * token opens no return, so the assistant sees only this file.
+   *
+   * @return the access, and the path of the file in its folder
+   */
+  FileAccess openFile(long returnId, String fileName, byte[] content) {
+    DocumentAccess access = tokens.open(new DocumentAccess.Question(returnId, Set.of(), null));
+    try {
+      Path file =
+          tokens
+              .write(access, fileName, content)
+              .orElseThrow(() -> new IllegalStateException("The question ended before the write."));
+      return new FileAccess(access, file);
+    } catch (RuntimeException e) {
+      // The folder holds a copy of the receipt, so it must not stay after a failed write.
+      tokens.close(access);
+      throw e;
+    }
+  }
+
+  record FileAccess(DocumentAccess access, Path file) {}
 
   /** Ends the question: the token stops working and the written documents are deleted. */
   void closeDocuments(DocumentAccess access) {

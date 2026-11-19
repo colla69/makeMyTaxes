@@ -2,6 +2,7 @@ package io.github.colla69.makemytaxes.app.assistant;
 
 import io.github.colla69.makemytaxes.app.storage.ChatStore.Message;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -59,6 +60,28 @@ public class PersonAssistant {
     List<Advice.Tip> tips = Advice.tips(ask(request));
     chat.remember(request.withQuestion(Advice.LABEL), Advice.text(tips));
     return tips;
+  }
+
+  /**
+   * Reads the fields of a receipt that the user has not stored yet. The file leaves the machine.
+   * It does not join the conversation, and the assistant sees no other data of the return.
+   *
+   * @param extension the extension of the file, such as "pdf", so the assistant knows its type
+   */
+  public ReceiptFields readReceipt(long returnId, String extension, byte[] content)
+      throws AssistantException {
+    long personId =
+        household
+            .personOf(returnId)
+            .orElseThrow(() -> new AssistantException("The return does not exist."));
+    checkOn(personId);
+    ReturnChat.FileAccess file = chat.openFile(returnId, "beleg." + extension, content);
+    try {
+      return ReceiptReading.fields(
+          assistant.ask(ReceiptReading.question(file.file().toString()), file.access()));
+    } finally {
+      chat.closeDocuments(file.access());
+    }
   }
 
   private String ask(ReturnChat.Request request) throws AssistantException {

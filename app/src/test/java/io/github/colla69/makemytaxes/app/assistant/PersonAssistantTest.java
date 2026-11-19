@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
+import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -156,6 +158,42 @@ class PersonAssistantTest {
 
     assertFalse(withoutClaudeCode.available());
     assertTrue(claudeCode.available());
+  }
+
+  @Test
+  void aReceiptDoesNotReachTheAssistantWhileThePersonHasItOff() {
+    long returnId = household.addReturn(addPerson(), new TaxYear(2022));
+    FakeAssistant fake = new FakeAssistant();
+    PersonAssistant assistant = new PersonAssistant(household, fake, chat);
+
+    assertThrows(
+        AssistantException.class,
+        () -> assistant.readReceipt(returnId, "pdf", "%PDF-made-up".getBytes()));
+    assertEquals(0, fake.prompts().size());
+  }
+
+  @Test
+  void theAssistantSeesOnlyTheReceiptAndTheFileIsDeletedAfterwards() throws Exception {
+    long personId = addPerson();
+    household.switchAssistant(personId, true);
+    long returnId = household.addReturn(personId, new TaxYear(2022));
+    FakeAssistant fake = new FakeAssistant();
+    fake.setAnswer("{\"betrag\": \"10,00\"}");
+    List<DocumentAccess> seen = new ArrayList<>();
+    fake.setDuringQuestion(
+        access -> {
+          seen.add(access);
+          assertEquals("%PDF-made-up", Files.readString(access.documents().resolve("beleg.pdf")));
+        });
+    PersonAssistant assistant = new PersonAssistant(household, fake, chat);
+
+    ReceiptFields read =assistant.readReceipt(returnId, "pdf", "%PDF-made-up".getBytes());
+
+    assertEquals("10,00", read.amount());
+    assertEquals(Set.of(), seen.getFirst().returnIds(), "no return opens through the token");
+    assertTrue(fake.prompts().getFirst().contains(seen.getFirst().documents().toString()));
+    assertFalse(Files.exists(seen.getFirst().folder()), "the folder with the receipt is deleted");
+    assertTrue(assistant.conversation(returnId).isEmpty(), "the receipt joins no conversation");
   }
 
   private long addPerson() {

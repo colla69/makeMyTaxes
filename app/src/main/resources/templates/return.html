@@ -38,7 +38,9 @@
           <p id="reading" class="htmx-indicator">Der Assistent liest den Beleg …</p>
         </div>
         <div id="read-fields" th:fragment="read-fields">
-          <p class="error" th:if="${readError}" th:text="${readError}">Fehler</p>
+          <div id="read-error" th:fragment="read-error">
+            <p class="error" th:if="${readError}" th:text="${readError}">Fehler</p>
+          </div>
           <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE', readMark=${!#strings.isEmpty(read.paidOn)})}"></div>
           <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true, kind='MONEY', readMark=${!#strings.isEmpty(read.amount)})}"></div>
           <p class="help labour-cost" th:unless="${#strings.isEmpty(read.labourCost)}"

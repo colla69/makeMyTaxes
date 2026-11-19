@@ -14,7 +14,9 @@ import io.github.colla69.makemytaxes.app.assistant.FakeAssistant;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
 import io.github.colla69.makemytaxes.core.form.Answers;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
@@ -220,6 +222,29 @@ class ExpenseReceiptBrowserTest {
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
     assertThat(page.getByLabel("Beschreibung")).hasValue("");
     assertThat(page.locator(".read-mark")).hasCount(0);
+  }
+
+  @Test
+  void aFileOverTheLimitOfTheServerKeepsWhatTheUserTyped() throws IOException {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("10,00");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    page.getByLabel("Beschreibung").fill("Made-up cable");
+    // Over spring.servlet.multipart.max-file-size, so the server stops it before the controller.
+    byte[] large = new byte[101 * 1024 * 1024];
+    large[0] = '%';
+    Path file = Files.write(databaseFolder.resolve("made-up-large.pdf"), large);
+
+    page.getByLabel("Neue Datei").setInputFiles(file);
+
+    assertThat(page.locator("#read-error .error")).containsText("größer als 20 MB");
+    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
+    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("10,00");
+    assertThat(page.getByLabel("Kategorie")).hasValue("MEDICAL");
+    assertThat(page.getByLabel("Beschreibung")).hasValue("Made-up cable");
   }
 
   private long addReturn(boolean assistantOn) {

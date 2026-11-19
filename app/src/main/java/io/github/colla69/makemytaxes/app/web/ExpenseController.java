@@ -21,6 +21,7 @@ import io.github.colla69.makemytaxes.core.expense.Purpose;
 import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import org.apache.tomcat.util.http.InvalidParameterException;
@@ -214,10 +215,13 @@ class ExpenseController {
 
   /** The server stops a file over its own limit before the add method runs. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
-  String tooLarge(HttpServletRequest request, Model model) {
+  String tooLarge(HttpServletRequest request, HttpServletResponse response, Model model) {
     if (request.getRequestURI().endsWith("/expenses/read")) {
+      // The typed fields never reached the server, so only the error box is swapped.
+      response.setHeader("HX-Retarget", "#read-error");
+      response.setHeader("HX-Reswap", "outerHTML");
       model.addAttribute("readError", UploadedFiles.TOO_LARGE);
-      return readFields(ExpenseForm.empty(), ReceiptFields.empty(), model);
+      return "return :: read-error";
     }
     model.addAttribute("error", UploadedFiles.TOO_LARGE);
     fillPanel(UploadedFiles.returnIdOf(request), ExpenseForm.empty(), model);
@@ -226,11 +230,15 @@ class ExpenseController {
 
   /** The text fields of this form are read first, so Tomcat reports the size in its own way. */
   @ExceptionHandler(InvalidParameterException.class)
-  String tooLargeForTheForm(InvalidParameterException e, HttpServletRequest request, Model model) {
+  String tooLargeForTheForm(
+      InvalidParameterException e,
+      HttpServletRequest request,
+      HttpServletResponse response,
+      Model model) {
     if (!(e.getCause() instanceof SizeException)) {
       throw e;
     }
-    return tooLarge(request, model);
+    return tooLarge(request, response, model);
   }
 
   /** Every check runs before the first write, so a rejected form stores nothing. */

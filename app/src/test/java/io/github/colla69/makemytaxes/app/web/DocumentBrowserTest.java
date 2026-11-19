@@ -120,6 +120,11 @@ class DocumentBrowserTest {
     assertThat(page).not().hasURL(Pattern.compile("preview="));
     assertThat(page.locator("#document-preview")).hasCount(0);
     assertEquals(true, page.evaluate("window.madeUpMark"));
+
+    previewButton.click();
+    Backdrop.closesOnlyOnABackdropClick(page, dialog);
+    assertThat(previewButton).isFocused();
+    assertThat(dialog.locator("iframe")).hasCount(0);
   }
 
   @Test
@@ -237,6 +242,8 @@ class DocumentBrowserTest {
     dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Abbrechen")).click();
 
     assertThat(dialog).not().isVisible();
+
+    Backdrop.closesOnlyOnABackdropClick(page, clickDeleteOfTheOnlyDocument(page));
     page.navigate(documentsUrl);
     assertThat(page.locator("#documents tbody tr")).hasCount(1);
     assertThat(page.locator("#documents")).containsText("made-up-invoice.png");

@@ -102,6 +102,16 @@ class DocumentCheckBrowserTest {
     assertThat(page.locator("#answers [name=wageTax]")).hasValue("");
     assertThat(page.locator("#answers [name=grossWage]")).hasValue("25.000,00");
 
+    // A click on the backdrop saves nothing either, like "Abbrechen".
+    openCheck(page);
+    row(page, "wageTax").locator("input").fill("9.999,00");
+    Backdrop.closesOnlyOnABackdropClick(page, page.locator("#document-check"));
+    assertThat(page.locator("#document-check")).hasCount(0);
+    assertThat(checkButton(page)).isFocused();
+    assertThat(page.locator("#answers [name=wageTax]")).hasValue("");
+    page.reload();
+    assertThat(page.locator("#answers [name=wageTax]")).hasValue("");
+
     // The user changes the inputs in the dialog, and the marks follow.
     openCheck(page);
     row(page, "grossWage").locator("input").fill("24000");
@@ -164,12 +174,15 @@ class DocumentCheckBrowserTest {
   }
 
   private static void openCheck(Page page) {
-    page.getByRole(
+    checkButton(page).click();
+    assertThat(page.locator("#document-check")).isVisible();
+  }
+
+  private static Locator checkButton(Page page) {
+    return page.getByRole(
             AriaRole.BUTTON,
             new Page.GetByRoleOptions().setName("Mit der Lohnsteuerbescheinigung prüfen"))
-        .first()
-        .click();
-    assertThat(page.locator("#document-check")).isVisible();
+        .first();
   }
 
   private static Locator row(Page page, String fieldId) {

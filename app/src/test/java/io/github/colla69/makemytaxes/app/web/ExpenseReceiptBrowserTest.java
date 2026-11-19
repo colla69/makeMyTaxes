@@ -156,6 +156,23 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
+  void aBackdropClickClosesTheReceiptCheckAndStoresNothing() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    assertThat(dialog.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+    Backdrop.closesOnlyOnABackdropClick(page, dialog);
+
+    assertThat(page.locator("dialog")).hasCount(0);
+    assertEquals(0, expenses.expensesOf(returnId).size(), "nothing was stored");
+    assertThat(page.getByLabel("Neue Datei")).hasValue("");
+    assertThat(page.getByLabel("Beschreibung")).isEnabled();
+  }
+
+  @Test
   void cancelingTheDialogStoresNothing() {
     long returnId = addReturn(true);
     Page page = browser.newPage();

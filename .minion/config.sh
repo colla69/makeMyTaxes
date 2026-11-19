@@ -8,6 +8,6 @@ WORKER_TOOLS=(
   "WebSearch" "WebFetch" "Bash(curl:*)" "Bash(python3:*)" "Bash(claude -p:*)"
   "Bash(scripts/build.sh ./mvnw -q -B test -Dtest=*)" "Bash(scripts/build.sh ./mvnw -q -B test -pl * -Dtest=*)" "Bash(scripts/build.sh ./mvnw -q -B -DskipTests test-compile)"
   "Bash(java scripts/*)" "Bash(scripts/*-test.sh)"
-  "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" "Bash(scripts/guidance.sh:*)" "Bash(rm target-test.log)"
+  "Bash(scripts/law.sh:*)" "Bash(scripts/law-check.sh:*)" "Bash(scripts/guidance.sh show:*)" "Bash(scripts/guidance.sh list:*)" "Bash(scripts/guidance.sh check)" "Bash(rm target-test.log)"
 )
 REVIEWER_TOOLS=("Bash(scripts/law.sh:*)")

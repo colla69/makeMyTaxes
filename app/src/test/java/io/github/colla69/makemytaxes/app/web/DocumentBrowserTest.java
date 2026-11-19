@@ -120,6 +120,11 @@ class DocumentBrowserTest {
     assertThat(page).not().hasURL(Pattern.compile("preview="));
     assertThat(page.locator("#document-preview")).hasCount(0);
     assertEquals(true, page.evaluate("window.madeUpMark"));
+
+    previewButton.click();
+    Backdrop.closesOnlyOnABackdropClick(page, dialog);
+    assertThat(previewButton).isFocused();
+    assertThat(dialog.locator("iframe")).hasCount(0);
   }
 
   @Test

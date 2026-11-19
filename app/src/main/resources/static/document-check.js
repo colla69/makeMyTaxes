@@ -60,7 +60,7 @@
     dialog.addEventListener("change", (event) => mark(event.target.closest("tr")));
     dialog.querySelector("[data-check-confirm]").addEventListener("click", () => confirm(dialog, form));
     dialog.querySelector("[data-check-cancel]").addEventListener("click", () => dialog.close());
-    // The Escape key closes the dialog too, like "Abbrechen".
+    // The Escape key and a click on the backdrop (dialog.js) close the dialog too, like "Abbrechen".
     dialog.addEventListener("close", () => dialog.remove());
     dialog.showModal();
   }

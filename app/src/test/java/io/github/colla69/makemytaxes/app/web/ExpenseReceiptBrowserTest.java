@@ -222,6 +222,7 @@ class ExpenseReceiptBrowserTest {
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
     assertThat(page.getByLabel("Beschreibung")).hasValue("");
     assertThat(page.locator(".read-mark")).hasCount(0);
+    Backdrop.closesOnlyOnABackdropClick(page, dialog);
   }
 
   @Test

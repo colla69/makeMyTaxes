@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // The "×" button and the Escape key both close the dialog.
+  // The "×" button, the Escape key and a click on the backdrop (dialog.js) close the dialog.
   dialog.addEventListener("close", () => {
     body.replaceChildren();
     opener?.focus();

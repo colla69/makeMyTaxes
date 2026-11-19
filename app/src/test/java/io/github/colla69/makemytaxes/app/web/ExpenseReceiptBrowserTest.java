@@ -265,9 +265,10 @@ class ExpenseReceiptBrowserTest {
 
     page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
 
-    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
-    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
-    assertThat(page.locator(".field:has([name=paidOn]) .read-mark")).isVisible();
+    Locator dialog = receiptCheck(page);
+    assertThat(dialog.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+    assertThat(dialog.getByLabel("Datum")).hasValue("03.02.2022");
+    assertThat(dialog.locator(".field:has([name=paidOn]) .read-mark")).isVisible();
   }
 
   @Test

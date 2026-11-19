@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /** The app fills a field only with a value from the answer that passes its check. */
 class ReceiptReadingTest {
@@ -41,10 +43,21 @@ class ReceiptReadingTest {
     assertEquals("", ReceiptReading.fields("{\"betrag\": 10}").amount());
   }
 
+  @ParameterizedTest
+  @CsvSource({"03.02.2022, 03.02.2022", "3.2.2022, 3.2.2022", "2022-02-03, 03.02.2022"})
+  void aDateInEachAcceptedFormatFillsTheSameDay(String answered, String filled)
+      throws AssistantException {
+    String answer = "{\"bezahltAm\": \"%s\"}".formatted(answered);
+
+    assertEquals(filled, ReceiptReading.fields(answer).paidOn());
+  }
+
   @Test
   void aBadDateStaysEmpty() throws AssistantException {
     assertEquals("", ReceiptReading.fields("{\"bezahltAm\": \"31.02.2022\"}").paidOn());
-    assertEquals("", ReceiptReading.fields("{\"bezahltAm\": \"2022-02-03\"}").paidOn());
+    assertEquals("", ReceiptReading.fields("{\"bezahltAm\": \"2022-02-31\"}").paidOn());
+    assertEquals("", ReceiptReading.fields("{\"bezahltAm\": \"3.2.22\"}").paidOn());
+    assertEquals("", ReceiptReading.fields("{\"bezahltAm\": \"3. Februar 2022\"}").paidOn());
   }
 
   @Test
@@ -98,6 +111,8 @@ class ReceiptReadingTest {
     String question = ReceiptReading.question("/made-up/beleg.pdf");
 
     assertTrue(question.contains("/made-up/beleg.pdf"));
+    assertTrue(question.contains("\"bezahltAm\""));
+    assertTrue(question.contains("TT.MM.JJJJ"));
     for (ExpenseTopic topic : ExpenseTopic.values()) {
       assertTrue(question.contains(topic.name()), topic.name());
     }

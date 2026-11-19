@@ -107,6 +107,26 @@ class FormBrowserTest {
   }
 
   @Test
+  void theEdgesOfControlsAndPanelsAreRound() {
+    Page page = browser.newPage();
+    openANewReturn(page, "2022");
+    assertRound(page.getByLabel("Datum"));
+    link(page, "Abgabepflicht").click();
+
+    List<Locator> edges = List.of(
+        page.locator("#answers select").first(),
+        page.locator("#answers").getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")),
+        page.locator("main.panel"),
+        page.locator("nav .tabs a").first());
+    edges.forEach(FormBrowserTest::assertRound);
+  }
+
+  private static void assertRound(Locator element) {
+    String radius = (String) element.evaluate("e => getComputedStyle(e).borderTopLeftRadius");
+    assertNotEquals("0px", radius, "A sharp edge: " + element);
+  }
+
+  @Test
   void aFormWithAllRequiredAnswersSavedHasAGreenTab() {
     Page page = browser.newPage();
     openANewReturn(page, "2022");

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Prints the version of the project on a git ref: the <version> of the root pom.xml, outside <parent>.
+# Usage: .minion/hooks/version-get <ref>
+set -euo pipefail
+
+git show "$1:pom.xml" | sed '/<parent>/,/<\/parent>/d' | grep -m1 -o '<version>[^<]*' | cut -d'>' -f2

@@ -320,6 +320,58 @@ nav {
   margin: 0.25rem 0 0;
 }
 
+/* A value that was not read from a receipt, so the user fills it. */
+.missing-mark {
+  color: #8a4b00;
+  font-size: 0.85rem;
+  font-weight: bold;
+  margin: 0.25rem 0 0;
+}
+
+.field.missing input,
+.field.missing select {
+  background: #fff4e0;
+  border: 2px solid #c77700;
+}
+
+/* A wrapper that only groups its fields, so they stay in the grid of the form. */
+.fields > .contents {
+  display: contents;
+}
+
+/* The check of a read receipt, a modal dialog: the receipt beside the fields. */
+.receipt-check {
+  max-width: 75rem;
+  width: 95vw;
+}
+
+.receipt-check .close {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+}
+
+.receipt-check-body {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.receipt-check .fields {
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.receipt-preview iframe {
+  border: 1px solid #ccc;
+  height: 70vh;
+  width: 100%;
+}
+
+.receipt-preview img {
+  max-width: 100%;
+}
+
 /* A small "?" beside a label. Its Italian hint shows on hover. */
 .hint {
   border: 1px solid #555;

@@ -10,7 +10,6 @@
     "craft-shipping@personal-claude-plugin-marketplace": true,
     "universal-clean-code@personal-claude-plugin-marketplace": true,
     "craft-development@personal-claude-plugin-marketplace": true,
-    "craft-code-review@personal-claude-plugin-marketplace": true,
     "language-conventional-commits@personal-claude-plugin-marketplace": true
   },
   "extraKnownMarketplaces": {

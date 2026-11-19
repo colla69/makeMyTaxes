@@ -59,7 +59,8 @@ repository. Set `MAKEMYTAXES_CLAUDE_CODE` to the path of the Claude Code program
 `deploy/.env` for the live container and in `deploy/.env.dev` for the dev container. Without the token or the program, the app works as before.
 
 Write the output of a long check to a file and read only the failures, so that the output stays
-out of the session.
+out of the session. Or run a long check through the `marketplace-base:test-runner` agent, which
+reports only what failed.
 
 CI runs the build, the browser tests and the law library check on each pull request. The Java
 version of CI is `java.version` in `pom.xml`. CI does not download the handbooks, so as not to load

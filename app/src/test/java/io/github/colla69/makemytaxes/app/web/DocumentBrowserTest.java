@@ -242,6 +242,8 @@ class DocumentBrowserTest {
     dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Abbrechen")).click();
 
     assertThat(dialog).not().isVisible();
+
+    Backdrop.closesOnlyOnABackdropClick(page, clickDeleteOfTheOnlyDocument(page));
     page.navigate(documentsUrl);
     assertThat(page.locator("#documents tbody tr")).hasCount(1);
     assertThat(page.locator("#documents")).containsText("made-up-invoice.png");

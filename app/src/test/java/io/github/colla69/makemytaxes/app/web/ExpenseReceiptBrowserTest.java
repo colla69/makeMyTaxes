@@ -115,6 +115,9 @@ class ExpenseReceiptBrowserTest {
     assertThat(dialog.getByRole(AriaRole.LINK)).hasAttribute("href", "/persons/" + personOf(returnId) + "#assistant");
     dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Schließen")).click();
     assertThat(dialog).not().isVisible();
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Backdrop.closesOnlyOnABackdropClick(page, dialog);
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("");
     assertThat(page.getByLabel("Datum")).hasValue("");
     assertThat(page.getByLabel("Beschreibung")).hasValue("");

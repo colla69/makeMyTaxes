@@ -257,6 +257,20 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
+  void anIsoDateFromTheReceiptFillsTheDateField() {
+    fake().setAnswer(FULL_ANSWER.replace("03.02.2022", "2022-02-03"));
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+
+    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+    assertThat(page.getByLabel("Datum")).hasValue("03.02.2022");
+    assertThat(page.locator(".field:has([name=paidOn]) .read-mark")).isVisible();
+  }
+
+  @Test
   void aFieldThatDoesNotPassTheCheckStaysEmpty() {
     fake().setAnswer(
         """

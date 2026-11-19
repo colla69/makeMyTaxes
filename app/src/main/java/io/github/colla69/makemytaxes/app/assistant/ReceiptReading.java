@@ -21,7 +21,9 @@ final class ReceiptReading {
       Antworte nur mit einem JSON-Objekt, ohne weiteren Text, mit diesen Schlüsseln:
       "betrag": der bezahlte Gesamtbetrag brutto in Euro, im Format 1.234,56.
       "bezahltAm": das Zahlungsdatum, wenn der Beleg eines nennt, sonst das Rechnungsdatum, im \
-      Format TT.MM.JJJJ.
+      Format TT.MM.JJJJ mit vierstelligem Jahr. Schreibe das Datum auch dann so, wenn der Beleg \
+      es anders schreibt, zum Beispiel 03.02.22 oder 3. Februar 2022 als 03.02.2022. Das ist \
+      dasselbe Datum und keine Umrechnung.
       "beschreibung": der Aussteller und was gekauft wurde, kurz, zum Beispiel \
       "Optiker Muster – Brille".
       "thema": eines von %s, oder "".

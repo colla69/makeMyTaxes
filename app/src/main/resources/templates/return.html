@@ -6,6 +6,7 @@
     <title>makeMyTaxes</title>
     <link rel="stylesheet" th:href="@{/app.css}">
     <script th:src="@{/fields.js}" defer></script>
+    <script th:src="@{/dialog.js}" defer></script>
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
@@ -25,17 +26,52 @@
             hx-target="#panel"
             hx-swap="outerHTML">
         <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
-        <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE')}"></div>
-        <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true, kind='MONEY')}"></div>
+        <!-- A chosen file goes to the assistant at once. Clearing the file sends nothing. Only the read fields below are swapped,
+             so the file input keeps its file for the save. -->
+        <div id="receipt-file"
+             th:attr="hx-post=@{/returns/{id}/expenses/read(id=${returnId})}"
+             hx-trigger="change[target.files.length > 0]"
+             hx-target="#read-fields"
+             hx-swap="outerHTML"
+             hx-indicator="#reading">
+          <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB. Wenn der Assistent an ist, liest er den Beleg und füllt die Felder aus.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
+          <p id="reading" class="htmx-indicator">Der Assistent liest den Beleg …</p>
+        </div>
+        <div id="read-fields" th:fragment="read-fields">
+          <p class="error" th:if="${readError}" th:text="${readError}">Fehler</p>
+          <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE', readMark=${!#strings.isEmpty(read.paidOn)})}"></div>
+          <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true, kind='MONEY', readMark=${!#strings.isEmpty(read.amount)})}"></div>
+          <p class="help labour-cost" th:unless="${#strings.isEmpty(read.labourCost)}"
+             th:text="'Arbeitskosten laut Beleg: ' + ${read.labourCost} + ' EUR. Bei haushaltsnahen Aufwendungen zählen nur die Arbeitskosten (§ 35a Abs. 5 Satz 2 EStG).'">
+            Arbeitskosten laut Beleg</p>
+          <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics}, readMark=${read.topic != null})}"></div>
+          <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true, readMark=${!#strings.isEmpty(read.description)})}"></div>
+          <!-- dialog.js opens this popup as a modal dialog when htmx adds it. -->
+          <dialog th:if="${readProblem == 'off'}" id="read-off-dialog" class="popup" data-show-modal
+                  aria-labelledby="read-off-title">
+            <h2 id="read-off-title">Beleg nicht automatisch gelesen</h2>
+            <p>Die App kann den Beleg nicht automatisch lesen, weil der Assistent für diese Person
+              aus oder nicht eingerichtet ist. Sie können den Assistenten für diese Person
+              einschalten.</p>
+            <p th:if="${personId}">
+              <a th:href="@{/persons/{id}(id=${personId})} + '#assistant'">Zur Einstellung des Assistenten</a>
+            </p>
+            <p class="help">Sie können die Felder auch von Hand ausfüllen.</p>
+            <div class="form-buttons"><button type="button" data-close-dialog>Schließen</button></div>
+          </dialog>
+          <dialog th:if="${readProblem == 'failed'}" id="read-failed-dialog" class="popup" data-show-modal
+                  aria-labelledby="read-failed-title">
+            <h2 id="read-failed-title">Beleg nicht gelesen</h2>
+            <p>Der Assistent konnte den Beleg nicht lesen. Bitte füllen Sie die Felder von Hand aus.</p>
+            <div class="form-buttons"><button type="button" data-close-dialog>Schließen</button></div>
+          </dialog>
+        </div>
         <div th:replace="~{fields :: field(name='refunded', label='Davon erstattet (EUR)', hint=#{hint.expense.refunded}, help='Nur bei Krankheitskosten: der Betrag, den Krankenkasse oder Versicherung erstattet hat. Auch eine spätere Erstattung, mit der Sie in diesem Jahr schon rechnen konnten (H 33.1-33.4 EStH, Ersatz von dritter Seite).', value=${form.refunded}, placeholder='1.234,56', kind='MONEY')}"></div>
-        <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics})}"></div>
-        <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true)}"></div>
         <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
         <!-- The block holds the condition, because th:replace runs before th:unless on one element. -->
         <th:block th:unless="${#lists.isEmpty(documentOptions)}">
           <div th:replace="~{fields :: field(name='documentId', label='Dokument', hint=#{hint.expense.document}, value=${form.documentId?.toString()}, options=${documentOptions}, blankOption=true)}"></div>
         </th:block>
-        <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
         <div th:replace="~{fields :: field(name='statedBasis', label='Grundlage', hint=#{hint.expense.statedBasis}, help='Nur wenn es keinen Beleg geben kann, zum Beispiel eine Zahl von Tagen oder eine Entfernung.', value=${form.statedBasis})}"></div>
         <p class="form-buttons">
           <button>Ausgabe hinzufügen</button>

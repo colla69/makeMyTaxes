@@ -1,6 +1,9 @@
 package io.github.colla69.makemytaxes.app.web;
 
+import io.github.colla69.makemytaxes.app.assistant.AssistantException;
+import io.github.colla69.makemytaxes.app.assistant.PersonAssistant;
 import io.github.colla69.makemytaxes.app.storage.DocumentStore;
+import io.github.colla69.makemytaxes.app.storage.DocumentStore.NewDocument;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore.StoredExpense;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
@@ -15,6 +18,7 @@ import io.github.colla69.makemytaxes.core.expense.Money;
 import io.github.colla69.makemytaxes.core.form.Kind;
 import io.github.colla69.makemytaxes.core.expense.Payment;
 import io.github.colla69.makemytaxes.core.expense.Purpose;
+import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
 import io.github.colla69.makemytaxes.core.form.Forms;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -51,6 +55,19 @@ class ExpenseController {
 
     static ExpenseForm empty() {
       return new ExpenseForm("", "", ExpenseTopic.WORK_EQUIPMENT, "", "", null, "", "");
+    }
+
+    /** The fields that the assistant read from a receipt. A field it did not read keeps its value. */
+    ExpenseForm with(ReceiptFields read) {
+      return new ExpenseForm(
+          read.paidOn().isEmpty() ? paidOn : read.paidOn(),
+          read.amount().isEmpty() ? amount : read.amount(),
+          read.topic() == null ? topic : read.topic(),
+          read.description().isEmpty() ? description : read.description(),
+          receipt,
+          documentId,
+          statedBasis,
+          refunded);
     }
 
     /** The next entry often shares a date and topic with this entry, so those two stay. */
@@ -108,11 +125,17 @@ class ExpenseController {
   private final HouseholdStore household;
   private final ExpenseStore expenses;
   private final DocumentStore documents;
+  private final PersonAssistant assistant;
 
-  ExpenseController(HouseholdStore household, ExpenseStore expenses, DocumentStore documents) {
+  ExpenseController(
+      HouseholdStore household,
+      ExpenseStore expenses,
+      DocumentStore documents,
+      PersonAssistant assistant) {
     this.household = household;
     this.expenses = expenses;
     this.documents = documents;
+    this.assistant = assistant;
   }
 
   @GetMapping("/returns/{returnId}")
@@ -138,9 +161,64 @@ class ExpenseController {
     return "return :: panel";
   }
 
+  /**
+   * Fills the fields of the form from a receipt that the user just chose, through the assistant.
+   * The app stores nothing here: the add method stores the file with the expense. A field that
+   * the assistant did not read keeps what the user typed.
+   */
+  @PostMapping("/returns/{returnId}/expenses/read")
+  String read(
+      @PathVariable long returnId,
+      @ModelAttribute ExpenseForm typed,
+      @RequestParam(required = false) MultipartFile file,
+      Model model)
+      throws IOException {
+    taxYearOf(returnId);
+    ReceiptFields read = ReceiptFields.empty();
+    if (file == null || file.isEmpty()) {
+      return readFields(typed, read, model);
+    }
+    if (!assistant.onForReturn(returnId) || !assistant.available()) {
+      model.addAttribute("readProblem", "off");
+      household.personOf(returnId).ifPresent(id -> model.addAttribute("personId", id));
+    } else {
+      try {
+        NewDocument receipt = UploadedFiles.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file);
+        read = assistant.readReceipt(returnId, extensionOf(receipt.mediaType()), receipt.bytes());
+      } catch (IllegalArgumentException e) {
+        model.addAttribute("readError", e.getMessage());
+      } catch (AssistantException e) {
+        model.addAttribute("readProblem", "failed");
+      }
+      if (read.isEmpty() && !model.containsAttribute("readError")) {
+        model.addAttribute("readProblem", "failed");
+      }
+    }
+    return readFields(typed.with(read), read, model);
+  }
+
+  private static String readFields(ExpenseForm form, ReceiptFields read, Model model) {
+    model.addAttribute("form", form.topic() == null ? ExpenseForm.empty() : form);
+    model.addAttribute("read", read);
+    model.addAttribute("topics", topicOptions());
+    return "return :: read-fields";
+  }
+
+  private static String extensionOf(String mediaType) {
+    return switch (mediaType) {
+      case "application/pdf" -> "pdf";
+      case "image/png" -> "png";
+      default -> "jpg";
+    };
+  }
+
   /** The server stops a file over its own limit before the add method runs. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   String tooLarge(HttpServletRequest request, Model model) {
+    if (request.getRequestURI().endsWith("/expenses/read")) {
+      model.addAttribute("readError", UploadedFiles.TOO_LARGE);
+      return readFields(ExpenseForm.empty(), ReceiptFields.empty(), model);
+    }
     model.addAttribute("error", UploadedFiles.TOO_LARGE);
     fillPanel(UploadedFiles.returnIdOf(request), ExpenseForm.empty(), model);
     return "return :: panel";
@@ -214,6 +292,7 @@ class ExpenseController {
     model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
     model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);
+    model.addAttribute("read", ReceiptFields.empty());
     model.addAttribute("topics", topicOptions());
     model.addAttribute("documentOptions", documentOptions(returnId));
     model.addAttribute("rows", stored.stream().map(ExpenseRow::of).toList());

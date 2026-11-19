@@ -312,6 +312,14 @@ nav {
   margin: 0.25rem 0 0;
 }
 
+/* A value that the assistant read from a receipt, so the user checks it. */
+.read-mark {
+  color: #1a5e9a;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0.25rem 0 0;
+}
+
 /* A small "?" beside a label. Its Italian hint shows on hover. */
 .hint {
   border: 1px solid #555;

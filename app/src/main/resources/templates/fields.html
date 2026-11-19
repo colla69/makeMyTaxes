@@ -11,6 +11,7 @@
         blankOption: true adds an empty first option to the select.
         kind: the name of a Kind. DATE, MONEY and WHOLE_NUMBER get an input mask from fields.js,
           and DATE also gets a calendar button. The server still checks every value.
+        readMark: true marks the value as read from a receipt, so the user checks it.
         hint: a short Italian explanation. A "?" beside the label shows it on hover.
           The hint is hidden from screen readers, so the name of the field stays its label.
 
@@ -54,6 +55,7 @@
               title="Feld leeren">×</button>
       </div>
       <p class="help" th:unless="${#strings.isEmpty(help)}" th:text="${help}">Help</p>
+      <p class="read-mark" th:if="${readMark}">aus dem Beleg gelesen</p>
       <p class="error" th:if="${fieldError}" th:text="${fieldError}">Error</p>
     </div>
   </body>

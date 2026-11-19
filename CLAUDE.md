@@ -79,9 +79,12 @@ runs on this machine. `.minion/` holds what the loop needs to know about this pr
   request filter and the database setup. `.minion/config.sh` lists them.
 - The owner tries each change on `dev`, on port 9091. The dev container holds made-up test data
   only. PROD runs `main` in a Docker container on port 9090, with its data in `deploy/data`.
-- `/promote` sets the version from the incoming commits, opens the pull request into `main` and
-  tags the release. Only the owner merges into `main`. The merge closes the issues.
-  `scripts/deploy-live.sh` updates the live container from the tag.
+- To release, the owner runs `scripts/promote.sh colla69/makeMyTaxes` of minion-army after each
+  merge. It opens the version pull request into `dev`, then the pull request into `main`, and then
+  tags the release. The hooks `version-get`, `version-set` and `release-notes` in `.minion/` read and
+  set the version in the `pom.xml` files and list the database migrations. Only the owner merges into
+  `main`. The merge closes the issues. `scripts/deploy-live.sh` updates the live container from the
+  tag.
 - Builds run one at a time: the agents and `scripts/deploy-dev.sh` wait for each other through
   `scripts/build.sh`, which runs only `./mvnw`.
 - A rule on GitHub stops direct pushes to `main` and `dev`. To save cost, lower the effort level. Do

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Prints the database migrations of a release, because PROD runs them at its next start.
+# Usage: .minion/hooks/release-notes <git range>
+set -euo pipefail
+
+migrations=$(git diff --name-only --diff-filter=A "$1" -- app/src/main/resources/db/migration)
+[[ -n "$migrations" ]] || exit 0
+printf '## Database migrations\n\nPROD runs these at its next start:\n\n'
+sed 's|.*/|- |' <<<"$migrations"

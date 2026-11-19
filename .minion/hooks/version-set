@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Sets the version in every pom.xml of the worktree. Maven waits for other builds through scripts/build.sh.
+# Usage: .minion/hooks/version-set <version>
+set -euo pipefail
+
+scripts/build.sh ./mvnw -q -B versions:set -DnewVersion="$1" -DgenerateBackupPoms=false

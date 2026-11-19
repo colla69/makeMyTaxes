@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+  <body>
+    <!--
+      The fields of an expense that the assistant can read from a receipt. The page and the
+      receipt check use the same fields. In the receipt check (checking: true), each field says if
+      it was read, and a field that was not read stands out.
+    -->
+    <th:block th:fragment="expense-fields(checking)">
+      <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE', readMark=${checking and !#strings.isEmpty(read.paidOn)}, missingMark=${checking and #strings.isEmpty(read.paidOn)})}"></div>
+      <div th:replace="~{fields :: field(name='amount', label='Betrag (EUR)', hint=#{hint.expense.amount}, value=${form.amount}, placeholder='1.234,56', required=true, autofocus=true, kind='MONEY', readMark=${checking and !#strings.isEmpty(read.amount)}, missingMark=${checking and #strings.isEmpty(read.amount)})}"></div>
+      <th:block th:if="${checking and form.topic?.name == 'HOUSEHOLD_SERVICES'}">
+        <p class="help labour-cost" th:unless="${#strings.isEmpty(read.labourCost)}"
+           th:text="'Arbeitskosten laut Beleg: ' + ${read.labourCost} + ' EUR. Bei haushaltsnahen Aufwendungen zählen nur die Arbeitskosten (§ 35a Abs. 5 Satz 2 EStG).'">
+          Arbeitskosten laut Beleg</p>
+        <p class="missing-mark labour-cost" th:if="${#strings.isEmpty(read.labourCost)}">Arbeitskosten
+          nicht aus dem Beleg gelesen. Bei haushaltsnahen Aufwendungen zählen nur die Arbeitskosten
+          (§ 35a Abs. 5 Satz 2 EStG).</p>
+      </th:block>
+      <div th:replace="~{fields :: field(name='topic', label='Kategorie', hint=#{hint.expense.topic}, value=${form.topic?.name}, options=${topics}, readMark=${checking and read.topic != null}, missingMark=${checking and read.topic == null})}"></div>
+      <div th:replace="~{fields :: field(name='description', label='Beschreibung', hint=#{hint.expense.description}, value=${form.description}, required=true, readMark=${checking and !#strings.isEmpty(read.description)}, missingMark=${checking and #strings.isEmpty(read.description)})}"></div>
+    </th:block>
+  </body>
+</html>

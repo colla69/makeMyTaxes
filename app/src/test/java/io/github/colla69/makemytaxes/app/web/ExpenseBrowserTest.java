@@ -133,9 +133,12 @@ class ExpenseBrowserTest {
     page.getByLabel("Datum").fill("03.02.2022");
     page.getByLabel("Neue Datei")
         .setInputFiles(new FilePayload("made-up-receipt.png", "image/png", MADE_UP_PNG));
-    // The assistant is off, so the app says that it cannot read the receipt.
-    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Schließen")).click();
-    addExpense(page, "10,00", "Made-up cable");
+    // The assistant is off, so the receipt check opens with empty fields and the typed date.
+    Locator dialog = page.locator("dialog.receipt-check[open]");
+    assertThat(dialog.getByLabel("Datum")).hasValue("03.02.2022");
+    dialog.getByLabel("Betrag (EUR)").fill("10,00");
+    dialog.getByLabel("Beschreibung").fill("Made-up cable");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
 
     Locator row = page.locator("#expenses tbody tr");
     assertThat(row).hasCount(1);

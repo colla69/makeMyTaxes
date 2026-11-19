@@ -163,46 +163,58 @@ class ExpenseController {
   }
 
   /**
-   * Fills the fields of the form from a receipt that the user just chose, through the assistant.
-   * The app stores nothing here: the add method stores the file with the expense. A field that
-   * the assistant did not read keeps what the user typed.
+   * Reads a receipt that the user just chose through the assistant, and answers with the receipt
+   * check: a modal dialog with the read fields, where the user completes them and saves. The app
+   * stores nothing here: the add method stores the file with the expense. A field that the
+   * assistant did not read keeps what the user typed. If the reading fails or the assistant is
+   * off, the dialog still opens, with a message.
    */
   @PostMapping("/returns/{returnId}/expenses/read")
   String read(
       @PathVariable long returnId,
       @ModelAttribute ExpenseForm typed,
       @RequestParam(required = false) MultipartFile file,
+      HttpServletResponse response,
       Model model)
       throws IOException {
     taxYearOf(returnId);
-    ReceiptFields read = ReceiptFields.empty();
     if (file == null || file.isEmpty()) {
-      return readFields(typed, read, model);
+      return "return :: receipt-check";
     }
+    NewDocument receipt;
+    try {
+      receipt = UploadedFiles.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file);
+    } catch (IllegalArgumentException e) {
+      return readError(e.getMessage(), response, model);
+    }
+    ReceiptFields read = ReceiptFields.empty();
     if (!assistant.onForReturn(returnId) || !assistant.available()) {
       model.addAttribute("readProblem", "off");
       household.personOf(returnId).ifPresent(id -> model.addAttribute("personId", id));
     } else {
       try {
-        NewDocument receipt = UploadedFiles.toNewDocument(DocumentKind.INVOICE_OR_RECEIPT, file);
         read = assistant.readReceipt(returnId, extensionOf(receipt.mediaType()), receipt.bytes());
-      } catch (IllegalArgumentException e) {
-        model.addAttribute("readError", e.getMessage());
       } catch (AssistantException e) {
-        model.addAttribute("readProblem", "failed");
+        read = ReceiptFields.empty();
       }
-      if (read.isEmpty() && !model.containsAttribute("readError")) {
+      if (read.isEmpty()) {
         model.addAttribute("readProblem", "failed");
       }
     }
-    return readFields(typed.with(read), read, model);
-  }
-
-  private static String readFields(ExpenseForm form, ReceiptFields read, Model model) {
-    model.addAttribute("form", form.topic() == null ? ExpenseForm.empty() : form);
+    ExpenseForm form = typed.topic() == null ? ExpenseForm.empty() : typed;
+    model.addAttribute("form", form.with(read));
     model.addAttribute("read", read);
     model.addAttribute("topics", topicOptions());
-    return "return :: read-fields";
+    model.addAttribute("checkReceipt", true);
+    return "return :: receipt-check";
+  }
+
+  /** Only the error box is swapped, so the form keeps what the user typed. */
+  private static String readError(String message, HttpServletResponse response, Model model) {
+    response.setHeader("HX-Retarget", "#read-error");
+    response.setHeader("HX-Reswap", "outerHTML");
+    model.addAttribute("readError", message);
+    return "return :: read-error";
   }
 
   private static String extensionOf(String mediaType) {
@@ -218,10 +230,7 @@ class ExpenseController {
   String tooLarge(HttpServletRequest request, HttpServletResponse response, Model model) {
     if (request.getRequestURI().endsWith("/expenses/read")) {
       // The typed fields never reached the server, so only the error box is swapped.
-      response.setHeader("HX-Retarget", "#read-error");
-      response.setHeader("HX-Reswap", "outerHTML");
-      model.addAttribute("readError", UploadedFiles.TOO_LARGE);
-      return "return :: read-error";
+      return readError(UploadedFiles.TOO_LARGE, response, model);
     }
     model.addAttribute("error", UploadedFiles.TOO_LARGE);
     fillPanel(UploadedFiles.returnIdOf(request), ExpenseForm.empty(), model);

@@ -11,15 +11,14 @@ an official ELSTER program, and it sends no data to the tax office.
 
 ## What it does
 
-- Collects expenses with their dates, amounts and receipts
-- Checks whether a return is mandatory, with the legal source for each reason
-- Holds form modules, and shows each value with its line and evidence for entry in Mein ELSTER
-- Holds pinned, per-year versions of the tax laws, so each tax rule can cite the right wording
+The UI is in German. A `?` beside each field and question shows a short Italian explanation.
 
-The UI is in German. It shows the pages of a return as tabs. The fields are in three columns,
-grouped by section. Date and amount fields have input masks, date fields have a calendar, and each
-field has a clear button. Input that is not saved yet stays when you change tabs. A `?` beside a
-field shows a short Italian explanation on hover.
+- [Years and people](docs/years.md)
+- [Questions](docs/questions.md)
+- [Documents](docs/documents.md)
+- [Forms and review](docs/forms.md)
+- [Assistant](docs/assistant.md)
+- [Law library](docs/law-library.md)
 
 ## How it is built
 

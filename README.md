@@ -11,15 +11,40 @@ an official ELSTER program, and it sends no data to the tax office.
 
 ## What it does
 
-- Collects expenses with their dates, amounts and receipts
-- Checks whether a return is mandatory, with the legal source for each reason
-- Holds form modules, and shows each value with its line and evidence for entry in Mein ELSTER
-- Holds pinned, per-year versions of the tax laws, so each tax rule can cite the right wording
+The UI is in German. A `?` beside each field and question shows a short Italian explanation.
 
-The UI is in German. It shows the pages of a return as tabs. The fields are in three columns,
-grouped by section. Date and amount fields have input masks, date fields have a calendar, and each
-field has a clear button. Input that is not saved yet stays when you change tabs. A `?` beside a
-field shows a short Italian explanation on hover.
+**Years.** For one or two adults, each with a separate return. The returns of one year are linked.
+The details of a person fill the main form. A year button creates or opens the return of that
+year, from 2022 to 2026. The 2026 review has no line numbers yet.
+
+**Questions.** An interview walks through the topics job, commute and work, insurance, household
+and filing. Each answer goes into its form field, and a change in the form shows in the interview.
+An uploaded wage tax certificate fills its questions, and the interview skips them.
+
+**Documents.**
+- Upload certificates, payslips, receipts and other files, and preview them in the page
+- The app recognizes a payslip and its month, and reads the values of a wage tax certificate
+- Read values are saved only after you confirm them, and a new version of a document replaces
+  the old one and its values after the same check
+- The payslips show which months are there, and how their sum compares with the certificate
+- Expenses with a date, an amount and their evidence: a receipt or a stated basis
+
+**Forms and review.**
+- Forms: main form, Anlage N, Anlage Vorsorgeaufwand, Haushaltsnahe Aufwendungen and
+  Außergewöhnliche Belastungen
+- A filing check says whether a return is mandatory, with the legal source for each reason
+- The pages of a return are tabs, and a tab turns green when its required answers are saved.
+  Each field saves when you leave it. Date and amount fields have input masks and a calendar
+- The review lists the values in the line order of Mein ELSTER, each with its document or the
+  note that you stated it, and marks missing evidence
+- An export puts the review and every linked document into one zip file
+
+**Assistant.** Off by default. Each adult can turn it on for their own returns. It then answers
+questions in a chat beside the return, checks the return before the review and gives tips with
+their sources, and proposes values that reach a form only after you confirm them.
+
+**Law library.** Pinned, per-year versions of the tax laws and of the official BMF handbooks, so
+each tax rule can cite the right wording.
 
 ## How it is built
 

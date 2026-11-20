@@ -945,7 +945,7 @@ class FormBrowserTest {
         page.locator("form input, form select").count(),
         page.locator(".field input, .field select").count(),
         "A control is outside the field component on " + page.url());
-    for (Locator control : page.locator(".field input, .field select").all()) {
+    for (Locator control : visibleControls(page)) {
       BoundingBox box = control.boundingBox();
       assertTrue(
           columns.stream().anyMatch(column -> Math.abs(column - box.x) < LAYOUT_ROUNDING),
@@ -1009,10 +1009,15 @@ class FormBrowserTest {
   }
 
   private static List<Double> leftEdges(Page page) {
-    return page.locator(".field input, .field select").all().stream()
+    return visibleControls(page).stream()
         .map(control -> control.boundingBox().x)
         .distinct()
         .toList();
+  }
+
+  // A hidden field, such as the refund for a topic other than Krankheitskosten, has no box to measure.
+  private static List<Locator> visibleControls(Page page) {
+    return page.locator(".field input:visible, .field select:visible").all();
   }
 
   private static Object namesInGroup(Page page, String title) {

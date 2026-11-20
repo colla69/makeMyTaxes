@@ -5,7 +5,16 @@
 // cleared, and the fields on the page are back as the user left them.
 document.addEventListener("htmx:load", (event) => {
   event.detail.elt.querySelectorAll("dialog[data-receipt-check]").forEach(setUpReceiptCheck);
+  if (event.detail.elt.id === "receipt-check-error") {
+    placeCheckError(event.detail.elt);
+  }
 });
+
+// A refused save answers with the error box of the dialog. The error stands below the field it names.
+function placeCheckError(box) {
+  const field = box.querySelector("[data-field]")?.dataset.field;
+  box.closest("dialog").querySelector(`[name="${field}"]`)?.closest(".field")?.after(box);
+}
 
 function setUpReceiptCheck(dialog) {
   const form = dialog.closest("form");

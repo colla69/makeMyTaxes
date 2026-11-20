@@ -104,6 +104,56 @@ class ExpenseBrowserTest {
   }
 
   @Test
+  void ordersTheFieldsInGroupsAsTheUserFillsThem() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+
+    String labels = ".field-label > span:not(.hint):not(.line)";
+    assertThat(page.locator("#expense-form " + labels))
+        .hasText(
+            new String[] {
+              "Neue Datei", "Beleg", "Grundlage",
+              "Datum", "Betrag (EUR)", "Kategorie", "Beschreibung", "Davon erstattet (EUR)"
+            });
+    assertThat(group(page, "Beleg").locator(labels))
+        .hasText(new String[] {"Neue Datei", "Beleg", "Grundlage"});
+    assertThat(group(page, "Ausgabe").locator(labels))
+        .hasText(
+            new String[] {
+              "Datum", "Betrag (EUR)", "Kategorie", "Beschreibung", "Davon erstattet (EUR)"
+            });
+  }
+
+  @Test
+  void showsTheRefundOnlyForMedicalCosts() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    Locator refunded = page.getByLabel("Davon erstattet (EUR)");
+
+    page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    assertThat(refunded).isHidden();
+
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    assertThat(refunded).isVisible();
+    refunded.fill("200,00");
+
+    // A hidden refund is not sent, so the app saves the expense without it.
+    page.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    assertThat(refunded).isHidden();
+    page.getByLabel("Datum").fill("03.02.2022");
+    addExpenseWithBasis(page, "100,00", "Made-up keyboard");
+    assertThat(page.locator(".error")).hasCount(0);
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+    assertThat(page.locator("#expenses tbody tr")).not().containsText("200,00");
+  }
+
+  private static Locator group(Page page, String name) {
+    return page.getByRole(
+        AriaRole.GROUP, new Page.GetByRoleOptions().setName(name).setExact(true));
+  }
+
+  @Test
   void deletesAnExpense() {
     Page page = browser.newPage();
     openANewReturnFor2022(page);

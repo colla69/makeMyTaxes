@@ -57,10 +57,9 @@
           <div id="expense-fields" class="contents">
             <th:block th:replace="~{expense-fields :: expense-fields(checking=false)}"></th:block>
           </div>
-          <!-- expense-form.js shows the refund only for Krankheitskosten. A disabled fieldset sends nothing. -->
-          <fieldset id="refund" class="contents" data-topic="MEDICAL"
-                    th:with="medical=${form.topic?.name == 'MEDICAL'}"
-                    th:hidden="${!medical}" th:disabled="${!medical}">
+          <!-- The server always renders the refund, so that it works without JavaScript. expense-form.js
+               hides and disables it for any topic but Krankheitskosten. A disabled fieldset sends nothing. -->
+          <fieldset id="refund" class="contents" data-topic="MEDICAL">
             <div th:replace="~{fields :: field(name='refunded', label='Davon erstattet (EUR)', hint=#{hint.expense.refunded}, help='Nur bei Krankheitskosten: der Betrag, den Krankenkasse oder Versicherung erstattet hat. Auch eine spätere Erstattung, mit der Sie in diesem Jahr schon rechnen konnten (H 33.1-33.4 EStH, Ersatz von dritter Seite).', value=${form.refunded}, placeholder='1.234,56', kind='MONEY')}"></div>
           </fieldset>
         </fieldset>

@@ -57,6 +57,16 @@ class ExpenseBrowserTest {
   }
 
   @Test
+  void theTabIsHeadedAusgabenAndNotSteuererklaerung() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+
+    assertThat(page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName("Steuererklärung")))
+        .hasCount(0);
+    assertThat(page.locator("h1")).hasText("Ausgaben");
+  }
+
+  @Test
   void addsSeveralExpensesQuicklyWithoutLeavingThePage() {
     Page page = browser.newPage();
     openANewReturnFor2022(page);

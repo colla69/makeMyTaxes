@@ -7,8 +7,11 @@
       it was read, read but unsure, or not read, and a field that was not read stands out.
     -->
     <th:block th:fragment="expense-fields(checking)">
-      <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE', readMark=${checking and !#strings.isEmpty(read.paidOn) and !read.isUnsure('paidOn')}, unsureMark=${checking and !#strings.isEmpty(read.paidOn) and read.isUnsure('paidOn')}, missingMark=${checking and #strings.isEmpty(read.paidOn)})}"></div>
+      <div th:replace="~{fields :: field(name='paidOn', label='Datum', hint=#{hint.expense.paidOn}, value=${form.paidOn}, placeholder='TT.MM.JJJJ', required=true, kind='DATE', readMark=${checking and !#strings.isEmpty(read.paidOn) and !read.isUnsure('paidOn') and !read.paidOnIsOtherDate()}, unsureMark=${checking and !#strings.isEmpty(read.paidOn) and read.isUnsure('paidOn') and !read.paidOnIsOtherDate()}, missingMark=${checking and #strings.isEmpty(read.paidOn)})}"></div>
       <th:block th:if="${checking}">
+        <p class="unsure-mark date-kind" th:if="${read.paidOnIsOtherDate()}"
+           th:text="${read.paidOnKind} + ' laut Beleg, bitte prüfen, ob die Zahlung im selben Jahr war'">
+          Bestelldatum laut Beleg, bitte prüfen, ob die Zahlung im selben Jahr war</p>
         <p class="missing-mark date-reason" th:if="${read.lacksPaymentDate()}">Der Beleg nennt kein
           Zahlungs- oder Rechnungsdatum. Bitte das Datum der Zahlung eintragen, zum Beispiel vom
           Kontoauszug.</p>

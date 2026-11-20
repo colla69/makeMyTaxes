@@ -83,9 +83,9 @@ class ReceiptReadingTest {
     assertFalse(read.isUnsure("description"));
   }
 
+  /** § 11 Abs. 2 Satz 1 EStG, Fassung vom 30.06.2025: an expense counts in the year of payment. */
   @Test
-  void anOrderConfirmationLeavesTheDateEmptyWithTheReasonAndTheOrderDateAsAHint()
-      throws AssistantException {
+  void anOrderConfirmationFillsTheDateWithTheOrderDateAndNamesItsKind() throws AssistantException {
     ReceiptFields read =
         ReceiptReading.fields(
             """
@@ -94,9 +94,50 @@ class ReceiptReadingTest {
              "beschreibung": "Made-up shop – order", "unsicher": []}
             """);
 
+    assertEquals("05.03.2022", read.paidOn());
+    assertEquals("Bestelldatum", read.paidOnKind());
+    assertTrue(read.paidOnIsOtherDate());
+    assertFalse(read.lacksPaymentDate());
+    assertEquals(List.of(), read.otherDates());
+  }
+
+  @Test
+  void thePaymentDateWinsOverTheOrderDate() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields(
+            """
+            {"bezahltAm": "07.03.2022", "ohneZahlungsdatum": false,
+             "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}]}
+            """);
+
+    assertEquals("07.03.2022", read.paidOn());
+    assertFalse(read.paidOnIsOtherDate());
+    assertEquals(List.of(new ReceiptFields.NamedDate("Bestelldatum", "05.03.2022")), read.otherDates());
+  }
+
+  @Test
+  void ofSeveralOtherDatesTheLatestFillsTheDateAsTheReceiptWritesIt() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields(
+            """
+            {"ohneZahlungsdatum": true,
+             "andereDaten": [{"name": "Rezeptdatum", "datum": "28.12.2021"},
+                             {"name": "Kaufdatum", "datum": "3.1.2022"}]}
+            """);
+
+    assertEquals("3.1.2022", read.paidOn());
+    assertEquals("Kaufdatum", read.paidOnKind());
+    assertEquals(List.of(new ReceiptFields.NamedDate("Rezeptdatum", "28.12.2021")), read.otherDates());
+  }
+
+  @Test
+  void aReceiptWithoutAnyDateLeavesTheDateEmptyWithTheReason() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields("{\"betrag\": \"49,90\", \"ohneZahlungsdatum\": true, \"andereDaten\": []}");
+
     assertEquals("", read.paidOn());
     assertTrue(read.lacksPaymentDate());
-    assertEquals(List.of(new ReceiptFields.NamedDate("Bestelldatum", "05.03.2022")), read.otherDates());
+    assertFalse(read.paidOnIsOtherDate());
   }
 
   @Test
@@ -110,6 +151,7 @@ class ReceiptReadingTest {
             """);
 
     assertEquals(List.of(new ReceiptFields.NamedDate("Bestelldatum", "05.03.2022")), read.otherDates());
+    assertEquals("", read.paidOn());
   }
 
   @Test
@@ -125,8 +167,7 @@ class ReceiptReadingTest {
     ReceiptFields read =
         ReceiptReading.fields(
             """
-            {"ohneZahlungsdatum": true, "unsicher": ["betrag"],
-             "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}]}
+            {"ohneZahlungsdatum": true, "unsicher": ["betrag"], "andereDaten": []}
             """);
 
     assertTrue(read.isEmpty());

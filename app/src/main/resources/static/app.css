@@ -347,6 +347,28 @@ nav {
   display: contents;
 }
 
+.fields > .contents[hidden] {
+  display: none;
+}
+
+.fields > .contents > p {
+  grid-column: 1 / -1;
+}
+
+/* A group of fields on a form, such as the evidence of an expense. Its fields share one grid. */
+fieldset.fields {
+  border: none;
+  margin: 0 0 1rem;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+fieldset.fields > legend {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  padding: 0;
+}
+
 /* The check of a read receipt, a modal dialog: the receipt beside the fields. */
 .receipt-check {
   max-width: 75rem;

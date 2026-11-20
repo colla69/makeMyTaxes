@@ -14,6 +14,7 @@ import io.github.colla69.makemytaxes.app.assistant.FakeAssistant;
 import io.github.colla69.makemytaxes.app.storage.ExpenseStore;
 import io.github.colla69.makemytaxes.app.storage.HouseholdStore;
 import io.github.colla69.makemytaxes.core.TaxYear;
+import io.github.colla69.makemytaxes.core.expense.Money;
 import io.github.colla69.makemytaxes.core.form.Answers;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -247,6 +248,39 @@ class ExpenseReceiptBrowserTest {
     assertThat(page.locator("#expense-form > .error")).isVisible();
     assertThat(page.getByLabel("Davon erstattet (EUR)")).hasValue("abc");
     assertThat(page.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+  }
+
+  @Test
+  void theTopicOfTheDialogDecidesTheRefundWhileItIsOpen() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    Locator refunded = page.getByLabel("Davon erstattet (EUR)");
+    refunded.fill("200,00");
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    assertThat(refunded).isHidden();
+    assertThat(refunded).isDisabled();
+
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Abbrechen")).click();
+    assertThat(page.locator("dialog")).hasCount(0);
+    assertThat(refunded).isVisible();
+    assertThat(refunded).isEnabled();
+    assertThat(refunded).hasValue("200,00");
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    dialog = receiptCheck(page);
+    dialog.getByLabel("Kategorie").selectOption("WORK_EQUIPMENT");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    assertThat(page.locator("#expenses tbody tr")).hasCount(1);
+    assertEquals(
+        Money.ofCents(0),
+        expenses.expensesOf(returnId).getFirst().expense().refunded(),
+        "the hidden refund was not sent");
   }
 
   @Test

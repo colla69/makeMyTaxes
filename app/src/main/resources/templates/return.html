@@ -8,6 +8,7 @@
     <script th:src="@{/fields.js}" defer></script>
     <script th:src="@{/dialog.js}" defer></script>
     <script th:src="@{/receipt-check.js}" defer></script>
+    <script th:src="@{/expense-form.js}" defer></script>
     <script th:src="@{/webjars/htmx.org/2.0.11/dist/htmx.min.js}" defer></script>
   </head>
   <body>
@@ -18,7 +19,6 @@
       <h1>Ausgaben</h1>
 
       <form id="expense-form"
-            class="fields"
             method="post"
             enctype="multipart/form-data"
             hx-encoding="multipart/form-data"
@@ -27,25 +27,43 @@
             hx-target="#panel"
             hx-swap="outerHTML">
         <p class="error" th:if="${error}" th:text="${error}">Fehler</p>
-        <!-- A chosen file goes to the assistant at once. The answer is a modal dialog with the receipt
-             and the read fields, which receipt-check.js sets up. Clearing the file sends nothing. -->
-        <div id="receipt-file"
-             th:attr="hx-post=@{/returns/{id}/expenses/read(id=${returnId})}"
-             hx-trigger="change[target.files.length > 0]"
-             hx-target="#receipt-check"
-             hx-swap="outerHTML"
-             hx-indicator="#reading">
-          <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB. Wenn der Assistent an ist, liest er den Beleg und füllt die Felder aus.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
+        <fieldset class="fields">
+          <legend>Beleg</legend>
+          <!-- A chosen file goes to the assistant at once. The answer is a modal dialog with the receipt
+               and the read fields, which receipt-check.js sets up. Clearing the file sends nothing. -->
+          <div id="receipt-file" class="contents"
+               th:attr="hx-post=@{/returns/{id}/expenses/read(id=${returnId})}"
+               hx-trigger="change[target.files.length > 0]"
+               hx-target="#receipt-check"
+               hx-swap="outerHTML"
+               hx-indicator="#reading">
+            <div th:replace="~{fields :: field(name='file', label='Neue Datei', hint=#{hint.expense.file}, help='PDF, JPEG oder PNG, höchstens 20 MB. Wenn der Assistent an ist, liest er den Beleg und füllt die Felder aus.', type='file', accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png')}"></div>
+          </div>
+          <div id="read-error" class="contents" th:fragment="read-error">
+            <p class="error" th:if="${readError}" th:text="${readError}">Fehler</p>
+          </div>
+          <!-- The block holds the condition, because th:replace runs before th:unless on one element. -->
+          <th:block th:unless="${#lists.isEmpty(documentOptions)}">
+            <div th:replace="~{fields :: field(name='documentId', label='Dokument', hint=#{hint.expense.document}, value=${form.documentId?.toString()}, options=${documentOptions}, blankOption=true)}"></div>
+          </th:block>
+          <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
+          <div th:replace="~{fields :: field(name='statedBasis', label='Grundlage', hint=#{hint.expense.statedBasis}, help='Nur wenn es keinen Beleg geben kann, zum Beispiel eine Zahl von Tagen oder eine Entfernung.', value=${form.statedBasis})}"></div>
           <p id="reading" class="htmx-indicator">Der Assistent liest den Beleg …</p>
-        </div>
-        <div id="read-error" class="contents" th:fragment="read-error">
-          <p class="error" th:if="${readError}" th:text="${readError}">Fehler</p>
-        </div>
-        <!-- While the receipt check is open, receipt-check.js turns these fields off, so that the form
-             sends the fields of the dialog. -->
-        <div id="expense-fields" class="contents">
-          <th:block th:replace="~{expense-fields :: expense-fields(checking=false)}"></th:block>
-        </div>
+        </fieldset>
+        <fieldset class="fields">
+          <legend>Ausgabe</legend>
+          <!-- While the receipt check is open, receipt-check.js turns these fields off, so that the form
+               sends the fields of the dialog. -->
+          <div id="expense-fields" class="contents">
+            <th:block th:replace="~{expense-fields :: expense-fields(checking=false)}"></th:block>
+          </div>
+          <!-- expense-form.js shows the refund only for Krankheitskosten. A disabled fieldset sends nothing. -->
+          <fieldset id="refund" class="contents" data-topic="MEDICAL"
+                    th:with="medical=${form.topic?.name == 'MEDICAL'}"
+                    th:hidden="${!medical}" th:disabled="${!medical}">
+            <div th:replace="~{fields :: field(name='refunded', label='Davon erstattet (EUR)', hint=#{hint.expense.refunded}, help='Nur bei Krankheitskosten: der Betrag, den Krankenkasse oder Versicherung erstattet hat. Auch eine spätere Erstattung, mit der Sie in diesem Jahr schon rechnen konnten (H 33.1-33.4 EStH, Ersatz von dritter Seite).', value=${form.refunded}, placeholder='1.234,56', kind='MONEY')}"></div>
+          </fieldset>
+        </fieldset>
         <div id="receipt-check" class="contents" th:fragment="receipt-check">
           <!-- dialog.js opens this dialog. It is inside the form, so "Speichern" saves the expense
                with the chosen file through the normal save. -->
@@ -81,13 +99,6 @@
             </p>
           </dialog>
         </div>
-        <div th:replace="~{fields :: field(name='refunded', label='Davon erstattet (EUR)', hint=#{hint.expense.refunded}, help='Nur bei Krankheitskosten: der Betrag, den Krankenkasse oder Versicherung erstattet hat. Auch eine spätere Erstattung, mit der Sie in diesem Jahr schon rechnen konnten (H 33.1-33.4 EStH, Ersatz von dritter Seite).', value=${form.refunded}, placeholder='1.234,56', kind='MONEY')}"></div>
-        <div th:replace="~{fields :: field(name='receipt', label='Beleg', hint=#{hint.expense.receipt}, value=${form.receipt}, placeholder='Dateiname oder Ordner')}"></div>
-        <!-- The block holds the condition, because th:replace runs before th:unless on one element. -->
-        <th:block th:unless="${#lists.isEmpty(documentOptions)}">
-          <div th:replace="~{fields :: field(name='documentId', label='Dokument', hint=#{hint.expense.document}, value=${form.documentId?.toString()}, options=${documentOptions}, blankOption=true)}"></div>
-        </th:block>
-        <div th:replace="~{fields :: field(name='statedBasis', label='Grundlage', hint=#{hint.expense.statedBasis}, help='Nur wenn es keinen Beleg geben kann, zum Beispiel eine Zahl von Tagen oder eine Entfernung.', value=${form.statedBasis})}"></div>
         <p class="form-buttons">
           <button>Ausgabe hinzufügen</button>
           <button type="button" data-clear-form>Alle Felder leeren</button>

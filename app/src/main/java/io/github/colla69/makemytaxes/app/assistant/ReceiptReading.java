@@ -32,8 +32,10 @@ final class ReceiptReading {
       nicht hierher.
       "ohneZahlungsdatum": true, wenn der Beleg weder ein Zahlungsdatum noch ein Rechnungsdatum \
       nennt, sonst false.
-      "andereDaten": eine Liste der anderen Daten auf dem Beleg, etwa Bestelldatum oder \
-      Lieferdatum, je als {"name": "Bestelldatum", "datum": "TT.MM.JJJJ"}, sonst [].
+      "andereDaten": eine Liste der anderen Daten auf dem Beleg, die den Kauf bezeichnen, etwa \
+      Bestelldatum, Rezeptdatum, Kaufdatum oder Lieferdatum, je als {"name": "Bestelldatum", \
+      "datum": "TT.MM.JJJJ"}, mit dem Namen, den der Beleg dem Datum gibt, sonst []. Ein Datum, \
+      das keinen Kauf bezeichnet, etwa ein Fälligkeitsdatum, gehört nicht hierher.
       "beschreibung": der Aussteller und was gekauft wurde, kurz, zum Beispiel \
       "Optiker Muster – Brille".
       "thema": eines von %s, oder "".

@@ -434,11 +434,35 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
-  void anOrderConfirmationLeavesTheDateEmptyAndSaysWhy() {
+  void anOrderConfirmationFillsTheDateWithTheOrderDateAndMarksItsKind() {
     fake().setAnswer(
         """
         {"betrag": "49,90", "bezahltAm": "", "ohneZahlungsdatum": true,
-         "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}],
+         "andereDaten": [{"name": "Rezeptdatum", "datum": "01.03.2022"},
+                         {"name": "Bestelldatum", "datum": "05.03.2022"}],
+         "beschreibung": "Made-up shop – order", "thema": "WORK_EQUIPMENT", "unsicher": []}
+        """);
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+
+    Locator dialog = receiptCheck(page);
+    assertThat(dialog.getByLabel("Datum")).hasValue("05.03.2022");
+    assertThat(dialog.locator(".date-kind"))
+        .hasText("Bestelldatum laut Beleg, bitte prüfen, ob die Zahlung im selben Jahr war");
+    assertThat(dialog.locator(".field:has([name=paidOn]) .read-mark")).hasCount(0);
+    assertThat(dialog.locator(".date-reason")).hasCount(0);
+    assertThat(dialog.locator(".other-dates")).containsText("Rezeptdatum 01.03.2022");
+    assertThat(dialog.locator(".other-dates")).not().containsText("Bestelldatum");
+  }
+
+  @Test
+  void aReceiptWithoutAnyDateLeavesTheDateEmptyAndSaysWhy() {
+    fake().setAnswer(
+        """
+        {"betrag": "49,90", "bezahltAm": "", "ohneZahlungsdatum": true, "andereDaten": [],
          "beschreibung": "Made-up shop – order", "thema": "WORK_EQUIPMENT", "unsicher": []}
         """);
     long returnId = addReturn(true);
@@ -451,7 +475,7 @@ class ExpenseReceiptBrowserTest {
     assertThat(dialog.getByLabel("Datum")).hasValue("");
     assertThat(dialog.locator(".date-reason"))
         .containsText("Der Beleg nennt kein Zahlungs- oder Rechnungsdatum");
-    assertThat(dialog.locator(".other-dates")).containsText("Bestelldatum 05.03.2022");
+    assertThat(dialog.locator(".date-kind")).hasCount(0);
   }
 
   @Test

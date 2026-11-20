@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -20,14 +21,17 @@ import java.util.Set;
  * }</pre>
  *
  * @param amount the total paid, the gross amount, as 1.234,56
- * @param paidOn the payment date, or else the invoice date, as 03.02.2022
+ * @param paidOn the payment date, or else the invoice date, or else the latest other date that
+ *     names the purchase, as 03.02.2022
  * @param topic the topic, or null
  * @param labourCost for household services only: the labour part of the invoice. Only this part
  *     counts, § 35a Abs. 5 Satz 2 EStG.
  * @param unsure the names of the fields, such as "paidOn", whose value was read but is unsure
  * @param namesNoPaymentDate the receipt names neither a payment date nor an invoice date
- * @param otherDates other dates on the receipt, such as an order date. They are a hint only, and
- *     never fill {@code paidOn}.
+ * @param otherDates the other dates on the receipt, such as an order date, without the one that
+ *     fills {@code paidOn}
+ * @param paidOnKind the name of the other date that fills {@code paidOn}, such as "Bestelldatum",
+ *     or "" if {@code paidOn} is a payment or invoice date
  */
 public record ReceiptFields(
     String amount,
@@ -37,7 +41,8 @@ public record ReceiptFields(
     String labourCost,
     Set<String> unsure,
     boolean namesNoPaymentDate,
-    List<NamedDate> otherDates) {
+    List<NamedDate> otherDates,
+    String paidOnKind) {
 
   /** A date on the receipt with the name that the receipt gives it, such as "Bestelldatum". */
   public record NamedDate(String name, String date) {}
@@ -51,7 +56,7 @@ public record ReceiptFields(
   }
 
   public static ReceiptFields empty() {
-    return new ReceiptFields("", "", "", null, "", Set.of(), false, List.of());
+    return new ReceiptFields("", "", "", null, "", Set.of(), false, List.of(), "");
   }
 
   /** Keeps each field that passes its check, and leaves the others empty. */
@@ -66,18 +71,30 @@ public record ReceiptFields(
         topic == ExpenseTopic.HOUSEHOLD_SERVICES ? money(labourCost) : "",
         Set.of(),
         false,
-        List.of());
+        List.of(),
+        "");
   }
 
   /** These fields, with the names of the fields whose value was read but is unsure. */
   public ReceiptFields withUnsure(Set<String> fieldNames) {
     return new ReceiptFields(
-        amount, paidOn, description, topic, labourCost, fieldNames, namesNoPaymentDate, otherDates);
+        amount,
+        paidOn,
+        description,
+        topic,
+        labourCost,
+        fieldNames,
+        namesNoPaymentDate,
+        otherDates,
+        paidOnKind);
   }
 
   /**
    * These fields, with what the receipt says about its dates. A date that does not pass the check,
-   * or that has no name, is left out.
+   * or that has no name, is left out. If the receipt names neither a payment nor an invoice date,
+   * the latest other date fills {@code paidOn} as the receipt writes it, and its name becomes
+   * {@code paidOnKind}. An expense counts in the year in which it was paid, § 11 Abs. 2 Satz 1
+   * EStG, so the user checks that date.
    */
   public ReceiptFields withDates(boolean namesNoPaymentDate, List<NamedDate> otherDates) {
     List<NamedDate> checked =
@@ -85,8 +102,24 @@ public record ReceiptFields(
             .map(other -> new NamedDate(other.name().strip(), date(other.date())))
             .filter(other -> !other.name().isEmpty() && !other.date().isEmpty())
             .toList();
+    if (!paidOn.isEmpty() || !namesNoPaymentDate || checked.isEmpty()) {
+      return new ReceiptFields(
+          amount, paidOn, description, topic, labourCost, unsure, namesNoPaymentDate, checked, "");
+    }
+    NamedDate latest =
+        checked.stream()
+            .max(Comparator.comparing(other -> GermanFormats.parseDate(other.date())))
+            .orElseThrow();
     return new ReceiptFields(
-        amount, paidOn, description, topic, labourCost, unsure, namesNoPaymentDate, checked);
+        amount,
+        latest.date(),
+        description,
+        topic,
+        labourCost,
+        unsure,
+        namesNoPaymentDate,
+        checked.stream().filter(other -> other != latest).toList(),
+        latest.name());
   }
 
   /** No field was read. The notes about the dates alone do not count as a reading. */
@@ -103,9 +136,14 @@ public record ReceiptFields(
     return unsure.contains(fieldName);
   }
 
-  /** The date stays empty because the receipt names neither a payment nor an invoice date. */
+  /** The date stays empty because the receipt names no date at all. */
   public boolean lacksPaymentDate() {
     return paidOn.isEmpty() && namesNoPaymentDate;
+  }
+
+  /** The date is not a payment or invoice date but another date on the receipt. */
+  public boolean paidOnIsOtherDate() {
+    return !paidOnKind.isEmpty();
   }
 
   private static String money(String text) {

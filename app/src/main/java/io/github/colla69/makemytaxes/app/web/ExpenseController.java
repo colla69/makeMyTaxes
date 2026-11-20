@@ -24,6 +24,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.tomcat.util.http.InvalidParameterException;
 import org.apache.tomcat.util.http.fileupload.impl.SizeException;
 import org.springframework.http.HttpStatus;
@@ -77,9 +79,13 @@ class ExpenseController {
     }
 
     Expense toExpense(TaxYear taxYear) {
-      var payment = new Payment(GermanFormats.parseDate(paidOn), GermanFormats.parseMoney(amount));
+      var payment =
+          new Payment(
+              FieldException.of("paidOn", () -> GermanFormats.parseDate(paidOn)),
+              FieldException.of("amount", () -> GermanFormats.parseMoney(amount)));
       if (!payment.isIn(taxYear)) {
-        throw new IllegalArgumentException(
+        throw new FieldException(
+            "paidOn",
             ("Diese Erklärung gilt für %d, aber das Zahlungsdatum ist %s. Eine Ausgabe zählt im"
                     + " Jahr der Zahlung.")
                 .formatted(taxYear.value(), GermanFormats.format(payment.paidOn())));
@@ -92,8 +98,30 @@ class ExpenseController {
     /** The refund is optional, so an empty field is no refund. */
     private Money refundedAmount() {
       return StringUtils.hasText(refunded)
-          ? GermanFormats.parseMoney(refunded)
+          ? FieldException.of("refunded", () -> GermanFormats.parseMoney(refunded))
           : Money.ofCents(0);
+    }
+  }
+
+  /** A rejected value, with the name of the field it came from, so the error can stand beside it. */
+  static final class FieldException extends IllegalArgumentException {
+    private final String field;
+
+    FieldException(String field, String message) {
+      super(message);
+      this.field = field;
+    }
+
+    static <T> T of(String field, Supplier<T> parse) {
+      try {
+        return parse.get();
+      } catch (IllegalArgumentException e) {
+        throw new FieldException(field, e.getMessage());
+      }
+    }
+
+    String field() {
+      return field;
     }
   }
 
@@ -123,6 +151,13 @@ class ExpenseController {
 
   record TopicTotal(String topic, String total) {}
 
+  /**
+   * The fields that the receipt check shows. An error about another field, such as the refund, goes
+   * to the page, because the modal dialog hides the field that the user must correct.
+   */
+  private static final Set<String> RECEIPT_CHECK_FIELDS =
+      Set.of("paidOn", "amount", "topic", "description");
+
   private final HouseholdStore household;
   private final ExpenseStore expenses;
   private final DocumentStore documents;
@@ -150,12 +185,19 @@ class ExpenseController {
       @PathVariable long returnId,
       @ModelAttribute ExpenseForm form,
       @RequestParam(required = false) MultipartFile file,
+      @RequestParam(defaultValue = "false") boolean fromReceiptCheck,
+      HttpServletResponse response,
       Model model)
       throws IOException {
     try {
       store(returnId, form, file);
       fillPanel(returnId, form.forNextEntry(), model);
     } catch (IllegalArgumentException e) {
+      if (fromReceiptCheck
+          && e instanceof FieldException rejected
+          && RECEIPT_CHECK_FIELDS.contains(rejected.field())) {
+        return receiptCheckError(rejected, response, model);
+      }
       model.addAttribute("error", e.getMessage());
       fillPanel(returnId, form, model);
     }
@@ -207,6 +249,19 @@ class ExpenseController {
     model.addAttribute("topics", topicOptions());
     model.addAttribute("checkReceipt", true);
     return "return :: receipt-check";
+  }
+
+  /**
+   * Only the error box of the receipt check is swapped, so the dialog stays open with the values
+   * and the chosen file, and a second save can store them.
+   */
+  private static String receiptCheckError(
+      FieldException rejected, HttpServletResponse response, Model model) {
+    response.setHeader("HX-Retarget", "#receipt-check-error");
+    response.setHeader("HX-Reswap", "outerHTML");
+    model.addAttribute("checkError", rejected.getMessage());
+    model.addAttribute("checkErrorField", rejected.field());
+    return "return :: receipt-check-error";
   }
 
   /** Only the error box is swapped, so the form keeps what the user typed. */

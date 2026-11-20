@@ -1,11 +1,14 @@
 package io.github.colla69.makemytaxes.app.assistant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.colla69.makemytaxes.core.expense.ExpenseTopic;
 import io.github.colla69.makemytaxes.core.expense.ReceiptFields;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -24,8 +27,7 @@ class ReceiptReadingTest {
             """);
 
     assertEquals(
-        new ReceiptFields(
-            "1.234,56", "03.02.2022", "Made-up optician – glasses", ExpenseTopic.MEDICAL, ""),
+        ReceiptFields.checked("1.234,56", "03.02.2022", "Made-up optician – glasses", "MEDICAL", ""),
         read);
   }
 
@@ -67,17 +69,75 @@ class ReceiptReadingTest {
   }
 
   @Test
-  void aFieldTheAssistantWasUnsureAboutStaysEmpty() throws AssistantException {
+  void aFieldTheAssistantWasUnsureAboutKeepsItsValueWithTheUnsureMark() throws AssistantException {
     ReceiptFields read =
         ReceiptReading.fields(
             """
             {"betrag": "10,00", "bezahltAm": "03.02.2022", "beschreibung": "Made-up shop",
-             "unsicher": ["betrag", "bezahltAm"]}
+             "unsicher": ["bezahltAm"]}
             """);
 
-    assertEquals("", read.amount());
+    assertEquals("03.02.2022", read.paidOn());
+    assertTrue(read.isUnsure("paidOn"));
+    assertFalse(read.isUnsure("amount"));
+    assertFalse(read.isUnsure("description"));
+  }
+
+  @Test
+  void anOrderConfirmationLeavesTheDateEmptyWithTheReasonAndTheOrderDateAsAHint()
+      throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields(
+            """
+            {"betrag": "49,90", "bezahltAm": "", "ohneZahlungsdatum": true,
+             "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}],
+             "beschreibung": "Made-up shop – order", "unsicher": []}
+            """);
+
     assertEquals("", read.paidOn());
-    assertEquals("Made-up shop", read.description());
+    assertTrue(read.lacksPaymentDate());
+    assertEquals(List.of(new ReceiptFields.NamedDate("Bestelldatum", "05.03.2022")), read.otherDates());
+  }
+
+  @Test
+  void anOtherDateThatDoesNotPassTheCheckIsLeftOut() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields(
+            """
+            {"andereDaten": [{"name": "Lieferdatum", "datum": "31.02.2022"},
+                             {"name": "", "datum": "05.03.2022"},
+                             {"name": "Bestelldatum", "datum": "2022-03-05"}]}
+            """);
+
+    assertEquals(List.of(new ReceiptFields.NamedDate("Bestelldatum", "05.03.2022")), read.otherDates());
+  }
+
+  @Test
+  void anUnknownEntryInTheUnsureListMarksNoField() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields("{\"betrag\": \"10,00\", \"unsicher\": [\"10,00\", 3]}");
+
+    assertEquals(Set.of(), read.unsure());
+  }
+
+  @Test
+  void anAnswerWithOnlyNotesAboutTheDatesReadsNothing() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields(
+            """
+            {"ohneZahlungsdatum": true, "unsicher": ["betrag"],
+             "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}]}
+            """);
+
+    assertTrue(read.isEmpty());
+  }
+
+  @Test
+  void aDateThatWasReadIsNotMissing() throws AssistantException {
+    ReceiptFields read =
+        ReceiptReading.fields("{\"bezahltAm\": \"03.02.2022\", \"ohneZahlungsdatum\": true}");
+
+    assertFalse(read.lacksPaymentDate());
   }
 
   @Test
@@ -113,6 +173,8 @@ class ReceiptReadingTest {
     assertTrue(question.contains("/made-up/beleg.pdf"));
     assertTrue(question.contains("\"bezahltAm\""));
     assertTrue(question.contains("TT.MM.JJJJ"));
+    assertTrue(question.contains("\"ohneZahlungsdatum\""));
+    assertTrue(question.contains("\"andereDaten\""));
     for (ExpenseTopic topic : ExpenseTopic.values()) {
       assertTrue(question.contains(topic.name()), topic.name());
     }

@@ -79,10 +79,10 @@ class ExpenseController {
     }
 
     Expense toExpense(TaxYear taxYear) {
+      var date = FieldException.of("paidOn", () -> GermanFormats.parseDate(paidOn));
       var payment =
-          new Payment(
-              FieldException.of("paidOn", () -> GermanFormats.parseDate(paidOn)),
-              FieldException.of("amount", () -> GermanFormats.parseMoney(amount)));
+          FieldException.of(
+              "amount", () -> new Payment(date, GermanFormats.parseMoney(amount)));
       if (!payment.isIn(taxYear)) {
         throw new FieldException(
             "paidOn",
@@ -91,8 +91,9 @@ class ExpenseController {
                 .formatted(taxYear.value(), GermanFormats.format(payment.paidOn())));
       }
       var evidence = new Evidence(receipt.strip(), null, statedBasis.strip());
-      return new Expense(
-          payment, new Purpose(topic, description.strip()), evidence, refundedAmount());
+      var purpose =
+          FieldException.of("description", () -> new Purpose(topic, description.strip()));
+      return new Expense(payment, purpose, evidence, refundedAmount());
     }
 
     /** The refund is optional, so an empty field is no refund. */
@@ -156,7 +157,7 @@ class ExpenseController {
    * to the page, because the modal dialog hides the field that the user must correct.
    */
   private static final Set<String> RECEIPT_CHECK_FIELDS =
-      Set.of("paidOn", "amount", "topic", "description");
+      Set.of("paidOn", "amount", "description");
 
   private final HouseholdStore household;
   private final ExpenseStore expenses;

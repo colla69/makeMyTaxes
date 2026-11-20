@@ -193,6 +193,44 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
+  void aZeroAmountKeepsTheDialogWithTheErrorBelowTheAmount() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Betrag (EUR)").fill("0,00");
+    dialog.getByLabel("Beschreibung").fill("Made-up glasses, checked");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    Locator amountError = dialog.locator(".field:has([name=amount]) + #receipt-check-error .error");
+    assertThat(amountError).containsText("größer als null");
+    assertThat(dialog).isVisible();
+    assertThat(dialog.locator(".receipt-preview iframe")).isVisible();
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+  }
+
+  @Test
+  void aBlankDescriptionKeepsTheDialogWithTheErrorBelowTheDescription() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Beschreibung").fill("   ");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    Locator descriptionError =
+        dialog.locator(".field:has([name=description]) + #receipt-check-error .error");
+    assertThat(descriptionError).containsText("braucht eine Beschreibung");
+    assertThat(dialog).isVisible();
+    assertThat(dialog.locator(".receipt-preview iframe")).isVisible();
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+  }
+
+  @Test
   void anErrorAboutAFieldOutsideTheDialogGoesToThePage() {
     long returnId = addReturn(true);
     Page page = browser.newPage();

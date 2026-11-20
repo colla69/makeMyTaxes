@@ -320,6 +320,14 @@ nav {
   margin: 0.25rem 0 0;
 }
 
+/* A value that the assistant read from a receipt but is unsure about, so the user decides. */
+.unsure-mark {
+  color: #8a4b00;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0.25rem 0 0;
+}
+
 /* A value that was not read from a receipt, so the user fills it. */
 .missing-mark {
   color: #8a4b00;

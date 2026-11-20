@@ -417,6 +417,44 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
+  void anUnsureDateFillsTheDateFieldWithTheUnsureMark() {
+    fake().setAnswer(FULL_ANSWER.replace("\"unsicher\": []", "\"unsicher\": [\"bezahltAm\"]"));
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+
+    Locator dialog = receiptCheck(page);
+    Locator date = dialog.locator(".field:has([name=paidOn])");
+    assertThat(dialog.getByLabel("Datum")).hasValue("03.02.2022");
+    assertThat(date.locator(".unsure-mark")).hasText("unsicher gelesen, bitte prüfen");
+    assertThat(date.locator(".read-mark")).hasCount(0);
+    assertThat(date.locator(".missing-mark")).hasCount(0);
+  }
+
+  @Test
+  void anOrderConfirmationLeavesTheDateEmptyAndSaysWhy() {
+    fake().setAnswer(
+        """
+        {"betrag": "49,90", "bezahltAm": "", "ohneZahlungsdatum": true,
+         "andereDaten": [{"name": "Bestelldatum", "datum": "05.03.2022"}],
+         "beschreibung": "Made-up shop – order", "thema": "WORK_EQUIPMENT", "unsicher": []}
+        """);
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+
+    Locator dialog = receiptCheck(page);
+    assertThat(dialog.getByLabel("Datum")).hasValue("");
+    assertThat(dialog.locator(".date-reason"))
+        .containsText("Der Beleg nennt kein Zahlungs- oder Rechnungsdatum");
+    assertThat(dialog.locator(".other-dates")).containsText("Bestelldatum 05.03.2022");
+  }
+
+  @Test
   void aFieldThatDoesNotPassTheCheckStaysEmpty() {
     fake().setAnswer(
         """
@@ -470,6 +508,23 @@ class ExpenseReceiptBrowserTest {
 
     assertThat(receiptCheck(page).locator(".labour-cost"))
         .containsText("Arbeitskosten laut Beleg: 200,00 EUR");
+  }
+
+  @Test
+  void anUnsureLabourPartGetsTheUnsureMark() {
+    fake().setAnswer(
+        """
+        {"betrag": "300,00", "bezahltAm": "03.02.2022", "beschreibung": "Made-up gardener",
+         "thema": "HOUSEHOLD_SERVICES", "arbeitskosten": "200,00", "unsicher": ["arbeitskosten"]}
+        """);
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+
+    assertThat(receiptCheck(page).locator(".unsure-mark.labour-cost"))
+        .containsText("Arbeitskosten unsicher gelesen, bitte prüfen");
   }
 
   @Test

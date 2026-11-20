@@ -214,13 +214,13 @@ class PersonBrowserTest {
 
     yearButton(page, name, "2024").click();
     assertThat(page).hasURL(Pattern.compile("/returns/\\d+$"));
-    assertThat(page.locator("h1")).containsText("2024");
     String firstUrl = page.url();
+    assertOpenYear(page, "2024");
 
     page.navigate(home());
     yearButton(page, name, "2024").click();
     assertThat(page).hasURL(firstUrl);
-    assertThat(page.locator("h1")).containsText("2024");
+    assertOpenYear(page, "2024");
   }
 
   @Test
@@ -235,7 +235,7 @@ class PersonBrowserTest {
     section(page, name)
         .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Steuererklärung 2019"))
         .click();
-    assertThat(page.locator("h1")).containsText("2019");
+    assertOpenYear(page, "2019");
   }
 
   @Test
@@ -272,6 +272,12 @@ class PersonBrowserTest {
     page.navigate(home());
     yearButton(page, name, year).click();
     page.locator("nav").getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Hauptvordruck")).click();
+    assertThat(page.locator("h1")).containsText(year);
+  }
+
+  /** The tab Ausgaben shows no year, so the check reads it on the tab Belege. */
+  private static void assertOpenYear(Page page, String year) {
+    page.locator("nav").getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Belege")).click();
     assertThat(page.locator("h1")).containsText(year);
   }
 

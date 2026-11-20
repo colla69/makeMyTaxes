@@ -27,6 +27,10 @@ function setUpReceiptCheck(dialog) {
     fileInput.value = "";
     pageFields.forEach((control) => (control.disabled = false));
     dialog.remove();
+    // The topic of the page decides again which fields show.
+    form
+      .querySelector("#expense-fields select[name=topic]")
+      .dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
 

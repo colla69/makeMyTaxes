@@ -148,6 +148,49 @@ class ExpenseBrowserTest {
     assertThat(page.locator("#expenses tbody tr")).not().containsText("200,00");
   }
 
+  @Test
+  void hidesTheRefundOnLoadUnlessThePageArrivesWithMedicalCosts() {
+    Page page = browser.newPage();
+    openANewReturnFor2022(page);
+    Locator refunded = page.getByLabel("Davon erstattet (EUR)");
+
+    assertThat(page.getByLabel("Kategorie")).hasValue("WORK_EQUIPMENT");
+    assertThat(refunded).isHidden();
+
+    // Without evidence the app refuses the save and renders the panel again with the chosen topic.
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    refunded.fill("20,00");
+    addExpense(page, "100,00", "Made-up doctor");
+    assertThat(page.locator(".error")).containsText("die Grundlage angeben");
+
+    assertThat(page.getByLabel("Kategorie")).hasValue("MEDICAL");
+    assertThat(refunded).isVisible();
+    assertThat(refunded).hasValue("20,00");
+  }
+
+  @Test
+  void withoutJavaScriptAMedicalBillIsSavedWithItsRefund() {
+    Page setup = browser.newPage();
+    openANewReturnFor2022(setup);
+    String returnUrl = setup.url();
+    Page page = browser.newPage(new Browser.NewPageOptions().setJavaScriptEnabled(false));
+    page.navigate(returnUrl);
+
+    page.getByLabel("Datum").fill("03.02.2022");
+    page.getByLabel("Betrag (EUR)").fill("100,00");
+    page.getByLabel("Kategorie").selectOption("MEDICAL");
+    page.getByLabel("Beschreibung").fill("Made-up doctor");
+    page.getByLabel("Davon erstattet (EUR)").fill("20,00");
+    page.getByLabel("Grundlage").fill("Made-up 12 days");
+    page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Ausgabe hinzufügen"))
+        .click();
+
+    Locator row = page.locator("#expenses tbody tr");
+    assertThat(row).hasCount(1);
+    assertThat(row).containsText("20,00");
+  }
+
   private static Locator group(Page page, String name) {
     return page.getByRole(
         AriaRole.GROUP, new Page.GetByRoleOptions().setName(name).setExact(true));

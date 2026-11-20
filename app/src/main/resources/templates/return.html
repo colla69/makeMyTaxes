@@ -80,6 +80,13 @@
             </th:block>
             <p id="read-failed" class="warning" th:if="${readProblem == 'failed'}">Der Assistent
               konnte den Beleg nicht lesen. Bitte füllen Sie die Felder von Hand aus.</p>
+            <!-- The server swaps only this box if it refuses the save, so the dialog keeps the values
+                 and the file. receipt-check.js puts the error beside the field it names. -->
+            <input type="hidden" name="fromReceiptCheck" value="true">
+            <div id="receipt-check-error" class="contents" th:fragment="receipt-check-error">
+              <p class="error" th:if="${checkError}" th:data-field="${checkErrorField}"
+                 th:text="${checkError}">Fehler</p>
+            </div>
             <div class="receipt-check-body">
               <div class="receipt-preview"></div>
               <div class="fields">

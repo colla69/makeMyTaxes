@@ -156,6 +156,100 @@ class ExpenseReceiptBrowserTest {
   }
 
   @Test
+  void aRefusedSaveKeepsTheDialogTheValuesAndTheFile() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Datum").fill("03.02.2021");
+    dialog.getByLabel("Beschreibung").fill("Made-up glasses, checked");
+    Locator save =
+        dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern"));
+    save.click();
+
+    Locator dateError = dialog.locator(".field:has([name=paidOn]) + #receipt-check-error .error");
+    assertThat(dateError).containsText("Diese Erklärung gilt für 2022");
+    assertThat(dialog).isVisible();
+    assertThat(dialog.getByLabel("Datum")).hasValue("03.02.2021");
+    assertThat(dialog.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+    assertThat(dialog.getByLabel("Beschreibung")).hasValue("Made-up glasses, checked");
+    assertThat(dialog.locator(".receipt-preview iframe")).isVisible();
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+
+    dialog.getByLabel("Datum").fill("03.02.2022");
+    save.click();
+
+    assertThat(page.locator("dialog[open]")).hasCount(0);
+    Locator row = page.locator("#expenses tbody tr");
+    assertThat(row).hasCount(1);
+    assertThat(row).containsText("03.02.2022");
+    assertThat(row).containsText("Made-up glasses, checked");
+    assertThat(
+            row.getByRole(
+                AriaRole.LINK, new Locator.GetByRoleOptions().setName("made-up-receipt.pdf")))
+        .isVisible();
+  }
+
+  @Test
+  void aZeroAmountKeepsTheDialogWithTheErrorBelowTheAmount() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Betrag (EUR)").fill("0,00");
+    dialog.getByLabel("Beschreibung").fill("Made-up glasses, checked");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    Locator amountError = dialog.locator(".field:has([name=amount]) + #receipt-check-error .error");
+    assertThat(amountError).containsText("größer als null");
+    assertThat(dialog).isVisible();
+    assertThat(dialog.locator(".receipt-preview iframe")).isVisible();
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+  }
+
+  @Test
+  void aBlankDescriptionKeepsTheDialogWithTheErrorBelowTheDescription() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByLabel("Beschreibung").fill("   ");
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    Locator descriptionError =
+        dialog.locator(".field:has([name=description]) + #receipt-check-error .error");
+    assertThat(descriptionError).containsText("braucht eine Beschreibung");
+    assertThat(dialog).isVisible();
+    assertThat(dialog.locator(".receipt-preview iframe")).isVisible();
+    assertThat(page.locator("#expenses tbody tr")).hasCount(0);
+  }
+
+  @Test
+  void anErrorAboutAFieldOutsideTheDialogGoesToThePage() {
+    long returnId = addReturn(true);
+    Page page = browser.newPage();
+    page.navigate(returnPage(returnId));
+    // The input mask would drop the letters, so the made-up wrong refund is set directly.
+    page.getByLabel("Davon erstattet (EUR)").evaluate("field => field.value = 'abc'");
+
+    page.getByLabel("Neue Datei").setInputFiles(MADE_UP_RECEIPT);
+    Locator dialog = receiptCheck(page);
+    dialog.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Speichern")).click();
+
+    // The dialog would hide the refund field that the user must correct.
+    assertThat(page.locator("dialog")).hasCount(0);
+    assertThat(page.locator("#expense-form > .error")).isVisible();
+    assertThat(page.getByLabel("Davon erstattet (EUR)")).hasValue("abc");
+    assertThat(page.getByLabel("Betrag (EUR)")).hasValue("1.234,56");
+  }
+
+  @Test
   void aBackdropClickClosesTheReceiptCheckAndStoresNothing() {
     long returnId = addReturn(true);
     Page page = browser.newPage();

@@ -307,7 +307,6 @@ class ExpenseController {
     model.addAttribute("returnId", returnId);
     model.addAttribute("tab", "expenses");
     model.addAttribute("forms", Forms.of(taxYearOf(returnId)));
-    model.addAttribute("taxYear", taxYearOf(returnId).value());
     model.addAttribute("form", form);
     model.addAttribute("read", ReceiptFields.empty());
     model.addAttribute("topics", topicOptions());
